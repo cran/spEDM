@@ -1,0 +1,230 @@
+---
+title: "Geographical Convergent Cross Mapping (GCCM)"
+author: "Wenbo Lv"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{GCCM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##",
+  fig.path = "man/figures/gccm/"
+)
+```
+
+## 1. The principle of geographical convergent cross mapping (GCCM)
+
+Takens’ theory proves that, for a dynamic system $\phi$, if its trajectory converges to an attractor manifold $M$, which are consisted by a bounded and invariant set of states, then the mapping between $\phi$ and M can be built and time series observations of $\phi$ can be used to construct $M$.
+
+According to the generalized embedding theorem, for a compact $d$-dimensional manifold $M$ and a set of observation functions $\left<h_1,h_2,\ldots,h_L\right>$, the map $\psi_{\phi,h} = \left<h_1\left(x\right),h_2\left(x\right),\ldots,h_L\left(x\right)\right>$ is an embedding of $M$ with $L = 2d + 1$. Here embedding means a one-to-one map resolving all singularities of the original manifold. The elements $h_i$ can be lags of observations from single time series observations, lags of observations from multiple time series, or multiple observation functions. The first two constructions are only special cases of the third one.
+
+By taking the measured values at one specific unit and its neighbors (named as spatial lags in spatial statistics) as a set of observation functions, $\psi_{\phi,h} \left(x,s\right) = \left<h_s\left(x\right),h_{s\left(1\right)}\left(x\right),\ldots,h_{s\left(L-1\right)}\left(x\right)\right>$ is a embedding, where $s$ is the focal unit currently under investigation and $s\left(i\right)$ is its $i$-th order of spatial lags. $h_s\left(x\right)$ and $h_{s\left(i\right)}\left(x\right)$ are their observation functions respectively. (Hereinafter, we will use $\psi \left(x,s\right)$ to present $\psi_{\phi,h} \left(x,s\right)$ for short). For two spatial variables $X$ and $Y$ on the same set of spatial units, their values and spatial lags can be regarded as observation functions reading values from each spatial unit. As the spatial lags in each order contain more than one spatial units, the observation function can be set as the mean of the spatial units or other summary functions considering the spatial direction, to assure the one-to-one mapping of the original manifold $M$.
+
+The cross-mapping prediction is defined as:
+
+$$
+\hat{Y}_s \mid M_x = \sum\limits_{i=1}^{L+1} \left(\omega_{si}Y_{si} \mid M_x \right)
+$$
+
+where $s$ represents a spatial unit at which the value of $Y$ needs to be predicted, $\hat{Y}_s$ is the prediction result, $L$ is the number of dimensions of the embedding, $si$ is the spatial unit used in the prediction, $Y_{si}$ is the observation value at $si$ and simultaneously the first component of a state in $M_y$, noted as $\psi\left(y,s_i\right)$. In further, $\psi\left(y,s_i\right)$ is determined by its one-to-one mapping point $\psi\left(x,s_i\right)$, which is in turn one of the $L+1$ nearest neighbors of the focal state in $M_x$. $\omega_{si}$ is the corresponding weight defined as:
+
+$$
+\omega_{si} \mid M_x = \frac{weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}{\sum_{i=1}^{L+1}weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}
+$$
+where $weight \left(\ast,\ast\right)$ is the weight function between two states in the shadow manifold, defined as:
+
+$$
+weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right) =
+\exp \left(- \frac{dis \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}{dis \left(\psi\left(x,s_1\right),\psi\left(x,s\right)\right)} \right)
+$$
+
+where $\exp$ is the exponential function and $dis \left(\ast,\ast\right)$ represents the distance function between two states in the shadow manifold defined as:
+
+$$
+dis \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right) = \frac{1}{L}
+\left(\left|h_{si}\left(x\right)-h_{s}\left(x\right)\right| + \sum_{k=1}^{L-1}abs \left[h_{si\left(k\right)}\left(x\right),h_{s\left(k\right)}\left(x\right)\right]\right)
+$$
+Note that the absolute value distance is used here.
+
+The skill of cross-mapping prediction is measured by the Pearson correlation coefficient between the true observations and corresponding predictions:
+
+$$
+\rho = \frac{Cov\left(Y,\hat{Y}\right)}{\sqrt{Var\left(Y\right) Var\left(\hat{Y}\right)}}
+$$
+
+The prediction skill $\rho$ varies by setting different sizes of libraries, which means the quantity of observations used in reconstruction of the shadow manifold. We can use the convergence of $\rho$ to infer the causal associations. For GCCM, the convergence means that $\rho$ increases with the size of libraries and is statistically significant when the library becomes largest. And the confidence interval of $\rho$ can be estimated based the $z$-statistics with the normal distribution:
+
+$$
+t = \rho \sqrt{\frac{n-2}{1-\rho^2}}
+$$
+where $n$ is the number of observations to be predicted, and
+
+$$
+z = \frac{1}{2} \ln \left(\frac{1+\rho}{1-\rho}\right)
+$$
+
+## 2. Examples
+
+### 2.1 Install the `spEDM` package
+
+```r
+install.packages("spEDM", dep = TRUE)
+```
+
+Load the `spEDM` package:
+
+```{r}
+library(spEDM)
+```
+
+### 2.2 An example of lattice data about county-level population density
+
+Load data and package:
+
+```{r}
+popd_nb = spdep::read.gal(system.file("extdata/popdensity_nb.gal",
+                                      package = "spEDM"))
+popd_nb
+
+popdensity = readr::read_csv(system.file("extdata/popdensity.csv",
+                                         package = "spEDM"))
+popdensity
+
+popd_sf = sf::st_as_sf(popdensity, coords = c("x","y"), crs = 4326)
+popd_sf
+```
+
+Run GCCM:
+
+```{r}
+startTime = Sys.time()
+pd_res = gccm(cause = "Pre",
+              effect = "popDensity",
+              data = popd_sf,
+              libsizes = seq(10, 2800, by = 100),
+              E = 3,
+              nb = popd_nb,
+              trendRM = TRUE)
+endTime = Sys.time()
+print(difftime(endTime,startTime, units ="mins"))
+pd_res
+```
+
+Visualize the result:
+
+```{r fig1,fig.width=6.75,fig.height=5.5,fig.dpi=300,fig.cap=knitr::asis_output("**Figure 1**. The cross-mapping prediction outputs between population density and county-level Precipitation.")}
+windowsFonts(TNR = windowsFont("Times New Roman"))
+
+fig1 = ggplot2::ggplot(data = pd_res,
+                       ggplot2::aes(x = lib_sizes)) +
+  ggplot2::geom_line(ggplot2::aes(y = x_xmap_y_mean,
+                                  color = "x xmap y"),
+                      lwd = 1.25) +
+  ggplot2::geom_line(ggplot2::aes(y = y_xmap_x_mean,
+                                  color = "y xmap x"),
+                     lwd = 1.25) +
+  ggplot2::scale_y_continuous(breaks = seq(0, 1, by = 0.1),
+                              limits = c(-0.05, 1), expand = c(0, 0),
+                              name = expression(rho)) +
+  ggplot2::scale_x_continuous(name = "Lib of Sizes",
+                              breaks = seq(10, 2800, by = 100),
+                              limits = c(0, 2800), expand = c(0, 0)) +
+  ggplot2::scale_color_manual(values = c("x xmap y" = "#608dbe",
+                                         "y xmap x" = "#ed795b"),
+                              labels = c("Pre xmap PopDensity",
+                                         "PopDensity xmap Pre"),
+                              name = "") +
+  ggplot2::theme_bw() +
+  ggplot2::theme(axis.text = ggplot2::element_text(family = "TNR"),
+                 axis.text.x = ggplot2::element_text(angle = 30),
+                 axis.title = ggplot2::element_text(family = "TNR"),
+                 panel.grid = ggplot2::element_blank(),
+                 legend.position = "inside",
+                 legend.justification = c('right','top'),
+                 legend.background = ggplot2::element_rect(fill = 'transparent'),
+                 legend.text = ggplot2::element_text(family = "TNR"))
+fig1
+```
+
+### 2.3 An example of grid data about farmland NPP
+
+Load data and package:
+
+```{r fig2,fig.width=6.55,fig.height=2.15,fig.dpi=300,fig.cap=knitr::asis_output("**Figure 2**. Maps of farmland NPP and climate factors.")}
+npp = terra::rast(system.file("extdata/npp.tif", package = "spEDM"))
+npp
+
+terra::plot(npp,nc = 3,
+            mar = rep(0.1,4),
+            oma = rep(0.1,4),
+            axes = FALSE,
+            legend = FALSE)
+```
+
+*To save the computation time, we will aggregate the data by 3 times and select 3000 non-NA pixels to predict:*
+
+```{r}
+npp = terra::aggregate(npp, fact = 3, na.rm = TRUE)
+terra::global(npp,"isNA")
+terra::ncell(npp)
+
+namat = terra::as.matrix(!is.na(npp[[1]]), wide = TRUE)
+pred = terra::rowColFromCell(npp,which(namat))
+dim(pred)
+
+set.seed(42)
+indices = sample(nrow(pred), size = 3000, replace = FALSE)
+pred = pred[indices,]
+```
+
+Run GCCM:
+
+```{r}
+startTime = Sys.time()
+npp_res = gccm(cause = "pre",
+               effect = "npp",
+               data = npp,
+               libsizes = seq(10,130,10),
+               E = 3, RowCol = pred)
+endTime = Sys.time()
+print(difftime(endTime,startTime, units ="mins"))
+npp_res
+```
+
+Visualize the result:
+
+```{r fig3,fig.width=4.5,fig.height=3.5,fig.dpi=300,fig.cap=knitr::asis_output("**Figure 3**. The cross-mapping prediction outputs between farmland NPP and precipitation.")}
+fig3 = ggplot2::ggplot(data = npp_res,
+                       ggplot2::aes(x = lib_sizes)) +
+  ggplot2::geom_line(ggplot2::aes(y = x_xmap_y_mean,
+                                  color = "x xmap y"),
+                      lwd = 1.25) +
+  ggplot2::geom_line(ggplot2::aes(y = y_xmap_x_mean,
+                                  color = "y xmap x"),
+                     lwd = 1.25) +
+  ggplot2::scale_y_continuous(breaks = seq(0, 1, by = 0.1),
+                              limits = c(-0.05, 1), expand = c(0, 0),
+                              name = expression(rho)) +
+  ggplot2::scale_x_continuous(name = "Lib of Sizes",
+                              breaks = seq(10,130,10),
+                              limits = c(9, 101), expand = c(0, 0)) +
+  ggplot2::scale_color_manual(values = c("x xmap y" = "#608dbe",
+                                         "y xmap x" = "#ed795b"),
+                              labels = c("Precipitation xmap NPP",
+                                         "NPP xmap Precipitation"),
+                              name = "") +
+  ggplot2::theme_bw() +
+  ggplot2::theme(axis.text = ggplot2::element_text(family = "TNR"),
+                 axis.title = ggplot2::element_text(family = "TNR"),
+                 panel.grid = ggplot2::element_blank(),
+                 legend.position = "inside",
+                 legend.justification = c('right','top'),
+                 legend.background = ggplot2::element_rect(fill = 'transparent'),
+                 legend.text = ggplot2::element_text(family = "TNR"))
+fig3
+```
