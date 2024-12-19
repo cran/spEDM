@@ -1,6 +1,6 @@
 Package: spEDM
 Title: Spatial Empirical Dynamic Modeling
-Version: 1.0
+Version: 1.1
 Authors@R: 
     person(given = "Wenbo", family = "Lv",
            email = "lyu.geosocial@gmail.com", 
@@ -18,8 +18,8 @@ Imports: dplyr, sdsfun (>= 0.6.0), terra
 Suggests: ggplot2, knitr, Rcpp, RcppThread, rmarkdown, sf, spdep
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2024-12-14 00:45:34 UTC; dell
+Packaged: 2024-12-17 15:31:33 UTC; dell
 Author: Wenbo Lv [aut, cre, cph] (<https://orcid.org/0009-0002-6003-3800>)
 Maintainer: Wenbo Lv <lyu.geosocial@gmail.com>
 Repository: CRAN
-Date/Publication: 2024-12-16 17:30:02 UTC
+Date/Publication: 2024-12-19 15:30:02 UTC

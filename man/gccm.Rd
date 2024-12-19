@@ -8,7 +8,7 @@ gccm(
   cause,
   effect,
   data,
-  libsizes = NULL,
+  libsizes,
   E = 3,
   nb = NULL,
   RowCol = NULL,
@@ -22,7 +22,7 @@ gccm(
 
 \item{data}{The observation data, must be \code{sf} or \code{SpatRaster} object.}
 
-\item{libsizes}{(optional) A vector of library sizes to use.}
+\item{libsizes}{A vector of library sizes to use.}
 
 \item{E}{(optional) The dimensions of the embedding.}
 
@@ -41,5 +41,7 @@ geographical convergent cross mapping
 \examples{
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData")[1],
                        quiet=TRUE)
-gccm("HOVAL", "CRIME", data = columbus)
+\donttest{
+gccm("HOVAL", "CRIME", data = columbus, libsizes = seq(5,45,5))
+}
 }
