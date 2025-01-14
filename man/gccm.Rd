@@ -2,38 +2,65 @@
 % Please edit documentation in R/gccm.R
 \name{gccm}
 \alias{gccm}
+\alias{gccm,sf-method}
+\alias{gccm,SpatRaster-method}
 \title{geographical convergent cross mapping}
 \usage{
-gccm(
+\S4method{gccm}{sf}(
+  data,
   cause,
   effect,
-  data,
   libsizes,
   E = 3,
+  tau = 1,
+  k = E + 1,
   nb = NULL,
+  trendRM = TRUE,
+  progressbar = TRUE
+)
+
+\S4method{gccm}{SpatRaster}(
+  data,
+  cause,
+  effect,
+  libsizes,
+  E = 3,
+  tau = 1,
+  k = E + 3,
   RowCol = NULL,
-  trendRM = TRUE
+  trendRM = TRUE,
+  progressbar = TRUE
 )
 }
 \arguments{
+\item{data}{The observation data.}
+
 \item{cause}{Name of causal variable.}
 
 \item{effect}{Name of effect variable.}
-
-\item{data}{The observation data, must be \code{sf} or \code{SpatRaster} object.}
 
 \item{libsizes}{A vector of library sizes to use.}
 
 \item{E}{(optional) The dimensions of the embedding.}
 
+\item{tau}{(optional) The step of spatial lags.}
+
+\item{k}{(optional) Number of nearest neighbors to use for prediction.}
+
 \item{nb}{(optional) The neighbours list.}
 
-\item{RowCol}{(optional) Matrix of selected row and cols numbers.}
-
 \item{trendRM}{(optional) Whether to remove the linear trend.}
+
+\item{progressbar}{(optional) whether to print the progress bar.}
+
+\item{RowCol}{(optional) Matrix of selected row and cols numbers.}
 }
 \value{
-A \code{data.frame}.
+A list.
+\describe{
+\item{\code{xmap}}{cross-mapping prediction outputs}
+\item{\code{varname}}{names of causal and effect variable}
+}
 }
 \description{
 geographical convergent cross mapping
@@ -42,6 +69,8 @@ geographical convergent cross mapping
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData")[1],
                        quiet=TRUE)
 \donttest{
-gccm("HOVAL", "CRIME", data = columbus, libsizes = seq(5,45,5))
+g = gccm(columbus, "HOVAL", "CRIME", libsizes = seq(5,45,5))
+g
+plot(g, ylimits = c(0,0.65))
 }
 }

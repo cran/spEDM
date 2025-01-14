@@ -1,6 +1,6 @@
 Package: spEDM
 Title: Spatial Empirical Dynamic Modeling
-Version: 1.1
+Version: 1.2
 Authors@R: 
     person(given = "Wenbo", family = "Lv",
            email = "lyu.geosocial@gmail.com", 
@@ -14,12 +14,12 @@ URL: https://stscl.github.io/spEDM/, https://github.com/stscl/spEDM
 BugReports: https://github.com/stscl/spEDM/issues
 Depends: R (>= 4.1.0)
 LinkingTo: Rcpp, RcppThread
-Imports: dplyr, sdsfun (>= 0.6.0), terra
-Suggests: ggplot2, knitr, Rcpp, RcppThread, rmarkdown, sf, spdep
+Imports: dplyr, ggplot2, methods, sdsfun (>= 0.7.0), terra
+Suggests: knitr, Rcpp, RcppThread, rmarkdown, sf, spdep
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2024-12-17 15:31:33 UTC; dell
+Packaged: 2025-01-14 07:58:48 UTC; dell
 Author: Wenbo Lv [aut, cre, cph] (<https://orcid.org/0009-0002-6003-3800>)
 Maintainer: Wenbo Lv <lyu.geosocial@gmail.com>
 Repository: CRAN
-Date/Publication: 2024-12-19 15:30:02 UTC
+Date/Publication: 2025-01-14 08:20:01 UTC
