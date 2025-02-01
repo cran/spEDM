@@ -5,31 +5,123 @@ RcppLaggedVar4Grid <- function(mat, lagNum) {
     .Call(`_spEDM_RcppLaggedVar4Grid`, mat, lagNum)
 }
 
-RcppGenGridEmbeddings <- function(mat, E) {
-    .Call(`_spEDM_RcppGenGridEmbeddings`, mat, E)
+RcppGenGridEmbeddings <- function(mat, E, includeself) {
+    .Call(`_spEDM_RcppGenGridEmbeddings`, mat, E, includeself)
 }
 
-RcppGCCM4Grid <- function(xMatrix, yMatrix, lib_sizes, pred, E, tau, b, progressbar) {
-    .Call(`_spEDM_RcppGCCM4Grid`, xMatrix, yMatrix, lib_sizes, pred, E, tau, b, progressbar)
+RcppLocateGridIndices <- function(curRow, curCol, totalRow, totalCol) {
+    .Call(`_spEDM_RcppLocateGridIndices`, curRow, curCol, totalRow, totalCol)
 }
 
-RcppConfidence <- function(r, n, level = 0.05) {
-    .Call(`_spEDM_RcppConfidence`, r, n, level)
+RcppSimplex4Grid <- function(mat, lib, pred, E, b, threads, includeself) {
+    .Call(`_spEDM_RcppSimplex4Grid`, mat, lib, pred, E, b, threads, includeself)
 }
 
-RcppLinearTrendRM <- function(vec, xcoord, ycoord, NA_rm = FALSE) {
-    .Call(`_spEDM_RcppLinearTrendRM`, vec, xcoord, ycoord, NA_rm)
+RcppSMap4Grid <- function(mat, lib, pred, theta, E, b, threads, includeself) {
+    .Call(`_spEDM_RcppSMap4Grid`, mat, lib, pred, theta, E, b, threads, includeself)
+}
+
+RcppGCCM4Grid <- function(xMatrix, yMatrix, lib_sizes, pred, E, tau, b, simplex, theta, threads, includeself, progressbar) {
+    .Call(`_spEDM_RcppGCCM4Grid`, xMatrix, yMatrix, lib_sizes, pred, E, tau, b, simplex, theta, threads, includeself, progressbar)
+}
+
+RcppSCPCM4Grid <- function(xMatrix, yMatrix, zMatrix, lib_sizes, E, pred, tau, b, simplex, theta, threads, cumulate, includeself, progressbar) {
+    .Call(`_spEDM_RcppSCPCM4Grid`, xMatrix, yMatrix, zMatrix, lib_sizes, E, pred, tau, b, simplex, theta, threads, cumulate, includeself, progressbar)
+}
+
+DetectMaxNumThreads <- function() {
+    .Call(`_spEDM_DetectMaxNumThreads`)
+}
+
+OptEmdedDim <- function(Emat) {
+    .Call(`_spEDM_OptEmdedDim`, Emat)
+}
+
+OptThetaParm <- function(Thetamat) {
+    .Call(`_spEDM_OptThetaParm`, Thetamat)
 }
 
 RcppLaggedVar4Lattice <- function(nb, lagNum) {
     .Call(`_spEDM_RcppLaggedVar4Lattice`, nb, lagNum)
 }
 
-RcppGenLatticeEmbeddings <- function(vec, nb, E) {
-    .Call(`_spEDM_RcppGenLatticeEmbeddings`, vec, nb, E)
+RcppGenLatticeEmbeddings <- function(vec, nb, E, includeself) {
+    .Call(`_spEDM_RcppGenLatticeEmbeddings`, vec, nb, E, includeself)
 }
 
-RcppGCCM4Lattice <- function(x, y, nb, libsizes, E, tau, b, progressbar) {
-    .Call(`_spEDM_RcppGCCM4Lattice`, x, y, nb, libsizes, E, tau, b, progressbar)
+RcppSimplex4Lattice <- function(x, nb, lib, pred, E, b, threads, includeself) {
+    .Call(`_spEDM_RcppSimplex4Lattice`, x, nb, lib, pred, E, b, threads, includeself)
+}
+
+RcppSMap4Lattice <- function(x, nb, lib, pred, theta, E, b, threads, includeself) {
+    .Call(`_spEDM_RcppSMap4Lattice`, x, nb, lib, pred, theta, E, b, threads, includeself)
+}
+
+RcppGCCM4Lattice <- function(x, y, nb, libsizes, E, tau, b, simplex, theta, threads, includeself, progressbar) {
+    .Call(`_spEDM_RcppGCCM4Lattice`, x, y, nb, libsizes, E, tau, b, simplex, theta, threads, includeself, progressbar)
+}
+
+RcppSCPCM4Lattice <- function(x, y, z, nb, libsizes, E, tau, b, simplex, theta, threads, cumulate, includeself, progressbar) {
+    .Call(`_spEDM_RcppSCPCM4Lattice`, x, y, z, nb, libsizes, E, tau, b, simplex, theta, threads, cumulate, includeself, progressbar)
+}
+
+RcppMean <- function(vec, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppMean`, vec, NA_rm)
+}
+
+RcppSum <- function(vec, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppSum`, vec, NA_rm)
+}
+
+RcppVariance <- function(vec, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppVariance`, vec, NA_rm)
+}
+
+RcppCovariance <- function(vec1, vec2, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppCovariance`, vec1, vec2, NA_rm)
+}
+
+RcppMAE <- function(vec1, vec2, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppMAE`, vec1, vec2, NA_rm)
+}
+
+RcppRMSE <- function(vec1, vec2, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppRMSE`, vec1, vec2, NA_rm)
+}
+
+RcppAbs <- function(vec1, vec2) {
+    .Call(`_spEDM_RcppAbs`, vec1, vec2)
+}
+
+RcppSumNormalize <- function(vec, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppSumNormalize`, vec, NA_rm)
+}
+
+RcppPearsonCor <- function(y, y_hat, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppPearsonCor`, y, y_hat, NA_rm)
+}
+
+RcppPartialCor <- function(y, y_hat, controls, NA_rm = FALSE, linear = FALSE) {
+    .Call(`_spEDM_RcppPartialCor`, y, y_hat, controls, NA_rm, linear)
+}
+
+RcppPartialCorTrivar <- function(y, y_hat, control, NA_rm = FALSE, linear = FALSE) {
+    .Call(`_spEDM_RcppPartialCorTrivar`, y, y_hat, control, NA_rm, linear)
+}
+
+RcppCorSignificance <- function(r, n, k = 0L) {
+    .Call(`_spEDM_RcppCorSignificance`, r, n, k)
+}
+
+RcppCorConfidence <- function(r, n, k = 0L, level = 0.05) {
+    .Call(`_spEDM_RcppCorConfidence`, r, n, k, level)
+}
+
+RcppLinearTrendRM <- function(vec, xcoord, ycoord, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppLinearTrendRM`, vec, xcoord, ycoord, NA_rm)
+}
+
+RcppSVD <- function(X) {
+    .Call(`_spEDM_RcppSVD`, X)
 }
 

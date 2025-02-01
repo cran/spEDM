@@ -4,36 +4,7 @@
 #include <algorithm> // for std::sort, std::unique, std::accumulate
 #include <unordered_set> // for std::unordered_set
 #include <limits> // for std::numeric_limits
-#include <Rcpp.h>
-
-// Function to convert Rcpp::List to std::vector<std::vector<int>>
-std::vector<std::vector<int>> nb2vec(Rcpp::List nb) {
-  // Get the number of elements in the nb object
-  int n = nb.size();
-
-  // Create a vector<vector<int>> to store the result
-  std::vector<std::vector<int>> result(n);
-
-  // Iterate over each element in the nb object
-  for (int i = 0; i < n; ++i) {
-    // Get the current element (should be an integer vector)
-    Rcpp::IntegerVector current_nb = nb[i];
-
-    // Create a vector<int> to store the current subset of elements
-    std::vector<int> current_subset;
-
-    // Iterate over each element in the current subset
-    for (int j = 0; j < current_nb.size(); ++j) {
-      // Subtract one from each element to convert from R's 1-based indexing to C++'s 0-based indexing
-      current_subset.push_back(current_nb[j] - 1);
-    }
-
-    // Add the current subset to the result
-    result[i] = current_subset;
-  }
-
-  return result;
-}
+#include <cmath> // For std::isnan
 
 // Function to compute lagged neighborhoods for a given lag number
 // **Note that the return value corresponds to the cumulative neighbor indices for lagNum**
@@ -103,61 +74,155 @@ std::vector<std::vector<int>> CppLaggedVar4Lattice(std::vector<std::vector<int>>
 std::vector<std::vector<double>> GenLatticeEmbeddings(
     const std::vector<double>& vec,
     const std::vector<std::vector<int>>& nb,
-    int E) {
+    int E,
+    bool includeself)
+{
   // Get the number of nodes
   int n = vec.size();
 
   // Initialize the embeddings matrix with NaN values
   std::vector<std::vector<double>> xEmbedings(n, std::vector<double>(E, std::numeric_limits<double>::quiet_NaN()));
 
-  // Compute embeddings for each lag number from 1 to E
-  for (int lagNum = 1; lagNum <= E; ++lagNum) {
-    // Compute the lagged neighborhoods
-    std::vector<std::vector<int>> laggedResults = CppLaggedVar4Lattice(nb, lagNum);
-
-    // Remove duplicates with previous lagNum (if lagNum >= 2)
-    if (lagNum >= 2) {
-      std::vector<std::vector<int>> prev_laggedResults = CppLaggedVar4Lattice(nb, lagNum - 1);
+  if (includeself) {
+    // When E >= 1, fill the first column of xEmbedings with the values from vec
+    if (E >= 1) {
       for (int i = 0; i < n; ++i) {
-        // Convert previous lagged results to a set for fast lookup
-        std::unordered_set<int> prev_set(prev_laggedResults[i].begin(), prev_laggedResults[i].end());
-
-        // Remove duplicates from current lagged results
-        std::vector<int> new_indices;
-        for (int index : laggedResults[i]) {
-          if (prev_set.find(index) == prev_set.end()) {
-            new_indices.push_back(index);
-          }
-        }
-
-        // If the new indices are empty, set it to a special value (e.g., std::numeric_limits<int>::min())
-        if (new_indices.empty()) {
-          new_indices.push_back(std::numeric_limits<int>::min());
-        }
-
-        // Update the lagged results
-        laggedResults[i] = new_indices;
+        xEmbedings[i][0] = vec[i]; // Fill the first column with vec values
       }
     }
 
-    // Compute the mean of neighbor values for each node
-    for (size_t l = 0; l < laggedResults.size(); ++l) {
-      std::vector<int> neighbors = laggedResults[l];
+    // Compute embeddings for each lag number from 1 to E
+    for (int lagNum = 1; lagNum < E; ++lagNum) {
+      // Compute the lagged neighborhoods
+      std::vector<std::vector<int>> laggedResults = CppLaggedVar4Lattice(nb, lagNum);
 
-      // If the neighbors are empty or contain only the special value, leave the embedding as NaN
-      if (neighbors.empty() || (neighbors.size() == 1 && neighbors[0] == std::numeric_limits<int>::min())) {
-        continue;
+      // Remove duplicates with previous lagNum (if lagNum >= 2)
+      if (lagNum >= 2) {
+        std::vector<std::vector<int>> prev_laggedResults = CppLaggedVar4Lattice(nb, lagNum - 1);
+        for (int i = 0; i < n; ++i) {
+          // Convert previous lagged results to a set for fast lookup
+          std::unordered_set<int> prev_set(prev_laggedResults[i].begin(), prev_laggedResults[i].end());
+
+          // Remove duplicates from current lagged results
+          std::vector<int> new_indices;
+          for (int index : laggedResults[i]) {
+            if (prev_set.find(index) == prev_set.end()) {
+              new_indices.push_back(index);
+            }
+          }
+
+          // If the new indices are empty, set it to a special value (e.g., std::numeric_limits<int>::min())
+          if (new_indices.empty()) {
+            new_indices.push_back(std::numeric_limits<int>::min());
+          }
+
+          // Update the lagged results
+          laggedResults[i] = new_indices;
+        }
       }
 
-      // Compute the mean of neighbor values
-      double sum = std::accumulate(neighbors.begin(), neighbors.end(), 0.0, [&](double acc, int idx) {
-        return acc + vec[idx];
-      });
-      xEmbedings[l][lagNum - 1] = sum / neighbors.size();
+      // Compute the mean of neighbor values for each node
+      for (size_t l = 0; l < laggedResults.size(); ++l) {
+        std::vector<int> neighbors = laggedResults[l];
+
+        // If the neighbors are empty or contain only the special value, leave the embedding as NaN
+        if (neighbors.empty() || (neighbors.size() == 1 && neighbors[0] == std::numeric_limits<int>::min())) {
+          continue;
+        }
+
+        // Compute the mean of neighbor values
+        double sum = std::accumulate(neighbors.begin(), neighbors.end(), 0.0, [&](double acc, int idx) {
+          return acc + vec[idx];
+        });
+        xEmbedings[l][lagNum] = sum / neighbors.size();
+      }
+    }
+  } else {
+    // Compute embeddings for each lag number from 1 to E
+    for (int lagNum = 1; lagNum <= E; ++lagNum) {
+      // Compute the lagged neighborhoods
+      std::vector<std::vector<int>> laggedResults = CppLaggedVar4Lattice(nb, lagNum);
+
+      // Remove duplicates with previous lagNum (if lagNum >= 2)
+      if (lagNum >= 2) {
+        std::vector<std::vector<int>> prev_laggedResults = CppLaggedVar4Lattice(nb, lagNum - 1);
+        for (int i = 0; i < n; ++i) {
+          // Convert previous lagged results to a set for fast lookup
+          std::unordered_set<int> prev_set(prev_laggedResults[i].begin(), prev_laggedResults[i].end());
+
+          // Remove duplicates from current lagged results
+          std::vector<int> new_indices;
+          for (int index : laggedResults[i]) {
+            if (prev_set.find(index) == prev_set.end()) {
+              new_indices.push_back(index);
+            }
+          }
+
+          // If the new indices are empty, set it to a special value (e.g., std::numeric_limits<int>::min())
+          if (new_indices.empty()) {
+            new_indices.push_back(std::numeric_limits<int>::min());
+          }
+
+          // Update the lagged results
+          laggedResults[i] = new_indices;
+        }
+      }
+
+      // Compute the mean of neighbor values for each node
+      for (size_t l = 0; l < laggedResults.size(); ++l) {
+        std::vector<int> neighbors = laggedResults[l];
+
+        // If the neighbors are empty or contain only the special value, leave the embedding as NaN
+        if (neighbors.empty() || (neighbors.size() == 1 && neighbors[0] == std::numeric_limits<int>::min())) {
+          continue;
+        }
+
+        // Compute the mean of neighbor values
+        double sum = std::accumulate(neighbors.begin(), neighbors.end(), 0.0, [&](double acc, int idx) {
+          return acc + vec[idx];
+        });
+        xEmbedings[l][lagNum - 1] = sum / neighbors.size();
+      }
     }
   }
 
-  return xEmbedings;
+  // Calculate validColumns (indices of columns that are not entirely NaN)
+  std::vector<size_t> validColumns; // To store indices of valid columns
+
+  // Iterate over each column to check if it contains any non-NaN values
+  for (size_t col = 0; col < xEmbedings[0].size(); ++col) {
+    bool isAllNaN = true;
+    for (size_t row = 0; row < xEmbedings.size(); ++row) {
+      if (!std::isnan(xEmbedings[row][col])) {
+        isAllNaN = false;
+        break;
+      }
+    }
+    if (!isAllNaN) {
+      validColumns.push_back(col); // Store the index of valid columns
+    }
+  }
+
+  // If no columns are removed, return the original xEmbedings
+  if (validColumns.size() == xEmbedings[0].size()) {
+    return xEmbedings;
+  } else {
+    // Issue a warning if any columns are removed
+    // std::cerr << "Warning: remove all-NA embedding vector columns caused by excessive embedding dimension E selection." << std::endl;
+
+    // Construct the filtered embeddings matrix
+    std::vector<std::vector<double>> filteredEmbeddings;
+    for (size_t row = 0; row < xEmbedings.size(); ++row) {
+      std::vector<double> filteredRow;
+      for (size_t col : validColumns) {
+        filteredRow.push_back(xEmbedings[row][col]);
+      }
+      filteredEmbeddings.push_back(filteredRow);
+    }
+
+    // Return the filtered embeddings matrix
+    return filteredEmbeddings;
+  }
 }
 
 // #include <iostream>

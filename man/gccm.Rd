@@ -11,10 +11,15 @@
   cause,
   effect,
   libsizes,
-  E = 3,
+  E = c(3, 3),
   tau = 1,
-  k = E + 1,
+  k = 4,
+  theta = 1,
+  algorithm = "simplex",
   nb = NULL,
+  threads = detectThreads(),
+  bidirectional = TRUE,
+  include.self = FALSE,
   trendRM = TRUE,
   progressbar = TRUE
 )
@@ -24,10 +29,15 @@
   cause,
   effect,
   libsizes,
-  E = 3,
+  E = c(3, 3),
   tau = 1,
-  k = E + 3,
+  k = 4,
+  theta = 1,
+  algorithm = "simplex",
   RowCol = NULL,
+  threads = detectThreads(),
+  bidirectional = TRUE,
+  include.self = FALSE,
   trendRM = TRUE,
   progressbar = TRUE
 )
@@ -47,7 +57,17 @@
 
 \item{k}{(optional) Number of nearest neighbors to use for prediction.}
 
+\item{theta}{(optional) Weighting parameter for distances, useful when \code{algorithm} is \code{smap}.}
+
+\item{algorithm}{(optional) Algorithm used for prediction.}
+
 \item{nb}{(optional) The neighbours list.}
+
+\item{threads}{(optional) Number of threads.}
+
+\item{bidirectional}{(optional) whether to identify bidirectional potential causal relationships.}
+
+\item{include.self}{(optional) Whether to include the current state when constructing the embedding vector.}
 
 \item{trendRM}{(optional) Whether to remove the linear trend.}
 
@@ -58,8 +78,9 @@
 \value{
 A list.
 \describe{
-\item{\code{xmap}}{cross-mapping prediction outputs}
+\item{\code{xmap}}{cross mapping prediction outputs}
 \item{\code{varname}}{names of causal and effect variable}
+\item{\code{bidirectional}}{whether to identify bidirectional potential causal relationships}
 }
 }
 \description{
@@ -69,8 +90,8 @@ geographical convergent cross mapping
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData")[1],
                        quiet=TRUE)
 \donttest{
-g = gccm(columbus, "HOVAL", "CRIME", libsizes = seq(5,45,5))
+g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,40,5),E = c(6,5))
 g
-plot(g, ylimits = c(0,0.65))
+plot(g, ylimits = c(0,0.8))
 }
 }

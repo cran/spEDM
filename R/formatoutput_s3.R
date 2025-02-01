@@ -2,12 +2,39 @@
 #' @noRd
 #' @export
 print.ccm_res = \(x,...){
-  resdf = x$xmap
-  resdf = resdf[,c("libsizes", "x_xmap_y_mean", "y_xmap_x_mean")]
-  names(resdf) = c('libsizes',
-                   paste0(x$varname[2], "->", x$varname[1]),
-                   paste0(x$varname[1], "->", x$varname[2]))
+  resdf = x[[1]]
+  bidirectional = x[[3]]
+
+  if (bidirectional){
+    resdf = resdf[,c("libsizes", "y_xmap_x_mean", "x_xmap_y_mean")]
+    names(resdf) = c('libsizes',
+                     paste0(x$varname[1], "->", x$varname[2]),
+                     paste0(x$varname[2], "->", x$varname[1]))
+  } else {
+    resdf = resdf[,c("libsizes", "y_xmap_x_mean")]
+    names(resdf) = c('libsizes',
+                     paste0(x$varname[1], "->", x$varname[2]))
+  }
   print(resdf)
+}
+
+#' print pcm result
+#' @noRd
+#' @export
+print.pcm_res = \(x,...){
+  pxmap = x[-2]
+  xmap = x[-1]
+  class(pxmap) = "ccm"
+  class(xmap) = "ccm"
+
+  cat('-------------------------------------- \n')
+  cat("***partial cross mapping prediction*** \n")
+  cat('-------------------------------------- \n')
+  print.ccm_res(pxmap)
+  cat("\n------------------------------ \n")
+  cat("***cross mapping prediction*** \n")
+  cat('------------------------------ \n')
+  print.ccm_res(xmap)
 }
 
 #' plot ccm result
@@ -15,19 +42,35 @@ print.ccm_res = \(x,...){
 #' @export
 plot.ccm_res = \(x, family = "serif", xbreaks = NULL, xlimits = NULL,
                  ybreaks = seq(0, 1, by = 0.1), ylimits = c(-0.05, 1), ...){
-  resdf = x$xmap
-  resdf = resdf[,c("libsizes", "x_xmap_y_mean", "y_xmap_x_mean")]
+  resdf = x[[1]]
+  bidirectional = x[[3]]
+  if (bidirectional){
+    resdf = resdf[,c("libsizes", "x_xmap_y_mean", "y_xmap_x_mean")]
+  } else {
+    resdf = resdf[,c("libsizes", "y_xmap_x_mean")]
+  }
   if(is.null(xbreaks)) xbreaks = resdf$libsizes
   if(is.null(xlimits)) xlimits = c(min(xbreaks)-1,max(xbreaks)+1)
 
+  if (bidirectional){
+    resdf = resdf[,c("libsizes", "x_xmap_y_mean", "y_xmap_x_mean")]
+  } else {
+    resdf = resdf[,c("libsizes", "y_xmap_x_mean")]
+  }
+
   fig1 = ggplot2::ggplot(data = resdf,
                          ggplot2::aes(x = libsizes)) +
-    ggplot2::geom_line(ggplot2::aes(y = x_xmap_y_mean,
-                                    color = "x xmap y"),
-                       lwd = 1.25) +
     ggplot2::geom_line(ggplot2::aes(y = y_xmap_x_mean,
                                     color = "y xmap x"),
-                       lwd = 1.25) +
+                       lwd = 1.25)
+
+  if (bidirectional){
+    fig1 = fig1 + ggplot2::geom_line(ggplot2::aes(y = x_xmap_y_mean,
+                                                  color = "x xmap y"),
+                                     lwd = 1.25)
+  }
+
+  fig1 = fig1 +
     ggplot2::scale_x_continuous(breaks = xbreaks, limits = xlimits,
                                 expand = c(0, 0), name = "Lib of Sizes") +
     ggplot2::scale_y_continuous(breaks = ybreaks, limits = ylimits,
@@ -46,5 +89,15 @@ plot.ccm_res = \(x, family = "serif", xbreaks = NULL, xlimits = NULL,
                    legend.justification = c('right','top'),
                    legend.background = ggplot2::element_rect(fill = 'transparent'),
                    legend.text = ggplot2::element_text(family = family))
+  return(fig1)
+}
+
+#' plot pcm result
+#' @noRd
+#' @export
+plot.pcm_res = \(x, ...){
+  pxmap = x[-2]
+  class(pxmap) = "ccm"
+  fig1 = plot.ccm_res(pxmap,...)
   return(fig1)
 }
