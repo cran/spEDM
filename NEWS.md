@@ -1,6 +1,24 @@
+# spEDM 1.4
+
+### enhancements
+
+* Improve default spatial neighbor list generation for lattice data with support from the `sdsfun` package (#159).
+
+### breaking changes
+
+* Adjust the behavior of the `tau` parameter in the C++ source code and update the R side API (#154).
+
 # spEDM 1.3
 
+### new
+
 * Implement the `smap` funtion to enable the selection of the optimal theta parameter (#128).
+
+* Add `simplex` function to support selecting the optimal embedding dimension for variables (#98).
+
+* Provide an R-level API for generating embeddings (#97).
+
+### enhancements
 
 * Now bidirectional mapping in the `gccm` result uses a `full join` structure when organized on the R side (#118).
 
@@ -12,21 +30,21 @@
 
 * Provide a complete `GCCM` workflow for spatial lattice and grid data in the `gccm` vignette (#100).
 
-* Add `simplex` function to support selecting the optimal embedding dimension for variables (#98).
-
-* Provide an R-level API for generating embeddings (#97).
-
 * Support testing causal links in GCCM with different `E` and `k` for cause and effect variables (#96).
 
 * Add thread settings for `gccm` (#94).
+
+* Add `S-maps` cross-prediction support to `gccm` (#81).
+
+### bug fixes
 
 * Resolve r crash caused by invalid `E` [#90](https://github.com/stscl/spEDM/pull/90) and `k` [#89](https://github.com/stscl/spEDM/pull/89) parameter settings in `gccm`.
 
 * Fix incorrect Pearson correlation calculation in `C++` code when input contains NA (#83).
 
-* Add `S-maps` cross-prediction support to `gccm` (#81).
-
 # spEDM 1.2
+
+### enhancements
 
 * Encapsulate the `gccm` function using the S4 class (#72).
 
@@ -34,12 +52,18 @@
 
 * Add `print` and `plot` s3 methods for `gccm` result (#64).
 
-* Require `sdsfun` package version `0.7.0` or higher (#61).
+### bug fixes
+
+* Fix the bug where the `gccm` function returns empty results when input grid data contains NA values (#61).
 
 # spEDM 1.1
+
+### bug fixes
 
 * Resolve CRAN auto check issues, no significant API changes.
 
 # spEDM 1.0
+
+### new
 
 * Implementing the `GCCM` method for spatial lattice and grid data using pure `C++11`.

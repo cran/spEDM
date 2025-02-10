@@ -14,17 +14,37 @@
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppThread)]]
 
+/*
+ * Perform GCCM on a single lib and pred for lattice data.
+ *
+ * Parameters:
+ *   - x_vectors: Reconstructed state-space (each row represents a separate vector/state).
+ *   - y: Spatial cross-section series used as the target (should align with x_vectors).
+ *   - lib_indices: A boolean vector indicating which states to include when searching for neighbors.
+ *   - lib_size: Size of the library used for cross mapping.
+ *   - max_lib_size: Maximum size of the library.
+ *   - possible_lib_indices: Indices of possible library states.
+ *   - pred_indices: A boolean vector indicating which states to use for prediction.
+ *   - b: Number of neighbors to use for simplex projection.
+ *   - simplex: If true, uses simplex projection for prediction; otherwise, uses s-mapping.
+ *   - theta: Distance weighting parameter for local neighbors in the manifold (used in s-mapping).
+ *
+ * Returns:
+ *   A vector of pairs, where each pair consists of:
+ *   - An integer representing the library size.
+ *   - A double representing the Pearson correlation coefficient (rho) between predicted and actual values.
+ */
 std::vector<std::pair<int, double>> GCCMSingle4Lattice(
-    const std::vector<std::vector<double>>& x_vectors,  // Reconstructed state-space (each row is a separate vector/state)
-    const std::vector<double>& y,                       // Spatial cross-section series to be used as the target (should line up with vectors)
-    const std::vector<bool>& lib_indices,               // Vector of T/F values (which states to include when searching for neighbors)
-    int lib_size,                                       // Size of the library
-    int max_lib_size,                                   // Maximum size of the library
-    const std::vector<int>& possible_lib_indices,       // Indices of possible library states
-    const std::vector<bool>& pred_indices,              // Vector of T/F values (which states to predict from)
-    int b,                                              // Number of neighbors to use for simplex projection
-    bool simplex,                                       // Algorithm used for prediction; Use simplex projection if true, and s-mapping if false
-    double theta                                        // Distance weighting parameter for the local neighbours in the manifold
+    const std::vector<std::vector<double>>& x_vectors,
+    const std::vector<double>& y,
+    const std::vector<bool>& lib_indices,
+    int lib_size,
+    int max_lib_size,
+    const std::vector<int>& possible_lib_indices,
+    const std::vector<bool>& pred_indices,
+    int b,
+    bool simplex,
+    double theta
 ) {
   int n = x_vectors.size();
   std::vector<std::pair<int, double>> x_xmap_y;
@@ -74,49 +94,108 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
   return x_xmap_y;
 }
 
+/**
+ * Performs GCCM on a spatial lattice data.
+ *
+ * Parameters:
+ * - x: Spatial cross-section series used as the predict variable (**cross mapping from**).
+ * - y: Spatial cross-section series used as the target variable (**cross mapping to**).
+ * - nb_vec: A nested vector containing neighborhood information for lattice data.
+ * - lib_sizes: A vector specifying different library sizes for GCCM analysis.
+ * - lib: A vector specifying the library indices (1-based in R, converted to 0-based in C++).
+ * - pred: A vector specifying the prediction indices (1-based in R, converted to 0-based in C++).
+ * - E: Embedding dimension for attractor reconstruction.
+ * - tau: the step of spatial lags for prediction.
+ * - b: Number of nearest neighbors used for prediction.
+ * - simplex: Boolean flag indicating whether to use simplex projection (true) or S-mapping (false) for prediction.
+ * - theta: Distance weighting parameter used for weighting neighbors in the S-mapping prediction.
+ * - threads: Number of threads to use for parallel computation.
+ * - progressbar: Boolean flag to indicate whether to display a progress bar during computation.
+ *
+ * Returns:
+ *    A 2D vector of results, where each row contains:
+ *      - The library size.
+ *      - The mean cross-mapping correlation.
+ *      - The statistical significance of the correlation.
+ *      - The lower bound of the confidence interval.
+ *      - The upper bound of the confidence interval.
+ */
 std::vector<std::vector<double>> GCCM4Lattice(
-    const std::vector<std::vector<double>>& x_vectors,  // Reconstructed state-space (each row is a separate vector/state)
-    const std::vector<double>& y,                       // Spatial cross-section series to cross map to
-    const std::vector<int>& lib_sizes,                  // Vector of library sizes to use
-    const std::vector<std::pair<int, int>>& lib,        // Matrix (n x 2) using n sequences of data to construct libraries
-    const std::vector<std::pair<int, int>>& pred,       // Matrix (n x 2) using n sequences of data to predict from
-    int E,                                              // Number of dimensions for the attractor reconstruction
-    int tau,                                            // Spatial lag for the lagged-vector construction
-    int b,                                              // Number of nearest neighbors to use for prediction
-    bool simplex,                                       // Algorithm used for prediction; Use simplex projection if true, and s-mapping if false
-    double theta,                                       // Distance weighting parameter for the local neighbours in the manifold
-    int threads,                                        // Number of threads used from the global pool
-    bool progressbar = true                             // Whether to print the progress bar
+    const std::vector<double>& x,
+    const std::vector<double>& y,
+    const std::vector<std::vector<int>>& nb_vec,
+    const std::vector<int>& lib_sizes,
+    const std::vector<int>& lib,
+    const std::vector<int>& pred,
+    int E,
+    int tau,
+    int b,
+    bool simplex,
+    double theta,
+    int threads,
+    bool progressbar
 ) {
-  // If b is not provided correctly, default it to E + 2
-  if (b <= 0) {
-    b = E + 2;
-  }
+  // // If b is not provided correctly, default it to E + 2
+  // if (b <= 0) {
+  //   b = E + 2;
+  // }
 
   size_t threads_sizet = static_cast<size_t>(threads);
   unsigned int max_threads = std::thread::hardware_concurrency();
   threads_sizet = std::min(static_cast<size_t>(max_threads), threads_sizet);
 
+  // Generate embeddings
+  std::vector<std::vector<double>> x_vectors = GenLatticeEmbeddings(x, nb_vec, E, tau);
+
   int n = x_vectors.size();
-  // Setup pred_indices
+
+  // Initialize lib_indices and pred_indices with all false
+  std::vector<bool> lib_indices(n, false);
   std::vector<bool> pred_indices(n, false);
-  for (const auto& p : pred) {
-    int row_start = p.first + (E - 1) * tau;
-    int row_end = p.second;
-    if (row_end > row_start && row_start >= 0 && row_end < n) {
-      std::fill(pred_indices.begin() + row_start, pred_indices.begin() + row_end + 1, true);
-    }
+
+  // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
+  int libsize_int = lib.size();
+  for (int i = 0; i < libsize_int; ++i) {
+    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+  }
+  int predsize_int = pred.size();
+  for (int i = 0; i < predsize_int; ++i) {
+    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
   }
 
-  // Setup lib_indices
-  std::vector<bool> lib_indices(n, false);
-  for (const auto& l : lib) {
-    int row_start = l.first + (E - 1) * tau;
-    int row_end = l.second;
-    if (row_end > row_start && row_start >= 0 && row_end < n) {
-      std::fill(lib_indices.begin() + row_start, lib_indices.begin() + row_end + 1, true);
-    }
-  }
+  // /* Aligned with the previous implementation,
+  //  * now deprecated in the source C++ code.
+  //  *  ----- Wenbo Lv, written on 2025.02.10
+  //  */
+  // for (int i = 0, i < (E - 1) * tau, ++i){
+  //   lib_indices[lib[i] - 1] = false;
+  //   pred_indices[pred[i] - 1] = false;
+  // }
+
+  // /* Do not uncomment those codes;
+  //  * it's the previous implementation using `std::vector<std::pair<int, int>>`  input for lib and pred,
+  //  * kept for reference. ----- Wenbo Lv, written on 2025.02.09
+  //  */
+  // // Setup pred_indices
+  // std::vector<bool> pred_indices(n, false);
+  //
+  // for (const auto& p : pred) {
+  //   int row_start = p.first + (E - 1) * tau;
+  //   int row_end = p.second;
+  //   if (row_end > row_start && row_start >= 0 && row_end < n) {
+  //     std::fill(pred_indices.begin() + row_start, pred_indices.begin() + row_end + 1, true);
+  //   }
+  // }
+  //
+  // // Setup lib_indices
+  // std::vector<bool> lib_indices(n, false);
+  // for (const auto& l : lib) {
+  //   int row_start = l.first + (E - 1) * tau;
+  //   int row_end = l.second;
+  //   if (row_end > row_start && row_start >= 0 && row_end < n) {
+  //     std::fill(lib_indices.begin() + row_start, lib_indices.begin() + row_end + 1, true);
+  //   }
+  // }
 
   int max_lib_size = std::accumulate(lib_indices.begin(), lib_indices.end(), 0); // Maximum lib size
   std::vector<int> possible_lib_indices;

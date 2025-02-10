@@ -16,11 +16,11 @@
   k = 4,
   theta = 1,
   algorithm = "simplex",
+  pred = NULL,
   nb = NULL,
   threads = detectThreads(),
   bidirectional = TRUE,
-  include.self = FALSE,
-  trendRM = TRUE,
+  trend.rm = TRUE,
   progressbar = TRUE
 )
 
@@ -34,11 +34,10 @@
   k = 4,
   theta = 1,
   algorithm = "simplex",
-  RowCol = NULL,
+  pred = NULL,
   threads = detectThreads(),
   bidirectional = TRUE,
-  include.self = FALSE,
-  trendRM = TRUE,
+  trend.rm = TRUE,
   progressbar = TRUE
 )
 }
@@ -51,9 +50,9 @@
 
 \item{libsizes}{A vector of library sizes to use.}
 
-\item{E}{(optional) The dimensions of the embedding.}
+\item{E}{(optional) Dimensions of the embedding.}
 
-\item{tau}{(optional) The step of spatial lags.}
+\item{tau}{(optional) Step of spatial lags.}
 
 \item{k}{(optional) Number of nearest neighbors to use for prediction.}
 
@@ -61,34 +60,31 @@
 
 \item{algorithm}{(optional) Algorithm used for prediction.}
 
+\item{pred}{pred (optional) Row numbers(\code{vector}) of lattice data or row-column numbers(\code{matrix}) of grid data used for predictions.}
+
 \item{nb}{(optional) The neighbours list.}
 
 \item{threads}{(optional) Number of threads.}
 
-\item{bidirectional}{(optional) whether to identify bidirectional potential causal relationships.}
+\item{bidirectional}{(optional) whether to identify bidirectional causal associations.}
 
-\item{include.self}{(optional) Whether to include the current state when constructing the embedding vector.}
-
-\item{trendRM}{(optional) Whether to remove the linear trend.}
+\item{trend.rm}{(optional) Whether to remove the linear trend.}
 
 \item{progressbar}{(optional) whether to print the progress bar.}
-
-\item{RowCol}{(optional) Matrix of selected row and cols numbers.}
 }
 \value{
 A list.
 \describe{
-\item{\code{xmap}}{cross mapping prediction outputs}
+\item{\code{xmap}}{cross mapping prediction results}
 \item{\code{varname}}{names of causal and effect variable}
-\item{\code{bidirectional}}{whether to identify bidirectional potential causal relationships}
+\item{\code{bidirectional}}{whether to identify bidirectional causal associations}
 }
 }
 \description{
 geographical convergent cross mapping
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData")[1],
-                       quiet=TRUE)
+columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
 \donttest{
 g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,40,5),E = c(6,5))
 g

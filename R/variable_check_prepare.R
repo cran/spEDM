@@ -30,3 +30,27 @@
   res = matrix(terra::values(data),nrow = terra::nrow(data),byrow = TRUE)
   return(res)
 }
+
+.internal_varname = \(mediator = NULL){
+  .varname = c("cause","effect")
+  if (!is.null(mediator)){
+    .varname = c(.varname,paste0("z",seq_along(mediator)))
+  }
+  return(.varname)
+}
+
+.internal_predmat = \(mat){
+  maxlibsize = min(dim(mat))
+  selvec = seq(5,maxlibsize,5)
+  pred = as.matrix(expand.grid(selvec,selvec))
+  return(pred)
+}
+
+.internal_lattice_nb = \(data){
+  if (sdsfun::sf_geometry_type(data) %in% c('point','multipoint')){
+    nb = sdsfun::spdep_nb(data,k = 8)
+  } else {
+    nb = sdsfun::spdep_nb(data)
+  }
+  return(nb)
+}

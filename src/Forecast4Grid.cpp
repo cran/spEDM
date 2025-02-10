@@ -7,24 +7,28 @@
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppThread)]]
 
-// Calculate the optimal embedding dimension of grid data using simplex projection
-// Parameters:
-//   - mat: A matrix will be embedded
-//   - lib_indices: A boolean vector indicating library (training) set indices
-//   - pred_indices: A boolean vector indicating prediction set indices
-//   - E: A vector of embedding dimensions to evaluate
-//   - b: Number of nearest neighbors to use for prediction
-//   - threads: Number of threads used from the global pool
-//   - includeself: Whether to include the current state when constructing the embedding vector
-// Returns:
-//   - A 2D vector where each row contains [E, rho, mae, rmse] for a given embedding dimension
+/*
+ * Evaluates prediction performance of different embedding dimensions for grid data using simplex projection.
+ *
+ * Parameters:
+ *   - mat: A matrix to be embedded.
+ *   - lib_indices: A boolean vector indicating library (training) set indices.
+ *   - pred_indices: A boolean vector indicating prediction set indices.
+ *   - E: A vector of embedding dimensions to evaluate.
+ *   - tau: The spatial lag step for constructing lagged state-space vectors.
+ *   - b: Number of nearest neighbors to use for prediction.
+ *   - threads: Number of threads used from the global pool.
+ *
+ * Returns:
+ *   A 2D vector where each row contains [E, rho, mae, rmse] for a given embedding dimension.
+ */
 std::vector<std::vector<double>> Simplex4Grid(const std::vector<std::vector<double>>& mat,
                                               const std::vector<bool>& lib_indices,
                                               const std::vector<bool>& pred_indices,
                                               const std::vector<int>& E,
-                                              double b,
-                                              int threads,
-                                              bool includeself) {
+                                              int tau,
+                                              int b,
+                                              int threads) {
   size_t threads_sizet = static_cast<size_t>(threads);
   unsigned int max_threads = std::thread::hardware_concurrency();
   threads_sizet = std::min(static_cast<size_t>(max_threads), threads_sizet);
@@ -47,7 +51,7 @@ std::vector<std::vector<double>> Simplex4Grid(const std::vector<std::vector<doub
   // Parallel loop over each embedding dimension E
   RcppThread::parallelFor(0, E.size(), [&](size_t i) {
     // Generate embeddings for the current E
-    std::vector<std::vector<double>> embeddings = GenGridEmbeddings(mat, E[i], includeself);
+    std::vector<std::vector<double>> embeddings = GenGridEmbeddings(mat, E[i], tau);
 
     // Compute metrics using SimplexBehavior
     std::vector<double> metrics = SimplexBehavior(embeddings, vec_std, lib_indices, pred_indices, b);
@@ -62,26 +66,30 @@ std::vector<std::vector<double>> Simplex4Grid(const std::vector<std::vector<doub
   return result;
 }
 
-// Calculate the optimal theta parameter of grid data using s-mapping method
-// Parameters:
-//   - mat: A matrix will be embedded
-//   - lib_indices: A boolean vector indicating library (training) set indices
-//   - pred_indices: A boolean vector indicating prediction set indices
-//   - theta: A vector of weighting parameters for distance calculation in SMap
-//   - E: The embedding dimension to evaluate
-//   - b: Number of nearest neighbors to use for prediction
-//   - threads: Number of threads used from the global pool
-//   - includeself: Whether to include the current state when constructing the embedding vector
-// Returns:
-//   - A 2D vector where each row contains [theta, rho, mae, rmse] for a given theta value
+/*
+ * Evaluates prediction performance of different theta parameters for grid data using the S-mapping method.
+ *
+ * Parameters:
+ *   - mat: A matrix to be embedded.
+ *   - lib_indices: A boolean vector indicating library (training) set indices.
+ *   - pred_indices: A boolean vector indicating prediction set indices.
+ *   - theta: A vector of weighting parameters for distance calculation in SMap.
+ *   - E: The embedding dimension to evaluate.
+ *   - tau: The spatial lag step for constructing lagged state-space vectors.
+ *   - b: Number of nearest neighbors to use for prediction.
+ *   - threads: Number of threads used from the global pool.
+ *
+ * Returns:
+ *   A 2D vector where each row contains [theta, rho, mae, rmse] for a given theta value.
+ */
 std::vector<std::vector<double>> SMap4Grid(const std::vector<std::vector<double>>& mat,
                                            const std::vector<bool>& lib_indices,
                                            const std::vector<bool>& pred_indices,
                                            const std::vector<double>& theta,
                                            int E,
-                                           double b,
-                                           int threads,
-                                           bool includeself) {
+                                           int tau,
+                                           int b,
+                                           int threads) {
   size_t threads_sizet = static_cast<size_t>(threads);
   unsigned int max_threads = std::thread::hardware_concurrency();
   threads_sizet = std::min(static_cast<size_t>(max_threads), threads_sizet);
@@ -99,7 +107,7 @@ std::vector<std::vector<double>> SMap4Grid(const std::vector<std::vector<double>
   }
 
   // Generate embeddings
-  std::vector<std::vector<double>> embeddings = GenGridEmbeddings(mat, E, includeself);
+  std::vector<std::vector<double>> embeddings = GenGridEmbeddings(mat, E, tau);
 
   // Initialize result matrix with theta.size() rows and 4 columns
   std::vector<std::vector<double>> result(theta.size(), std::vector<double>(4));

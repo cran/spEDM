@@ -6,20 +6,20 @@
 \alias{embedded,SpatRaster-method}
 \title{generate embeddings}
 \usage{
-\S4method{embedded}{sf}(data, target, E = 3, nb = NULL, include.self = FALSE)
+\S4method{embedded}{sf}(data, target, E = 3, tau = 1, nb = NULL)
 
-\S4method{embedded}{SpatRaster}(data, target, E = 3, include.self = FALSE)
+\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1)
 }
 \arguments{
 \item{data}{The observation data.}
 
 \item{target}{Name of target variable.}
 
-\item{E}{(optional) The dimensions of the embedding.}
+\item{E}{(optional) Dimensions of the embedding.}
+
+\item{tau}{(optional) Step of spatial lags.}
 
 \item{nb}{(optional) The neighbours list.}
-
-\item{include.self}{(optional) Whether to include the current state when constructing the embedding vector.}
 }
 \value{
 A matrix
@@ -28,8 +28,7 @@ A matrix
 generate embeddings
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData")[1],
-                       quiet=TRUE)
+columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
 embedded(columbus,target = "CRIME", E = 3)
 
 }

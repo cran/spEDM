@@ -72,13 +72,14 @@ double RcppRMSE(const Rcpp::NumericVector& vec1,
 }
 
 // [[Rcpp::export]]
-Rcpp::NumericVector RcppAbs(const Rcpp::NumericVector& vec1, const Rcpp::NumericVector& vec2) {
+Rcpp::NumericVector RcppAbsDiff(const Rcpp::NumericVector& vec1,
+                                const Rcpp::NumericVector& vec2) {
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> vec1_cpp = Rcpp::as<std::vector<double>>(vec1);
   std::vector<double> vec2_cpp = Rcpp::as<std::vector<double>>(vec2);
 
-  // Call the CppAbs function
-  std::vector<double> result = CppAbs(vec1_cpp, vec2_cpp);
+  // Call the CppAbsDiff function
+  std::vector<double> result = CppAbsDiff(vec1_cpp, vec2_cpp);
 
   // Convert the result back to Rcpp::NumericVector
   return Rcpp::wrap(result);
@@ -97,6 +98,19 @@ Rcpp::NumericVector RcppSumNormalize(const Rcpp::NumericVector& vec, bool NA_rm 
 }
 
 // [[Rcpp::export]]
+double RcppDistance(const Rcpp::NumericVector& vec1,
+                    const Rcpp::NumericVector& vec2,
+                    bool L1norm = false,
+                    bool NA_rm = false){
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> v1 = Rcpp::as<std::vector<double>>(vec1);
+  std::vector<double> v2 = Rcpp::as<std::vector<double>>(vec2);
+
+  // Call the CppDistance function
+  return CppDistance(v1, v2, L1norm ,NA_rm);
+}
+
+// [[Rcpp::export]]
 double RcppPearsonCor(const Rcpp::NumericVector& y,
                       const Rcpp::NumericVector& y_hat,
                       bool NA_rm = false) {
@@ -104,7 +118,7 @@ double RcppPearsonCor(const Rcpp::NumericVector& y,
   std::vector<double> y_vec = Rcpp::as<std::vector<double>>(y);
   std::vector<double> y_hat_vec = Rcpp::as<std::vector<double>>(y_hat);
 
-  // Call the ArmaPearsonCor function
+  // Call the PearsonCor function
   return PearsonCor(y_vec, y_hat_vec, NA_rm);
 }
 
@@ -143,7 +157,7 @@ double RcppPartialCorTrivar(Rcpp::NumericVector y,
   std::vector<double> std_y_hat = Rcpp::as<std::vector<double>>(y_hat);
   std::vector<double> std_control = Rcpp::as<std::vector<double>>(control);
 
-  // Call the PartialCor function
+  // Call the PartialCorTrivar function
   return PartialCorTrivar(std_y, std_y_hat, std_control, NA_rm, linear);
 }
 
@@ -161,6 +175,43 @@ Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0, double level =
 
   // Convert std::vector<double> to Rcpp::NumericVector
   return Rcpp::wrap(result);
+}
+
+// Wrapper function to find k-nearest neighbors of a given index in the embedding space
+// [[Rcpp::export]]
+Rcpp::IntegerVector RcppKNNIndice(Rcpp::NumericMatrix embedding_space, int target_idx, int k) {
+  // Get the number of rows and columns
+  std::size_t n_rows = embedding_space.nrow();
+  std::size_t n_cols = embedding_space.ncol();
+
+  // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
+  std::vector<std::vector<double>> embedding_vec(n_rows, std::vector<double>(n_cols));
+  for (std::size_t i = 0; i < n_rows; ++i) {
+    for (std::size_t j = 0; j < n_cols; ++j) {
+      embedding_vec[i][j] = embedding_space(i, j);
+    }
+  }
+
+  // Ensure target index is within valid range
+  if (target_idx < 0 || static_cast<std::size_t>(target_idx) >= n_rows) {
+    Rcpp::stop("target_idx is out of range.");
+  }
+
+  // Ensure k is positive
+  if (k <= 0) {
+    Rcpp::stop("k must be greater than 0.");
+  }
+
+  // Call the C++ function
+  std::vector<std::size_t> knn_indices = CppKNNIndice(embedding_vec, static_cast<std::size_t>(target_idx), static_cast<std::size_t>(k));
+
+  // Convert result to Rcpp::IntegerVector (R uses 1-based indexing)
+  Rcpp::IntegerVector result(knn_indices.size());
+  for (std::size_t i = 0; i < knn_indices.size(); ++i) {
+    result[i] = static_cast<int>(knn_indices[i]) + 1;  // Convert to 1-based index
+  }
+
+  return result;
 }
 
 // Wrapper function to perform Linear Trend Removal and return a NumericVector
