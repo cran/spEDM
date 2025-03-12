@@ -11,7 +11,7 @@
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row represents a separate vector/state).
- *   - target: Spatial cross-section series used as the target (should align with vectors).
+ *   - target: Spatial cross sectional series used as the target (should align with vectors).
  *   - lib_indices: Vector of T/F values indicating which states to include when searching for neighbors.
  *   - pred_indices: Vector of T/F values indicating which states to predict from.
  *   - num_neighbors: Number of neighbors to use for simplex projection.
@@ -32,6 +32,24 @@ std::vector<double> SimplexProjectionPrediction(
   // Setup output
   std::vector<double> pred(target.size(), std::numeric_limits<double>::quiet_NaN());
 
+  // no neighbor to use, return all nan
+  if (num_neighbors <= 0){
+    return pred;
+  }
+
+  // // Count the number of true values in lib_indices
+  // size_t lib_count = std::count(lib_indices.begin(), lib_indices.end(), true);
+  //
+  // // no library to use, return all nan
+  // if (lib_count == 0){
+  //   return pred;
+  // }
+  //
+  // // If the number of true values is less than num_neighbors, return NaN vector
+  // if (lib_count < num_neighbors_sizet) {
+  //   return pred;
+  // }
+
   // Make predictions
   for (size_t p = 0; p < pred_indices.size(); ++p) {
     if (!pred_indices[p]) continue;
@@ -43,6 +61,17 @@ std::vector<double> SimplexProjectionPrediction(
     std::vector<size_t> libs;
     for (size_t i = 0; i < local_lib_indices.size(); ++i) {
       if (local_lib_indices[i]) libs.push_back(i);
+    }
+
+    // Handle the case where libs is empty
+    if (libs.empty()) {
+      pred[p] = std::numeric_limits<double>::quiet_NaN();
+      continue;
+    }
+
+    // Adjust num_neighbors_sizet if it exceeds libs.size()
+    if (num_neighbors_sizet > libs.size()) {
+      num_neighbors_sizet = libs.size();
     }
 
     // Compute distances
@@ -67,11 +96,6 @@ std::vector<double> SimplexProjectionPrediction(
     // Find nearest neighbors
     std::vector<size_t> neighbors(distances.size());
     std::iota(neighbors.begin(), neighbors.end(), 0);
-    // Check if num_neighbors_sizet exceeds the size of neighbors
-    // If so, adjust num_neighbors_sizet to the maximum allowed value (neighbors.size())
-    if (num_neighbors_sizet > neighbors.size()) {
-      num_neighbors_sizet = neighbors.size();
-    }
     std::partial_sort(neighbors.begin(), neighbors.begin() + num_neighbors_sizet, neighbors.end(),
                       [&](size_t a, size_t b) {
                         return (distances[a] < distances[b]) ||
@@ -122,7 +146,7 @@ std::vector<double> SimplexProjectionPrediction(
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row represents a separate vector/state).
- *   - target: Spatial cross-section series used as the target (should align with vectors).
+ *   - target: Spatial cross sectional series used as the target (should align with vectors).
  *   - lib_indices: Vector of T/F values indicating which states to include when searching for neighbors.
  *   - pred_indices: Vector of T/F values indicating which states to use for prediction.
  *   - num_neighbors: Number of neighbors to use for simplex projection.
@@ -137,8 +161,15 @@ double SimplexProjection(
     const std::vector<bool>& pred_indices,
     int num_neighbors
 ) {
+  double rho = std::numeric_limits<double>::quiet_NaN();
+
+  // Call SimplexProjectionPrediction to get the prediction results
   std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors);
-  return PearsonCor(target_pred, target, true);
+
+  if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
+    rho = PearsonCor(target_pred, target, true);
+  }
+  return rho;
 }
 
 /*
@@ -146,7 +177,7 @@ double SimplexProjection(
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row is a separate vector/state).
- *   - target: Spatial cross-section series to be used as the target (should align with vectors).
+ *   - target: Spatial cross sectional series to be used as the target (should align with vectors).
  *   - lib_indices: Vector of T/F values (which states to include when searching for neighbors).
  *   - pred_indices: Vector of T/F values (which states to predict from).
  *   - num_neighbors: Number of neighbors to use for simplex projection.
@@ -164,13 +195,20 @@ std::vector<double> SimplexBehavior(
     const std::vector<bool>& pred_indices,
     int num_neighbors
 ) {
+  // Initialize PearsonCor, MAE, and RMSE
+  double pearson = std::numeric_limits<double>::quiet_NaN();
+  double mae = std::numeric_limits<double>::quiet_NaN();
+  double rmse = std::numeric_limits<double>::quiet_NaN();
+
   // Call SimplexProjectionPrediction to get the prediction results
   std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors);
 
-  // Compute PearsonCor, MAE, and RMSE
-  double pearson = PearsonCor(target_pred, target, true);
-  double mae = CppMAE(target_pred, target, true);
-  double rmse = CppRMSE(target_pred, target, true);
+  if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
+    // Compute PearsonCor, MAE, and RMSE
+    pearson = PearsonCor(target_pred, target, true);
+    mae = CppMAE(target_pred, target, true);
+    rmse = CppRMSE(target_pred, target, true);
+  }
 
   // Return the three metrics as a vector
   return {pearson, mae, rmse};

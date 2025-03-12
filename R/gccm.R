@@ -1,14 +1,13 @@
 methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
 
-.gccm_sf_method = \(data, cause, effect, libsizes, E = c(3,3), tau = 1, k = 4, theta = 1, algorithm = "simplex", pred = NULL,
-                    nb = NULL, threads = detectThreads(), bidirectional = TRUE, trend.rm = TRUE, progressbar = TRUE){
+.gccm_sf_method = \(data, cause, effect, libsizes, E = 3, tau = 1, k = E+2, theta = 1, algorithm = "simplex", lib = NULL, pred = NULL,
+                    nb = NULL,threads = detectThreads(),parallel.level = "low",bidirectional = TRUE,trend.rm = TRUE,progressbar = TRUE){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
-  k = .check_inputelementnum(k,2)
   tau = .check_inputelementnum(tau,2)
+  k = .check_inputelementnum(k,2)
+  pl = .check_parallellevel(parallel.level)
   .varname = .internal_varname()
-  lib = 1:nrow(data)
-  if (is.null(pred)) pred = lib
   if (is.null(nb)) nb = .internal_lattice_nb(data)
   if (nrow(data) != length(nb)) stop("Incompatible Data Dimensions!")
   coords = as.data.frame(sdsfun::sf_coordinates(data))
@@ -17,52 +16,52 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
   names(data) = .varname
 
   if (trend.rm){
-    data = dplyr::bind_cols(data,coords)
-    for (i in seq_along(.varname)){
-      data[,.varname[i]] = sdsfun::rm_lineartrend(paste0(.varname[i],"~X+Y"), data = data)
-    }
+    data = .internal_trend_rm(data,.varname,coords)
   }
-
   cause = data[,"cause",drop = TRUE]
   effect = data[,"effect",drop = TRUE]
+
+  if (is.null(lib)) lib = 1:nrow(data)
+  if (is.null(pred)) pred = lib
 
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
   x_xmap_y = NULL
   if (bidirectional){
-    x_xmap_y = RcppGCCM4Lattice(cause,effect,nb,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,progressbar)
+    x_xmap_y = RcppGCCM4Lattice(cause,effect,nb,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,pl,progressbar)
   }
-  y_xmap_x = RcppGCCM4Lattice(effect,cause,nb,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,progressbar)
+  y_xmap_x = RcppGCCM4Lattice(effect,cause,nb,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,pl,progressbar)
 
   return(.bind_xmapdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
 
-.gccm_spatraster_method = \(data, cause, effect, libsizes, E = c(3,3), tau = 1, k = 4, theta = 1, algorithm = "simplex",
-                            pred = NULL, threads = detectThreads(), bidirectional = TRUE, trend.rm = TRUE, progressbar = TRUE){
+.gccm_spatraster_method = \(data, cause, effect, libsizes, E = 3, tau = 1, k = E+2, theta = 1, algorithm = "simplex", lib = NULL, pred = NULL,
+                            threads = detectThreads(), parallel.level = "low", bidirectional = TRUE, trend.rm = TRUE, progressbar = TRUE){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
-  k = .check_inputelementnum(k,2)
   tau = .check_inputelementnum(tau,2)
+  k = .check_inputelementnum(k,2)
+  pl = .check_parallellevel(parallel.level)
+  libsizes = as.matrix(libsizes)
   .varname = .internal_varname()
   data = data[[varname]]
   names(data) = .varname
 
   dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
   if (trend.rm){
-    for (i in seq_along(.varname)){
-      dtf[,.varname[i]] = sdsfun::rm_lineartrend(paste0(.varname[i],"~x+y"), data = dtf)
-    }
+    dtf = .internal_trend_rm(dtf,.varname)
   }
   causemat = matrix(dtf[,"cause"],nrow = terra::nrow(data),byrow = TRUE)
   effectmat = matrix(dtf[,"effect"],nrow = terra::nrow(data),byrow = TRUE)
 
-  if (is.null(pred)) pred = .internal_predmat(causemat)
+  if (is.null(lib)) lib = .internal_samplemat(effectmat)
+  if (is.null(pred)) pred = .internal_samplemat(effectmat,floor(sqrt(length(effectmat))))
 
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
   x_xmap_y = NULL
   if (bidirectional){
-    x_xmap_y = RcppGCCM4Grid(causemat,effectmat,libsizes,pred,E[1],tau[1],k[1],simplex,theta,threads,progressbar)
+    x_xmap_y = RcppGCCM4Grid(causemat,effectmat,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,pl,progressbar)
   }
-  y_xmap_x = RcppGCCM4Grid(effectmat,causemat,libsizes,pred,E[2],tau[2],k[2],simplex,theta,threads,progressbar)
+  y_xmap_x = RcppGCCM4Grid(effectmat,causemat,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,pl,progressbar)
 
   return(.bind_xmapdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
@@ -78,14 +77,16 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
 #' @param k (optional) Number of nearest neighbors to use for prediction.
 #' @param theta (optional) Weighting parameter for distances, useful when `algorithm` is `smap`.
 #' @param algorithm (optional) Algorithm used for prediction.
-#' @param pred pred (optional) Row numbers(`vector`) of lattice data or row-column numbers(`matrix`) of grid data used for predictions.
+#' @param lib (optional) Libraries indices.
+#' @param pred (optional) Predictions indices.
 #' @param nb (optional) The neighbours list.
 #' @param threads (optional) Number of threads.
+#' @param parallel.level (optional) Level of parallelism, `low` or `high`.
 #' @param bidirectional (optional) whether to identify bidirectional causal associations.
 #' @param trend.rm (optional) Whether to remove the linear trend.
 #' @param progressbar (optional) whether to print the progress bar.
 #'
-#' @return A list.
+#' @return A list
 #' \describe{
 #' \item{\code{xmap}}{cross mapping prediction results}
 #' \item{\code{varname}}{names of causal and effect variable}
@@ -101,9 +102,9 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
 #' @examples
 #' columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
 #' \donttest{
-#' g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,40,5),E = c(6,5))
+#' g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,45,5),E = 6)
 #' g
-#' plot(g, ylimits = c(0,0.8))
+#' plot(g, ylimits = c(0,0.85))
 #' }
 methods::setMethod("gccm", "sf", .gccm_sf_method)
 

@@ -1,7 +1,7 @@
 ---
 title: "Geographical Convergent Cross Mapping (GCCM)"
 author: "Wenbo Lv"
-date: "2025-02-10"
+date: "2025-03-12"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{GCCM}
@@ -11,64 +11,24 @@ vignette: >
 
 
 
-## 1. The principle of geographical convergent cross mapping (GCCM)
+## 1.1 Install the `spEDM` package
 
-Takens’ theory proves that, for a dynamic system $\phi$, if its trajectory converges to an attractor manifold $M$, which are consisted by a bounded and invariant set of states, then the mapping between $\phi$ and M can be built and time series observations of $\phi$ can be used to construct $M$.
-
-According to the generalized embedding theorem, for a compact $d$-dimensional manifold $M$ and a set of observation functions $\left<h_1,h_2,\ldots,h_L\right>$, the map $\psi_{\phi,h} = \left<h_1\left(x\right),h_2\left(x\right),\ldots,h_L\left(x\right)\right>$ is an embedding of $M$ with $L = 2d + 1$. Here embedding means a one-to-one map resolving all singularities of the original manifold. The elements $h_i$ can be lags of observations from single time series observations, lags of observations from multiple time series, or multiple observation functions. The first two constructions are only special cases of the third one.
-
-By taking the measured values at one specific unit and its neighbors (named as spatial lags in spatial statistics) as a set of observation functions, $\psi_{\phi,h} \left(x,s\right) = \left<h_s\left(x\right),h_{s\left(1\right)}\left(x\right),\ldots,h_{s\left(L-1\right)}\left(x\right)\right>$ is a embedding, where $s$ is the focal unit currently under investigation and $s\left(i\right)$ is its $i$-th order of spatial lags. $h_s\left(x\right)$ and $h_{s\left(i\right)}\left(x\right)$ are their observation functions respectively. (Hereinafter, we will use $\psi \left(x,s\right)$ to present $\psi_{\phi,h} \left(x,s\right)$ for short). For two spatial variables $X$ and $Y$ on the same set of spatial units, their values and spatial lags can be regarded as observation functions reading values from each spatial unit. As the spatial lags in each order contain more than one spatial units, the observation function can be set as the mean of the spatial units or other summary functions considering the spatial direction, to assure the one-to-one mapping of the original manifold $M$.
-
-The cross-mapping prediction is defined as:
-
-$$
-\hat{Y}_s \mid M_x = \sum\limits_{i=1}^{L+1} \left(\omega_{si}Y_{si} \mid M_x \right)
-$$
-
-where $s$ represents a spatial unit at which the value of $Y$ needs to be predicted, $\hat{Y}_s$ is the prediction result, $L$ is the number of dimensions of the embedding, $si$ is the spatial unit used in the prediction, $Y_{si}$ is the observation value at $si$ and simultaneously the first component of a state in $M_y$, noted as $\psi\left(y,s_i\right)$. In further, $\psi\left(y,s_i\right)$ is determined by its one-to-one mapping point $\psi\left(x,s_i\right)$, which is in turn one of the $L+1$ nearest neighbors of the focal state in $M_x$. $\omega_{si}$ is the corresponding weight defined as:
-
-$$
-\omega_{si} \mid M_x = \frac{weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}{\sum_{i=1}^{L+1}weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}
-$$
-where $weight \left(\ast,\ast\right)$ is the weight function between two states in the shadow manifold, defined as:
-
-$$
-weight \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right) =
-\exp \left(- \frac{dis \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right)}{dis \left(\psi\left(x,s_1\right),\psi\left(x,s\right)\right)} \right)
-$$
-
-where $\exp$ is the exponential function and $dis \left(\ast,\ast\right)$ represents the distance function between two states in the shadow manifold defined as:
-
-$$
-dis \left(\psi\left(x,s_i\right),\psi\left(x,s\right)\right) = \frac{1}{L}
-\left(\left|h_{si}\left(x\right)-h_{s}\left(x\right)\right| + \sum_{k=1}^{L-1}abs \left[h_{si\left(k\right)}\left(x\right),h_{s\left(k\right)}\left(x\right)\right]\right)
-$$
-Note that the absolute value distance is used here.
-
-The skill of cross-mapping prediction is measured by the Pearson correlation coefficient between the true observations and corresponding predictions:
-
-$$
-\rho = \frac{Cov\left(Y,\hat{Y}\right)}{\sqrt{Var\left(Y\right) Var\left(\hat{Y}\right)}}
-$$
-
-The prediction skill $\rho$ varies by setting different sizes of libraries, which means the quantity of observations used in reconstruction of the shadow manifold. We can use the convergence of $\rho$ to infer the causal associations. For GCCM, the convergence means that $\rho$ increases with the size of libraries and is statistically significant when the library becomes largest. And the confidence interval of $\rho$ can be estimated based the $z$-statistics with the normal distribution:
-
-$$
-t = \rho \sqrt{\frac{n-2}{1-\rho^2}}
-$$
-where $n$ is the number of observations to be predicted, and
-
-$$
-z = \frac{1}{2} \ln \left(\frac{1+\rho}{1-\rho}\right)
-$$
-
-## 2. Examples
-
-### 2.1 Install the `spEDM` package
+Install the stable version from [CRAN](https://CRAN.R-project.org/package=spEDM) with:
 
 ```r
 install.packages("spEDM", dep = TRUE)
 ```
+
+Alternatively, you can install the development version from [R-universe](https://stscl.r-universe.dev/spEDM) with:
+
+``` r
+install.packages("spEDM",
+                 repos = c("https://stscl.r-universe.dev",
+                           "https://cloud.r-project.org"),
+                 dep = TRUE)
+```
+
+## 1.2 An example of spatial lattice data
 
 Load the `spEDM` package:
 
@@ -77,16 +37,14 @@ Load the `spEDM` package:
 library(spEDM)
 ```
 
-### 2.2 An example of lattice data about county-level population density
-
-Load data and package:
+Load the county-level population density data from the `spEDM` package:
 
 
 ``` r
 popd_nb = spdep::read.gal(system.file("extdata/popdensity_nb.gal",
                                       package = "spEDM"))
-## Warning in spdep::read.gal(system.file("extdata/popdensity_nb.gal", package = "spEDM")): neighbour object has 4
-## sub-graphs
+## Warning in spdep::read.gal(system.file("extdata/popdensity_nb.gal", package =
+## "spEDM")): neighbour object has 4 sub-graphs
 popd_nb
 ## Neighbour list object:
 ## Number of regions: 2806 
@@ -98,7 +56,7 @@ popd_nb
 popdensity = readr::read_csv(system.file("extdata/popdensity.csv",
                                          package = "spEDM"))
 ## Rows: 2806 Columns: 7
-## ── Column specification ─────────────────────────────────────────────────────────────────────────────────────────────────
+## ── Column specification ────────────────────────────────────────────────────────────────────────────
 ## Delimiter: ","
 ## dbl (7): x, y, popDensity, DEM, Tem, Pre, slop
 ## 
@@ -147,41 +105,19 @@ Select the appropriate embedding dimension E:
 
 
 ``` r
-simplex(popd_sf,"Pre",lib = 1:2000,pred = 2001:nrow(popd_sf),k = 6,nb = popd_nb)
-## The suggested embedding dimension E for variable Pre is 1
-##        E       rho      mae     rmse
-##  [1,]  1 0.9944769 29.19078 44.20362
-##  [2,]  2 0.9938551 29.75890 46.68020
-##  [3,]  3 0.9923781 33.38572 52.24799
-##  [4,]  4 0.9906213 36.93827 57.98292
-##  [5,]  5 0.9879685 41.90347 66.04074
-##  [6,]  6 0.9855116 46.67320 72.81851
-##  [7,]  7 0.9831397 51.34790 79.25593
-##  [8,]  8 0.9815603 55.13373 83.48991
-##  [9,]  9 0.9801222 58.14001 87.12388
-## [10,] 10 0.9779157 62.46149 92.64490
+simplex(popd_sf,"Pre",lib = 1:2000,pred = 2001:nrow(popd_sf),k = 6,nb = popd_nb,trend.rm = TRUE)
+## The suggested E and k for variable Pre is 2 and 6
 ```
 
 
 ``` r
-simplex(popd_sf,"popDensity",lib = 1:2000,pred = 2001:nrow(popd_sf),k = 6,nb = popd_nb)
-## The suggested embedding dimension E for variable popDensity is 6
-##        E       rho      mae     rmse
-##  [1,]  1 0.8033220 717.2946 2390.767
-##  [2,]  2 0.8964891 599.2670 1826.370
-##  [3,]  3 0.8947098 578.9176 1820.573
-##  [4,]  4 0.8945790 576.8006 1807.979
-##  [5,]  5 0.8962965 570.3921 1807.007
-##  [6,]  6 0.9054365 550.2581 1746.493
-##  [7,]  7 0.8990063 575.2825 1797.437
-##  [8,]  8 0.8976972 555.6466 1812.048
-##  [9,]  9 0.8896512 558.8580 1861.250
-## [10,] 10 0.8948435 561.8943 1825.444
+simplex(popd_sf,"popDensity",lib = 1:2000,pred = 2001:nrow(popd_sf),k = 6,nb = popd_nb,trend.rm = TRUE)
+## The suggested E and k for variable popDensity is 5 and 6
 ```
 
-We choose the E with the highest rho and the lowest MAE and RMSE as the most suitable one. Under the selected lib and pred, the optimal embedding dimension E for the variable `Pre` is 1, and for the variable `popDensity`, it is 6.
+We choose the E with the highest rho and the lowest MAE and RMSE as the most suitable one. Under the selected lib and pred, the optimal embedding dimension E for the variable `Pre` is 2, and for the variable `popDensity`, it is 5.
 
-Run GCCM:
+Then, run GCCM:
 
 
 ``` r
@@ -190,57 +126,64 @@ pd_res = gccm(data = popd_sf,
               cause = "Pre",
               effect = "popDensity",
               libsizes = seq(10, 2800, by = 100),
-              E = c(1,6),
+              E = c(2,5),
               k = 6,
               nb = popd_nb,
               progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
-## Time difference of 26.05291 mins
+## Time difference of 5.802845 mins
 pd_res
 ##    libsizes Pre->popDensity popDensity->Pre
-## 1        10      0.04677107     0.008049854
-## 2       110      0.16179426     0.017264648
-## 3       210      0.22304657     0.022709492
-## 4       310      0.25946987     0.027429925
-## 5       410      0.29003978     0.032117526
-## 6       510      0.32164387     0.035515863
-## 7       610      0.35643363     0.037256067
-## 8       710      0.38943229     0.039237100
-## 9       810      0.41635987     0.040929980
-## 10      910      0.44044756     0.042648992
-## 11     1010      0.46321423     0.044811668
-## 12     1110      0.48249031     0.047030589
-## 13     1210      0.50181197     0.049470325
-## 14     1310      0.51893175     0.051711027
-## 15     1410      0.53501768     0.053550863
-## 16     1510      0.55214906     0.054024306
-## 17     1610      0.57152009     0.054208405
-## 18     1710      0.59089731     0.054181634
-## 19     1810      0.60925604     0.054514876
-## 20     1910      0.62743438     0.054935632
-## 21     2010      0.64520510     0.055536241
-## 22     2110      0.66215325     0.056157075
-## 23     2210      0.67865625     0.056502987
-## 24     2310      0.69464383     0.056622385
-## 25     2410      0.71027690     0.057080580
-## 26     2510      0.72577544     0.057599522
-## 27     2610      0.74108789     0.058239969
-## 28     2710      0.75393770     0.059041395
+## 1        10      0.05589905      0.01004636
+## 2       110      0.18109636      0.03478543
+## 3       210      0.24325566      0.04932428
+## 4       310      0.27657692      0.06417637
+## 5       410      0.30630281      0.07634983
+## 6       510      0.34116169      0.08815848
+## 7       610      0.38078810      0.09890353
+## 8       710      0.41612716      0.10867846
+## 9       810      0.44420437      0.11714337
+## 10      910      0.46815429      0.12485229
+## 11     1010      0.48876449      0.13194552
+## 12     1110      0.50538462      0.13802611
+## 13     1210      0.52300459      0.14335037
+## 14     1310      0.53902632      0.14813342
+## 15     1410      0.55309048      0.15284706
+## 16     1510      0.56754023      0.15777314
+## 17     1610      0.58387624      0.16301596
+## 18     1710      0.60029184      0.16768202
+## 19     1810      0.61631190      0.17202960
+## 20     1910      0.63213899      0.17601166
+## 21     2010      0.64785899      0.17979878
+## 22     2110      0.66289302      0.18304365
+## 23     2210      0.67740971      0.18596497
+## 24     2310      0.69156193      0.18906187
+## 25     2410      0.70541793      0.19196548
+## 26     2510      0.71925253      0.19503355
+## 27     2610      0.73287448      0.19819076
+## 28     2710      0.74435871      0.20116518
 ```
 
 Visualize the result:
 
 
 ``` r
-plot(pd_res,xlimits = c(0, 2800))
+plot(pd_res,xlimits = c(0, 2800)) +
+  ggplot2::theme(legend.justification = c(0.85,1))
 ```
 
 ![**Figure 1**. The cross-mapping prediction outputs between population density and county-level Precipitation.](../man/figures/gccm/fig1-1.png)
 
-### 2.3 An example of grid data about farmland NPP
+## 1.3 An example of spatial grid data
 
-Load data and package:
+Load the `spEDM` package:
+
+```r
+library(spEDM)
+```
+
+Load the farmland NPP data from the `spEDM` package:
 
 
 ``` r
@@ -256,6 +199,9 @@ npp
 ## min values  :   164.00,   384.3409, -47.8194 
 ## max values  : 16606.33, 23878.3555, 263.6938
 
+# configure the default colormap in terra
+options(terra.pal = grDevices::terrain.colors(100,rev = T))
+# visualize raster data
 terra::plot(npp, nc = 3,
             mar = rep(0.1,4),
             oma = rep(0.1,4),
@@ -265,7 +211,7 @@ terra::plot(npp, nc = 3,
 
 ![**Figure 2**. Maps of farmland NPP and climate factors.](../man/figures/gccm/fig2-1.png)
 
-*To save the computation time, we will aggregate the data by 3 times and select 3000 non-NA pixels to predict:*
+*To save the computation time, we will aggregate the data by 3 times and select 1500 non-NA pixels to predict:*
 
 
 ``` r
@@ -278,56 +224,34 @@ terra::global(npp,"isNA")
 terra::ncell(npp)
 ## [1] 21735
 
-nnamat = terra::as.matrix(!is.na(npp[[1]]), wide = TRUE)
-nnaindice = terra::rowColFromCell(npp,which(nnamat))
+nnamat = terra::as.matrix(npp[[1]], wide = TRUE)
+nnaindice = which(!is.na(nnamat), arr.ind = TRUE)
 dim(nnaindice)
 ## [1] 6920    2
 
-set.seed(42)
-indices = sample(nrow(nnaindice), size = 3000, replace = FALSE)
-lib = nnaindice[-indices,]
-pred = nnaindice[indices,]
+set.seed(2025)
+indices = sample(nrow(nnaindice), size = 1500, replace = FALSE)
+libindice = nnaindice[-indices,]
+predindice = nnaindice[indices,]
 ```
 
-Due to the high number of NA values in the npp raster data, we used all non-NA cell indices when testing for the most suitable embedding dimension.
+Due to the high number of NA values in the npp raster data, we used all non-NA cell as the libraries when testing for the most suitable embedding dimensions.
 
 
 ``` r
-simplex(npp,"pre",nnaindice,nnaindice,k = 5)
-## The suggested embedding dimension E for variable pre is 2
-##        E       rho      mae     rmse
-##  [1,]  1 0.9986687 178.4244 249.0336
-##  [2,]  2 0.9990565 144.0794 209.5812
-##  [3,]  3 0.9989996 148.3566 216.1486
-##  [4,]  4 0.9989168 156.0074 225.1383
-##  [5,]  5 0.9988119 165.5576 235.6243
-##  [6,]  6 0.9986605 176.7865 250.1238
-##  [7,]  7 0.9986104 179.9232 254.6314
-##  [8,]  8 0.9985710 183.4329 258.2804
-##  [9,]  9 0.9985349 186.6469 261.5637
-## [10,] 10 0.9984171 193.6204 272.0611
+simplex(npp,"pre",nnaindice,predindice,k = 8,trend.rm = TRUE)
+## The suggested E and k for variable pre is 2 and 8
 ```
 
 
 ``` r
-simplex(npp,"npp",nnaindice,nnaindice,k = 5)
-## The suggested embedding dimension E for variable npp is 2
-##        E       rho      mae     rmse
-##  [1,]  1 0.9642440 424.0534 635.5334
-##  [2,]  2 0.9684523 388.4106 595.6706
-##  [3,]  3 0.9655137 377.1112 624.6225
-##  [4,]  4 0.9671040 360.4011 609.6115
-##  [5,]  5 0.9666078 366.4018 613.7714
-##  [6,]  6 0.9638873 369.2677 639.2369
-##  [7,]  7 0.9668067 367.8782 610.0439
-##  [8,]  8 0.9664286 366.7623 613.4352
-##  [9,]  9 0.9660476 370.2265 616.7720
-## [10,] 10 0.9650804 374.4953 625.3163
+simplex(npp,"npp",nnaindice,predindice,k = 8,trend.rm = TRUE)
+## The suggested E and k for variable npp is 10 and 8
 ```
 
-Under the selected lib and pred, the optimal embedding dimension E for the variable `pre` is 2, and for the variable `npp`, it is also 2.
+Under the selected lib and pred, the optimal embedding dimension E for the variable `pre` is 2, and for the variable `npp`, it is 10.
 
-Run GCCM:
+Then, run GCCM:
 
 
 ``` r
@@ -335,45 +259,41 @@ startTime = Sys.time()
 npp_res = gccm(data = npp,
                cause = "pre",
                effect = "npp",
-               libsizes = seq(10,130,5),
-               E = 2,
-               k = 5,
-               pred = pred,
+               libsizes = as.matrix(expand.grid(seq(10,130,10),seq(10,160,10))),
+               E = c(2,10),
+               k = 8,
+               lib = nnaindice,
+               pred = predindice,
                progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
-## Time difference of 18.06673 mins
+## Time difference of 9.429752 mins
 npp_res
-##    libsizes   pre->npp   npp->pre
-## 1        10 0.06990759 0.06192514
-## 2        15 0.08710917 0.07278791
-## 3        20 0.11579376 0.08954193
-## 4        25 0.13387798 0.11312547
-## 5        30 0.15133351 0.12053375
-## 6        35 0.16465534 0.12834833
-## 7        40 0.18151411 0.13740629
-## 8        45 0.20732921 0.15100178
-## 9        50 0.23477955 0.17119613
-## 10       55 0.25759086 0.20008374
-## 11       60 0.26634144 0.22521937
-## 12       65 0.25764750 0.24842751
-## 13       70 0.24068666 0.25299784
-## 14       75 0.22823792 0.23493541
-## 15       80 0.22143775 0.21775972
-## 16       85 0.22551936 0.17916316
-## 17       90 0.23926443 0.17657659
-## 18       95 0.25019360 0.18059851
-## 19      100 0.28862493 0.15892383
-## 20      105 0.32793539 0.14364838
+##    libsizes  pre->npp  npp->pre
+## 1        10 0.1295281 0.1013898
+## 2        20 0.1990710 0.1605447
+## 3        30 0.2607783 0.2286559
+## 4        40 0.3219650 0.2744616
+## 5        50 0.3788341 0.2956426
+## 6        60 0.4512668 0.3272331
+## 7        70 0.4961658 0.3394660
+## 8        80 0.5366037 0.3378108
+## 9        90 0.5972341 0.3376894
+## 10      100 0.6670024 0.3405838
+## 11      110 0.7358447 0.3412305
+## 12      120 0.7981711 0.3500295
+## 13      130 0.8386849 0.3663077
+## 14      140 0.8460446 0.3687385
+## 15      150 0.8483344 0.3696080
+## 16      160 0.8503816 0.3695784
 ```
 
 Visualize the result:
 
 
 ``` r
-plot(npp_res,xlimits = c(9, 101),ylimits = c(-0.05,1))
-## Warning: Removed 1 row containing missing values or values outside the scale range (`geom_line()`).
-## Removed 1 row containing missing values or values outside the scale range (`geom_line()`).
+plot(npp_res,xlimits = c(9, 161),ylimits = c(0.05,1)) +
+  ggplot2::theme(legend.justification = c(0.25,1))
 ```
 
 ![**Figure 3**. The cross-mapping prediction outputs between farmland NPP and precipitation.](../man/figures/gccm/fig3-1.png)

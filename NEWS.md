@@ -1,8 +1,40 @@
+# spEDM 1.5
+
+### new
+
+* Enable `parallel.level` parameter to specify parallel granularity in `gccm` R API (#310).
+
+* Implement the `multiview` function for multiview embedding forecasting (MVE) method (#221).
+
+### enhancements
+
+* Integrate `lib` parameter in `gccm` R API for library units selection (#278).
+
+* Set the default `k` to `E+2` in the `gccm` R API (#261).
+
+* Eliminate redundant computations at the source C++ code level (#233).
+
+* Add `trend.rm` option in the R API for `embedded`, `simplex`, and `smap` methods to align with `gccm` behavior (#191).
+
+* Refactor indexing of lag values and embedding vector generation for spatial lattice ([#186](https://github.com/stscl/spEDM/pull/186),[#184](https://github.com/stscl/spEDM/pull/184)) and grid data ([#183](https://github.com/stscl/spEDM/pull/183),[#181](https://github.com/stscl/spEDM/pull/181)).
+
+* Centered around example cases in the `gccm` vignette (#170).
+
+### breaking changes
+
+* Default plotting method places the legend in the top-left corner of the plot now (#325).
+
+* Refine `simplex` & `smap` output on the R side (#263).
+
+### bug fixes
+
+* Fix bug in R functions `embedded`, `simplex`, `smap` when input data contains only one attribute column (#246).
+
 # spEDM 1.4
 
 ### enhancements
 
-* Improve default spatial neighbor list generation for lattice data with support from the `sdsfun` package (#159).
+* Improve default spatial neighbors list generation for spatial lattice data with support from the `sdsfun` package (#159).
 
 ### breaking changes
 
@@ -12,7 +44,7 @@
 
 ### new
 
-* Implement the `smap` funtion to enable the selection of the optimal theta parameter (#128).
+* Implement the `smap` function to enable the selection of the optimal theta parameter (#128).
 
 * Add `simplex` function to support selecting the optimal embedding dimension for variables (#98).
 
@@ -25,8 +57,6 @@
 * Support for calculating unidirectional mappings in the `gccm` function (#117).
 
 * Relax `gccm` C++ source code `libsizes` minimum value constraint of `E+2` (#109).
-
-* Include an option in `gccm` to determine whether to include the current state when generating embedding vectors (#103).
 
 * Provide a complete `GCCM` workflow for spatial lattice and grid data in the `gccm` vignette (#100).
 

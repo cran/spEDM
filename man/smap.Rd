@@ -4,33 +4,35 @@
 \alias{smap}
 \alias{smap,sf-method}
 \alias{smap,SpatRaster-method}
-\title{smap forecasting}
+\title{smap forecast}
 \usage{
 \S4method{smap}{sf}(
   data,
   target,
-  lib,
-  pred = lib,
+  lib = NULL,
+  pred = NULL,
   E = 3,
   tau = 1,
-  k = 4,
+  k = E + 2,
   theta = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3,
     4, 6, 8),
   nb = NULL,
-  threads = detectThreads()
+  threads = detectThreads(),
+  trend.rm = TRUE
 )
 
 \S4method{smap}{SpatRaster}(
   data,
   target,
-  lib,
-  pred = lib,
+  lib = NULL,
+  pred = NULL,
   E = 3,
   tau = 1,
-  k = 4,
+  k = E + 2,
   theta = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3,
     4, 6, 8),
-  threads = detectThreads()
+  threads = detectThreads(),
+  trend.rm = TRUE
 )
 }
 \arguments{
@@ -38,31 +40,37 @@
 
 \item{target}{Name of target variable.}
 
-\item{lib}{Row numbers(\code{vector}) of lattice data or row-column numbers(\code{matrix}) of grid data for creating the library from observations.}
+\item{lib}{(optional) Libraries indices.}
 
-\item{pred}{(optional) Row numbers(\code{vector}) of lattice data or row-column numbers(\code{matrix}) of grid data used for predictions.}
+\item{pred}{(optional) Predictions indices.}
 
 \item{E}{(optional) Dimensions of the embedding.}
 
 \item{tau}{(optional) Step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors to use for prediction.}
+\item{k}{(optional) Number of nearest neighbors used for prediction.}
 
-\item{theta}{(optional) Weighting parameter for distances}
+\item{theta}{(optional) Weighting parameter for distances.}
 
 \item{nb}{(optional) The neighbours list.}
 
 \item{threads}{(optional) Number of threads.}
+
+\item{trend.rm}{(optional) Whether to remove the linear trend.}
 }
 \value{
-A matrix
+A list
+\describe{
+\item{\code{xmap}}{self mapping prediction results}
+\item{\code{varname}}{name of target variable}
+}
 }
 \description{
-smap forecasting
+smap forecast
 }
 \examples{
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
 \donttest{
-smap(columbus,target = "INC",lib = 1:49)
+smap(columbus,target = "INC")
 }
 }

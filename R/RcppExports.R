@@ -9,6 +9,18 @@ RcppSMapForecast <- function(embedding, target, lib, pred, num_neighbors, theta)
     .Call(`_spEDM_RcppSMapForecast`, embedding, target, lib, pred, num_neighbors, theta)
 }
 
+RcppIntersectionCardinality <- function(embedding_x, embedding_y, lib, pred, num_neighbors, n_excluded, threads, progressbar) {
+    .Call(`_spEDM_RcppIntersectionCardinality`, embedding_x, embedding_y, lib, pred, num_neighbors, n_excluded, threads, progressbar)
+}
+
+RcppLocateGridIndices <- function(curRow, curCol, totalRow, totalCol) {
+    .Call(`_spEDM_RcppLocateGridIndices`, curRow, curCol, totalRow, totalCol)
+}
+
+RcppRowColFromGrid <- function(cellNum, totalCol) {
+    .Call(`_spEDM_RcppRowColFromGrid`, cellNum, totalCol)
+}
+
 RcppLaggedVar4Grid <- function(mat, lagNum) {
     .Call(`_spEDM_RcppLaggedVar4Grid`, mat, lagNum)
 }
@@ -17,68 +29,88 @@ RcppGenGridEmbeddings <- function(mat, E, tau) {
     .Call(`_spEDM_RcppGenGridEmbeddings`, mat, E, tau)
 }
 
-RcppLocateGridIndices <- function(curRow, curCol, totalRow, totalCol) {
-    .Call(`_spEDM_RcppLocateGridIndices`, curRow, curCol, totalRow, totalCol)
-}
-
-RcppSimplex4Grid <- function(mat, lib, pred, E, tau, b, threads) {
-    .Call(`_spEDM_RcppSimplex4Grid`, mat, lib, pred, E, tau, b, threads)
+RcppSimplex4Grid <- function(mat, lib, pred, E, b, tau, threads) {
+    .Call(`_spEDM_RcppSimplex4Grid`, mat, lib, pred, E, b, tau, threads)
 }
 
 RcppSMap4Grid <- function(mat, lib, pred, theta, E, tau, b, threads) {
     .Call(`_spEDM_RcppSMap4Grid`, mat, lib, pred, theta, E, tau, b, threads)
 }
 
-RcppGCCM4Grid <- function(xMatrix, yMatrix, libsizes, pred, E, tau, b, simplex, theta, threads, progressbar) {
-    .Call(`_spEDM_RcppGCCM4Grid`, xMatrix, yMatrix, libsizes, pred, E, tau, b, simplex, theta, threads, progressbar)
+RcppMultiView4Grid <- function(xMatrix, yMatrix, lib, pred, E, tau, b, top, nvar, threads) {
+    .Call(`_spEDM_RcppMultiView4Grid`, xMatrix, yMatrix, lib, pred, E, tau, b, top, nvar, threads)
 }
 
-RcppSCPCM4Grid <- function(xMatrix, yMatrix, zMatrix, libsizes, E, tau, pred, b, simplex, theta, threads, cumulate, progressbar) {
-    .Call(`_spEDM_RcppSCPCM4Grid`, xMatrix, yMatrix, zMatrix, libsizes, E, tau, pred, b, simplex, theta, threads, cumulate, progressbar)
+RcppGCCM4Grid <- function(xMatrix, yMatrix, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, progressbar) {
+    .Call(`_spEDM_RcppGCCM4Grid`, xMatrix, yMatrix, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, progressbar)
 }
 
-RcppGCMC4Grid <- function(xMatrix, yMatrix, pred, E, tau, b, max_r, threads, progressbar) {
-    .Call(`_spEDM_RcppGCMC4Grid`, xMatrix, yMatrix, pred, E, tau, b, max_r, threads, progressbar)
+RcppSCPCM4Grid <- function(xMatrix, yMatrix, zMatrix, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, cumulate, progressbar) {
+    .Call(`_spEDM_RcppSCPCM4Grid`, xMatrix, yMatrix, zMatrix, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, cumulate, progressbar)
+}
+
+RcppGCMC4Grid <- function(xMatrix, yMatrix, lib, pred, E, tau, b, max_r, threads, progressbar) {
+    .Call(`_spEDM_RcppGCMC4Grid`, xMatrix, yMatrix, lib, pred, E, tau, b, max_r, threads, progressbar)
 }
 
 DetectMaxNumThreads <- function() {
     .Call(`_spEDM_DetectMaxNumThreads`)
 }
 
-OptEmdedDim <- function(Emat) {
-    .Call(`_spEDM_OptEmdedDim`, Emat)
+OptEmbedDim <- function(Emat) {
+    .Call(`_spEDM_OptEmbedDim`, Emat)
 }
 
 OptThetaParm <- function(Thetamat) {
     .Call(`_spEDM_OptThetaParm`, Thetamat)
 }
 
-RcppLaggedVar4Lattice <- function(nb, lagNum) {
-    .Call(`_spEDM_RcppLaggedVar4Lattice`, nb, lagNum)
+MatNotNAIndice <- function(mat, byrow = TRUE) {
+    .Call(`_spEDM_MatNotNAIndice`, mat, byrow)
+}
+
+RcppLaggedNeighbor4Lattice <- function(nb, lagNum) {
+    .Call(`_spEDM_RcppLaggedNeighbor4Lattice`, nb, lagNum)
+}
+
+RcppLaggedVar4Lattice <- function(vec, nb, lagNum) {
+    .Call(`_spEDM_RcppLaggedVar4Lattice`, vec, nb, lagNum)
 }
 
 RcppGenLatticeEmbeddings <- function(vec, nb, E, tau) {
     .Call(`_spEDM_RcppGenLatticeEmbeddings`, vec, nb, E, tau)
 }
 
-RcppSimplex4Lattice <- function(x, nb, lib, pred, E, tau, b, threads) {
-    .Call(`_spEDM_RcppSimplex4Lattice`, x, nb, lib, pred, E, tau, b, threads)
+RcppSimplex4Lattice <- function(x, nb, lib, pred, E, b, tau, threads) {
+    .Call(`_spEDM_RcppSimplex4Lattice`, x, nb, lib, pred, E, b, tau, threads)
 }
 
 RcppSMap4Lattice <- function(x, nb, lib, pred, theta, E, tau, b, threads) {
     .Call(`_spEDM_RcppSMap4Lattice`, x, nb, lib, pred, theta, E, tau, b, threads)
 }
 
-RcppGCCM4Lattice <- function(x, y, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, progressbar) {
-    .Call(`_spEDM_RcppGCCM4Lattice`, x, y, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, progressbar)
+RcppMultiView4Lattice <- function(x, y, nb, lib, pred, E, tau, b, top, nvar, threads) {
+    .Call(`_spEDM_RcppMultiView4Lattice`, x, y, nb, lib, pred, E, tau, b, top, nvar, threads)
 }
 
-RcppSCPCM4Lattice <- function(x, y, z, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, cumulate, progressbar) {
-    .Call(`_spEDM_RcppSCPCM4Lattice`, x, y, z, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, cumulate, progressbar)
+RcppGCCM4Lattice <- function(x, y, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, progressbar) {
+    .Call(`_spEDM_RcppGCCM4Lattice`, x, y, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, progressbar)
 }
 
-RcppGCMC4Lattice <- function(x, y, nb, pred, E, tau, b, max_r, threads, progressbar) {
-    .Call(`_spEDM_RcppGCMC4Lattice`, x, y, nb, pred, E, tau, b, max_r, threads, progressbar)
+RcppSCPCM4Lattice <- function(x, y, z, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, cumulate, progressbar) {
+    .Call(`_spEDM_RcppSCPCM4Lattice`, x, y, z, nb, libsizes, lib, pred, E, tau, b, simplex, theta, threads, parallel_level, cumulate, progressbar)
+}
+
+RcppGCMC4Lattice <- function(x, y, nb, lib, pred, E, tau, b, max_r, threads, progressbar) {
+    .Call(`_spEDM_RcppGCMC4Lattice`, x, y, nb, lib, pred, E, tau, b, max_r, threads, progressbar)
+}
+
+RcppFactorial <- function(n) {
+    .Call(`_spEDM_RcppFactorial`, n)
+}
+
+RcppCombine <- function(n, k) {
+    .Call(`_spEDM_RcppCombine`, n, k)
 }
 
 RcppMean <- function(vec, NA_rm = FALSE) {
@@ -105,12 +137,20 @@ RcppRMSE <- function(vec1, vec2, NA_rm = FALSE) {
     .Call(`_spEDM_RcppRMSE`, vec1, vec2, NA_rm)
 }
 
+RcppCumSum <- function(vec) {
+    .Call(`_spEDM_RcppCumSum`, vec)
+}
+
 RcppAbsDiff <- function(vec1, vec2) {
     .Call(`_spEDM_RcppAbsDiff`, vec1, vec2)
 }
 
 RcppSumNormalize <- function(vec, NA_rm = FALSE) {
     .Call(`_spEDM_RcppSumNormalize`, vec, NA_rm)
+}
+
+RcppArithmeticSeq <- function(from, to, length_out) {
+    .Call(`_spEDM_RcppArithmeticSeq`, from, to, length_out)
 }
 
 RcppDistance <- function(vec1, vec2, L1norm = FALSE, NA_rm = FALSE) {
@@ -137,8 +177,24 @@ RcppCorConfidence <- function(r, n, k = 0L, level = 0.05) {
     .Call(`_spEDM_RcppCorConfidence`, r, n, k, level)
 }
 
+RcppDeLongAUCConfidence <- function(cases, controls, direction, level = 0.05) {
+    .Call(`_spEDM_RcppDeLongAUCConfidence`, cases, controls, direction, level)
+}
+
+RcppCMCTest <- function(cases, direction, level = 0.05, num_samples = 0L) {
+    .Call(`_spEDM_RcppCMCTest`, cases, direction, level, num_samples)
+}
+
+RcppMatDistance <- function(mat, L1norm = FALSE, NA_rm = FALSE) {
+    .Call(`_spEDM_RcppMatDistance`, mat, L1norm, NA_rm)
+}
+
 RcppKNNIndice <- function(embedding_space, target_idx, k) {
     .Call(`_spEDM_RcppKNNIndice`, embedding_space, target_idx, k)
+}
+
+RcppDistKNNIndice <- function(dist_mat, target_idx, k) {
+    .Call(`_spEDM_RcppDistKNNIndice`, dist_mat, target_idx, k)
 }
 
 RcppLinearTrendRM <- function(vec, xcoord, ycoord, NA_rm = FALSE) {
@@ -147,5 +203,9 @@ RcppLinearTrendRM <- function(vec, xcoord, ycoord, NA_rm = FALSE) {
 
 RcppSVD <- function(X) {
     .Call(`_spEDM_RcppSVD`, X)
+}
+
+RcppDeLongPlacements <- function(cases, controls, direction) {
+    .Call(`_spEDM_RcppDeLongPlacements`, cases, controls, direction)
 }
 

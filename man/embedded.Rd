@@ -4,11 +4,11 @@
 \alias{embedded}
 \alias{embedded,sf-method}
 \alias{embedded,SpatRaster-method}
-\title{generate embeddings}
+\title{embedding spatial cross sectional data}
 \usage{
-\S4method{embedded}{sf}(data, target, E = 3, tau = 1, nb = NULL)
+\S4method{embedded}{sf}(data, target, E = 3, tau = 1, nb = NULL, trend.rm = FALSE)
 
-\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1)
+\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1, trend.rm = FALSE)
 }
 \arguments{
 \item{data}{The observation data.}
@@ -20,12 +20,14 @@
 \item{tau}{(optional) Step of spatial lags.}
 
 \item{nb}{(optional) The neighbours list.}
+
+\item{trend.rm}{(optional) Whether to remove the linear trend.}
 }
 \value{
 A matrix
 }
 \description{
-generate embeddings
+embedding spatial cross sectional data
 }
 \examples{
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))

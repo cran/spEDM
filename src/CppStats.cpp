@@ -1,9 +1,10 @@
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 #include <cmath>
-#include <stdexcept>
 #include <numeric> // for std::accumulate
 #include <limits>  // for std::numeric_limits
+#include "DeLongPlacements.h"
 // #include <Rcpp.h>
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
@@ -16,6 +17,77 @@ bool isNA(double value) {
 // Function to check if a indice of int type is NA
 bool checkIntNA(int value) {
   return value == std::numeric_limits<int>::min();
+}
+
+// Function to check whether a one-dimensional vector contains NaN values
+bool checkOneDimVectorHasNaN(const std::vector<double>& vec) {
+  for (double val : vec) {
+    if (std::isnan(val)) {
+      return true; // Return false if any NaN is found
+    }
+  }
+  return false;
+}
+
+// Function to count the number of non-NaN values in a one-dimensional vector
+int checkOneDimVectorNotNanNum(const std::vector<double>& vec) {
+  int count = 0; // Initialize the counter for non-NaN values
+  for (double val : vec) {
+    if (!std::isnan(val)) {
+      ++count; // Increment the counter if the value is not NaN
+    }
+  }
+  return count; // Return the count of non-NaN values
+}
+
+/**
+ * Computes the factorial of a non-negative integer using an iterative approach.
+ *
+ * @param n The non-negative integer for which factorial is to be computed.
+ * @return The factorial of n as unsigned long long. Returns 0 if n > 20 due to overflow.
+ *
+ * @note Efficiently computes factorial in O(n) time with O(1) space complexity.
+ *       Maximum representable value is 20! (2432902008176640000) due to 64-bit limits.
+ */
+unsigned long long CppFactorial(unsigned int n) {
+  if (n > 20) {
+    return 0;  // Overflow occurs beyond 20! for 64-bit unsigned integers
+  }
+  unsigned long long result = 1;
+  for (unsigned int i = 2; i <= n; ++i) {
+    result *= i;
+  }
+  return result;
+}
+
+/**
+ * Computes the binomial coefficient C(n, k) using multiplicative decomposition.
+ *
+ * @param n The total number of items.
+ * @param k The number of items to choose.
+ * @return The binomial coefficient C(n, k) as unsigned long long. Returns 0 if k > n.
+ *
+ * @note Optimizes by selecting smaller k (or n-k) and using stepwise multiply-divide
+ *       operations to reduce intermediate overflows. Time complexity O(k), space O(1).
+ *       Result accuracy depends on final value fitting within 64-bit limits.
+ */
+unsigned long long CppCombine(unsigned int n, unsigned int k) {
+  if (k > n) {
+    return 0;  // Invalid case when selecting more items than available
+  }
+  // Use smaller k to minimize iterations (C(n, k) == C(n, n-k))
+  k = (k < n - k) ? k : n - k;
+  if (k == 0) {
+    return 1;  // Directly return 1 when no selection is required
+  }
+
+  unsigned long long result = 1;
+  for (unsigned int i = 1; i <= k; ++i) {
+    // Multiplicative formula: result = result * (n - k + i) / i
+    result *= (n - k + i);  // Accumulate numerator term
+    result /= i;            // Divide by denominator term stepwise
+  }
+  return result;
 }
 
 // Function to calculate the mean of a vector, ignoring NA values
@@ -118,6 +190,25 @@ double CppRMSE(const std::vector<double>& vec1,
   return std::sqrt(sum_squared_diff / static_cast<double>(valid_count));
 }
 
+// Function to calculate the cumulative sum of a vector of doubles
+// Returns a new vector where each element at index i is the sum of elements from index 0 to i in the input vector
+std::vector<double> CppCumSum(const std::vector<double>& vec) {
+  // Create a vector to hold the cumulative sums with the same size as the input vector
+  std::vector<double> cumSum(vec.size());
+
+  // Initialize the first element of the cumulative sum
+  if (!vec.empty()) {
+    cumSum[0] = vec[0];
+  }
+
+  // Calculate the cumulative sum
+  for (size_t i = 1; i < vec.size(); ++i) {
+    cumSum[i] = cumSum[i - 1] + vec[i]; // Add the current element to the previous cumulative sum
+  }
+
+  return cumSum; // Return the vector containing cumulative sums
+}
+
 // Function to calculate the absolute difference between two vectors
 std::vector<double> CppAbsDiff(const std::vector<double>& vec1,
                                const std::vector<double>& vec2) {
@@ -150,6 +241,35 @@ std::vector<double> CppSumNormalize(const std::vector<double>& vec,
   }
 
   return normalizedVec;
+}
+
+// Generates an arithmetic sequence of numbers starting from `from` and ending at `to`,
+// with a total of `length_out` elements. The sequence is evenly spaced.
+std::vector<double> CppArithmeticSeq(double from, double to, int length_out) {
+  // Check for invalid input
+  if (length_out < 1) {
+    throw std::invalid_argument("length_out must be at least 1.");
+  }
+
+  // Initialize the result vector
+  std::vector<double> res;
+  res.reserve(length_out); // Reserve space for efficiency
+
+  // If length_out is 1, return a vector containing only `from`
+  if (length_out == 1) {
+    res.push_back(from);
+    return res;
+  }
+
+  // Calculate the step size for evenly spaced elements
+  double step = (to - from) / (length_out - 1);
+
+  // Generate the sequence
+  for (int i = 0; i < length_out; ++i) {
+    res.push_back(from + i * step);
+  }
+
+  return res;
 }
 
 // Function to calculate the variance of a vector, ignoring NA values
@@ -185,45 +305,6 @@ double CppCovariance(const std::vector<double>& vec1,
     }
   }
   return count > 1 ? cov / (count - 1) : std::numeric_limits<double>::quiet_NaN();
-}
-
-// Function to compute distance between two vectors:
-double CppDistance(const std::vector<double>& vec1,
-                   const std::vector<double>& vec2,
-                   bool L1norm = false,
-                   bool NA_rm = false){
-  // Handle NA values
-  std::vector<double> clean_v1, clean_v2;
-  for (size_t i = 0; i < vec1.size(); ++i) {
-    bool is_na = isNA(vec1[i]) || isNA(vec2[i]);
-    if (is_na) {
-      if (!NA_rm) {
-        return std::numeric_limits<double>::quiet_NaN(); // Return NaN if NA_rm is false
-      }
-    } else {
-      clean_v1.push_back(vec1[i]);
-      clean_v2.push_back(vec2[i]);
-    }
-  }
-
-  // If no valid data, return NaN
-  if (clean_v1.empty()) {
-    return std::numeric_limits<double>::quiet_NaN();
-  }
-
-  double dist_res = 0.0;
-  if (L1norm) {
-    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
-      dist_res += std::abs(clean_v1[i] - clean_v2[i]);
-    }
-  } else {
-    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
-      dist_res += (clean_v1[i] - clean_v2[i]) * (clean_v1[i] - clean_v2[i]);
-    }
-    dist_res = std::sqrt(dist_res);
-  }
-
-  return dist_res;
 }
 
 // Function to compute Pearson correlation using Armadillo
@@ -320,13 +401,26 @@ double PearsonCor(const std::vector<double>& y,
 //   return corr;
 // }
 
-// Function to compute Partial Correlation using Armadillo
-// y: Dependent variable vector
-// y_hat: Predicted variable vector
-// controls: Matrix of control variables (**each row represents a control variable**)
-// NA_rm: Boolean flag to indicate whether to remove NA values
-// linear: Boolean flag to indicate whether to calculate the partial correlation coefficient using linear regression or correlation matrix
-// Returns: Partial correlation between y and y_hat after controlling for the variables in controls
+/*
+ * Function to compute Partial Correlation using Armadillo
+ *
+ * Computes the partial correlation between the dependent variable 'y' and the predicted variable 'y_hat',
+ * after controlling for the variables specified in the 'controls' matrix. The partial correlation can be computed
+ * either through linear regression or by using the correlation matrix, depending on the 'linear' flag.
+ * Optionally, missing values (NA) can be removed if 'NA_rm' is set to true.
+ *
+ * Parameters:
+ *   y          - A vector representing the dependent variable.
+ *   y_hat      - A vector representing the predicted variable.
+ *   controls   - A matrix where each row corresponds to a control variable to adjust for in the correlation.
+ *   NA_rm      - A boolean flag to indicate whether to remove missing values (default is false).
+ *   linear     - A boolean flag to specify whether to use linear regression (true) or correlation matrix (false)
+ *                for computing the partial correlation (default is false).
+ *
+ * Returns:
+ *   A double representing the partial correlation coefficient between 'y' and 'y_hat' after controlling for
+ *   the variables in 'controls'.
+ */
 double PartialCor(const std::vector<double>& y,
                   const std::vector<double>& y_hat,
                   const std::vector<std::vector<double>>& controls,
@@ -336,8 +430,12 @@ double PartialCor(const std::vector<double>& y,
   if (y.size() != y_hat.size()) {
     throw std::invalid_argument("Input vectors y and y_hat must have the same size.");
   }
-  if (!controls.empty() && controls[0].size() != y.size()) {
-    throw std::invalid_argument("Control variables must have the same number of observations as y and y_hat.");
+  if (!controls.empty()) {
+    bool all_controls_valid = std::all_of(controls.begin(), controls.end(),
+                                          [&](const std::vector<double>& ctrl) { return ctrl.size() == y.size(); });
+    if (!all_controls_valid) {
+      throw std::invalid_argument("All control variables must have the same size as y.");
+    }
   }
 
   // Handle NA values
@@ -370,6 +468,11 @@ double PartialCor(const std::vector<double>& y,
     return std::numeric_limits<double>::quiet_NaN();
   }
 
+  // Check sample adequacy
+  if (clean_y.size() <= (clean_controls.size() + 2)) {  // n_samples > n_vars
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
   double partial_corr;
   if (linear){
     // Convert cleaned vectors to Armadillo vectors/matrices
@@ -380,9 +483,13 @@ double PartialCor(const std::vector<double>& y,
       arma_controls.col(i) = arma::vec(clean_controls[i]);
     }
 
-    // Compute residuals of y and y_hat after regressing on controls
-    arma::vec residuals_y = arma_y - arma_controls * arma::solve(arma_controls, arma_y);
-    arma::vec residuals_y_hat = arma_y_hat - arma_controls * arma::solve(arma_controls, arma_y_hat);
+    // // Compute residuals of y and y_hat after regressing on controls
+    // arma::vec residuals_y = arma_y - arma_controls * arma::solve(arma_controls, arma_y);
+    // arma::vec residuals_y_hat = arma_y_hat - arma_controls * arma::solve(arma_controls, arma_y_hat);
+
+    // Use a more robust method for solving the linear system, such as arma::pinv (pseudo-inverse):
+    arma::vec residuals_y = arma_y - arma_controls * arma::pinv(arma_controls) * arma_y;
+    arma::vec residuals_y_hat = arma_y_hat - arma_controls * arma::pinv(arma_controls) * arma_y_hat;
 
     // Compute Pearson correlation of the residuals
     partial_corr = arma::as_scalar(arma::cor(residuals_y, residuals_y_hat));
@@ -391,17 +498,30 @@ double PartialCor(const std::vector<double>& y,
     int i = controls.size();
     int j = controls.size() + 1;
     arma::mat data(clean_y.size(), i + 2);
-    for (size_t i = 0; i < controls.size(); ++i) {
-      data.col(i) = arma::vec(clean_controls[i]);
+    for (size_t k = 0; k < controls.size(); ++k) {
+      data.col(k) = arma::vec(clean_controls[k]);
     }
     data.col(i) = arma::vec(clean_y);
     data.col(j) = arma::vec(clean_y_hat);
 
+    if (data.n_rows < 2 || data.n_cols < 1) {
+      return std::numeric_limits<double>::quiet_NaN();
+    }
+
     // Compute the correlation matrix of the data
     arma::mat corrm = arma::cor(data);
 
-    // Compute the precision matrix (inverse of the correlation matrix)
-    arma::mat precm = arma::inv(corrm);
+    // // Compute the precision matrix (inverse of the correlation matrix)
+    // arma::mat precm = arma::inv(corrm);
+
+    // Moore-Penrose pseudo-inverse
+    // arma::mat precm = arma::pinv(corrm);
+    arma::mat precm;
+    try {
+      precm = arma::pinv(corrm, 1e-10);
+    } catch (...) {
+      return std::numeric_limits<double>::quiet_NaN();
+    }
 
     // Get the correlation between y and y_hat after controlling for the others
     partial_corr = -precm(i, j) / std::sqrt(precm(i, i) * precm(j, j));
@@ -456,6 +576,205 @@ std::vector<double> CppCorConfidence(double r, int n, int k = 0,
   return {r_upper, r_lower};
 }
 
+/**
+ * Computes the AUC (theta) and confidence interval using the DeLong method.
+ *
+ * @reference https://github.com/xrobin/pROC/blob/master/R/delong.R ci_auc_delong function
+ *
+ * @param cases A vector of scores for the cases (positive class).
+ * @param controls A vector of scores for the controls (negative class).
+ * @param direction A string indicating the direction of comparison (">" for greater, "<" for less).
+ * @param level The confidence level, default is 0.05.
+ *
+ * @return A vector of four elements:
+ *   - theta: The computed AUC value.
+ *   - ci_lower: The lower bound of the confidence interval.
+ *   - ci_upper: The upper bound of the confidence interval.
+ */
+std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
+                                           const std::vector<double>& controls,
+                                           const std::string& direction,
+                                           double level = 0.05) {
+  // Get sizes of cases and controls
+  size_t m = cases.size();
+  size_t n = controls.size();
+
+  // Compute DeLong placements
+  DeLongPlacementsRes ret = CppDeLongPlacements(cases, controls, direction);
+  double theta = ret.theta;
+  std::vector<double> X = ret.X;
+  std::vector<double> Y = ret.Y;
+
+  // If there are too few cases or controls, return default values
+  if (m <= 1 || n <= 1) {
+    return {theta, 1.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()}; // Default values for invalid input
+  }
+
+  // Compute variances SX and SY
+  double SX = 0.0, SY = 0.0;
+  for (size_t i = 0; i < m; ++i) {
+    SX += (X[i] - theta) * (X[i] - theta);
+  }
+  SX /= (m - 1);
+
+  for (size_t i = 0; i < n; ++i) {
+    SY += (Y[i] - theta) * (Y[i] - theta);
+  }
+  SY /= (n - 1);
+
+  // Compute the overall variance S
+  double S = SX / m + SY / n;
+
+  // Compute the confidence interval using R::qnorm
+  double ci_lower = R::qnorm(level / 2, theta, std::sqrt(S), true, false);
+  double ci_upper = R::qnorm(1 - level / 2, theta, std::sqrt(S), true, false);
+
+  // Ensure the confidence interval is within [0, 1]
+  ci_lower = std::max(0.0, ci_lower);
+  ci_upper = std::min(1.0, ci_upper);
+
+  // Return the results as a three-element vector
+  return {theta, ci_upper, ci_lower};
+}
+
+/**
+ * Computes the AUC (theta), p-value, and confidence interval using the DeLong method.
+ *
+ * @param cases A vector of scores for the cases (positive class).
+ * @param direction A string indicating the direction of comparison (">" for greater, "<" for less).
+ * @param level The confidence level, default is 0.05.
+ * @param sample_num Number of effective sample size
+ *
+ * @return A vector of four elements:
+ *   - theta: The computed AUC value.
+ *   - p_value: The p-value for testing the null hypothesis that AUC = 0.5.
+ *   - ci_lower: The lower bound of the confidence interval.
+ *   - ci_upper: The upper bound of the confidence interval.
+ */
+std::vector<double> CppCMCTest(const std::vector<double>& cases,
+                               const std::string& direction,
+                               double level = 0.05,
+                               int num_samples = 0) {
+  size_t m = cases.size(), n = cases.size();  // Both m and n are set to cases.size()
+
+  if (num_samples == 0){
+    num_samples = static_cast<int>(m);
+  }
+
+  std::vector<double> controls;
+  // for (size_t i = 0; i < cases.size(); ++i) {
+  //   controls.push_back(static_cast<double>(i) / num_samples);
+  // }
+  for (size_t i = 1; i <= cases.size(); ++i) {
+    controls.push_back(static_cast<double>(i) / num_samples);
+  }
+
+  // Compute DeLong placements
+  DeLongPlacementsRes ret = CppDeLongPlacements(cases, controls, direction);
+  double theta = ret.theta;
+  std::vector<double> X = ret.X;
+  std::vector<double> Y = ret.Y;
+
+  // If there are too few cases or controls, return default values
+  if (m <= 1 || n <= 1) {
+    return {theta, 1.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()}; // Default values for invalid input
+  }
+
+  // Compute variances SX and SY
+  double SX = 0.0, SY = 0.0;
+  for (size_t i = 0; i < m; ++i) {
+    SX += (X[i] - theta) * (X[i] - theta);
+  }
+  SX /= (m - 1);
+
+  for (size_t i = 0; i < n; ++i) {
+    SY += (Y[i] - theta) * (Y[i] - theta);
+  }
+  SY /= (n - 1);
+
+  // Compute the overall variance S
+  double S = SX / m + SY / n;
+
+  // Compute the Z-score for the p-value
+  double z = (theta - 0.5) / std::sqrt(S);
+
+  // // Compute the two-tailed p-value (AUC ≠ 0.5)
+  // double p_value = 2 * R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
+
+  // Compute the one-sided test (right-tailed) p-value (AUC > 0.5)
+  double p_value = R::pnorm(z, 0.0, 1.0, true, false);
+
+  // Compute the confidence interval using R::qnorm
+  double ci_lower = R::qnorm(level / 2, theta, std::sqrt(S), true, false);
+  double ci_upper = R::qnorm(1 - level / 2, theta, std::sqrt(S), true, false);
+
+  // Ensure the confidence interval is within [0, 1]
+  ci_lower = std::max(0.0, ci_lower);
+  ci_upper = std::min(1.0, ci_upper);
+
+  // Return the results as a four-element vector
+  return {theta, p_value, ci_upper, ci_lower};
+}
+
+// Function to compute distance between two vectors:
+double CppDistance(const std::vector<double>& vec1,
+                   const std::vector<double>& vec2,
+                   bool L1norm = false,
+                   bool NA_rm = false){
+  // Handle NA values
+  std::vector<double> clean_v1, clean_v2;
+  for (size_t i = 0; i < vec1.size(); ++i) {
+    bool is_na = isNA(vec1[i]) || isNA(vec2[i]);
+    if (is_na) {
+      if (!NA_rm) {
+        return std::numeric_limits<double>::quiet_NaN(); // Return NaN if NA_rm is false
+      }
+    } else {
+      clean_v1.push_back(vec1[i]);
+      clean_v2.push_back(vec2[i]);
+    }
+  }
+
+  // If no valid data, return NaN
+  if (clean_v1.empty()) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  double dist_res = 0.0;
+  if (L1norm) {
+    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
+      dist_res += std::abs(clean_v1[i] - clean_v2[i]);
+    }
+  } else {
+    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
+      dist_res += (clean_v1[i] - clean_v2[i]) * (clean_v1[i] - clean_v2[i]);
+    }
+    dist_res = std::sqrt(dist_res);
+  }
+
+  return dist_res;
+}
+
+// Function to compute distance for a matrix:
+std::vector<std::vector<double>> CppMatDistance(
+    const std::vector<std::vector<double>>& mat,
+    bool L1norm = false,
+    bool NA_rm = false){
+  size_t n = mat.size();
+  std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, 0.0));
+
+  // Compute distance between every pair of rows
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = i+1; j < n; ++j) {  // <-- Corrected: increment j
+      double distv = CppDistance(mat[i], mat[j], L1norm, NA_rm);
+      distance_matrix[i][j] = distv;  // Correctly assign distance to upper triangle
+      distance_matrix[j][i] = distv;  // Mirror the value to the lower triangle
+      // distance_matrix[i][j] = distance_matrix[j][i] = CppDistance(mat[i],mat[j],L1norm,NA_rm);
+    }
+  }
+  return distance_matrix;
+}
+
 // Function to find k-nearest neighbors of a given index in the embedding space
 std::vector<std::size_t> CppKNNIndice(
     const std::vector<std::vector<double>>& embedding_space,
@@ -493,14 +812,56 @@ std::vector<std::size_t> CppKNNIndice(
   return neighbors;
 }
 
-// Function to compute SVD similar to R's svd()
-// Input:
-//   - X: A matrix represented as std::vector<std::vector<double>>
-// Output:
-//   - A std::vector containing three components:
-//     1. d: A vector of singular values (std::vector<double>)
-//     2. u: A matrix of left singular vectors (std::vector<std::vector<double>>)
-//     3. v: A matrix of right singular vectors (std::vector<std::vector<double>>)
+// Function to find k-nearest neighbors of a given index using a precomputed distance matrix
+std::vector<std::size_t> CppDistKNNIndice(
+    const std::vector<std::vector<double>>& dist_mat,  // Precomputed n * n distance matrix
+    std::size_t target_idx,                            // Target index for which to find neighbors
+    std::size_t k)                                     // Number of nearest neighbors to find
+{
+  std::size_t n = dist_mat.size();
+  std::vector<std::pair<double, std::size_t>> distances;
+
+  // Iterate through the distance matrix to collect valid distances
+  for (std::size_t i = 0; i < n; ++i) {
+    if (i == target_idx) continue;  // Skip the target index itself
+
+    double dist = dist_mat[target_idx][i];
+
+    // Skip NaN distances
+    if (!std::isnan(dist)) {
+      distances.emplace_back(dist, i);
+    }
+  }
+
+  // Partial sort to get k-nearest neighbors, excluding NaN distances
+  std::partial_sort(distances.begin(), distances.begin() + std::min(k, distances.size()), distances.end());
+
+  // Extract the indices of the k-nearest neighbors
+  std::vector<std::size_t> neighbors;
+  for (std::size_t i = 0; i < k && i < distances.size(); ++i) {
+    neighbors.push_back(distances[i].second);
+  }
+
+  return neighbors;
+}
+
+/*
+ * Function to compute Singular Value Decomposition (SVD) similar to R's svd()
+ *
+ * This function computes the Singular Value Decomposition (SVD) of the input matrix 'X'.
+ * The decomposition breaks the matrix 'X' into three components: singular values, left singular vectors,
+ * and right singular vectors. These components are returned in a nested vector structure.
+ *
+ * Parameters:
+ *   - X: A matrix represented as a std::vector<std::vector<double>>.
+ *        This matrix is decomposed into its singular values and vectors.
+ *
+ * Returns:
+ *   A std::vector containing three components:
+ *     1. d: A vector of singular values (std::vector<double>).
+ *     2. u: A matrix of left singular vectors (std::vector<std::vector<double>>).
+ *     3. v: A matrix of right singular vectors (std::vector<std::vector<double>>).
+ */
 std::vector<std::vector<std::vector<double>>> CppSVD(const std::vector<std::vector<double>>& X) {
   // Convert input matrix to Armadillo matrix
   size_t m = X.size();

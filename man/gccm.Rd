@@ -11,14 +11,16 @@
   cause,
   effect,
   libsizes,
-  E = c(3, 3),
+  E = 3,
   tau = 1,
-  k = 4,
+  k = E + 2,
   theta = 1,
   algorithm = "simplex",
+  lib = NULL,
   pred = NULL,
   nb = NULL,
   threads = detectThreads(),
+  parallel.level = "low",
   bidirectional = TRUE,
   trend.rm = TRUE,
   progressbar = TRUE
@@ -29,13 +31,15 @@
   cause,
   effect,
   libsizes,
-  E = c(3, 3),
+  E = 3,
   tau = 1,
-  k = 4,
+  k = E + 2,
   theta = 1,
   algorithm = "simplex",
+  lib = NULL,
   pred = NULL,
   threads = detectThreads(),
+  parallel.level = "low",
   bidirectional = TRUE,
   trend.rm = TRUE,
   progressbar = TRUE
@@ -60,11 +64,15 @@
 
 \item{algorithm}{(optional) Algorithm used for prediction.}
 
-\item{pred}{pred (optional) Row numbers(\code{vector}) of lattice data or row-column numbers(\code{matrix}) of grid data used for predictions.}
+\item{lib}{(optional) Libraries indices.}
+
+\item{pred}{(optional) Predictions indices.}
 
 \item{nb}{(optional) The neighbours list.}
 
 \item{threads}{(optional) Number of threads.}
+
+\item{parallel.level}{(optional) Level of parallelism, \code{low} or \code{high}.}
 
 \item{bidirectional}{(optional) whether to identify bidirectional causal associations.}
 
@@ -73,7 +81,7 @@
 \item{progressbar}{(optional) whether to print the progress bar.}
 }
 \value{
-A list.
+A list
 \describe{
 \item{\code{xmap}}{cross mapping prediction results}
 \item{\code{varname}}{names of causal and effect variable}
@@ -86,8 +94,8 @@ geographical convergent cross mapping
 \examples{
 columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
 \donttest{
-g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,40,5),E = c(6,5))
+g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,45,5),E = 6)
 g
-plot(g, ylimits = c(0,0.8))
+plot(g, ylimits = c(0,0.85))
 }
 }
