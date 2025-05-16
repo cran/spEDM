@@ -1,11 +1,15 @@
 #include <iostream>
+#include <stdexcept>
 #include <vector>
+#include <queue> // for std::queue
 #include <numeric>   // for std::accumulate
 #include <algorithm> // for std::sort, std::unique, std::accumulate
 #include <unordered_set> // for std::unordered_set
 #include <unordered_map> // for std::unordered_map
 #include <limits> // for std::numeric_limits
 #include <cmath> // For std::isnan
+#include <string>
+#include "CppStats.h"
 
 /**
  * Computes the lagged neighbors for a lattice structure up to a specified lag number.
@@ -393,258 +397,286 @@ std::vector<std::vector<double>> GenLatticeEmbeddings(
   }
 }
 
-// #include <iostream>
-// #include <vector>
-// #include <numeric>   // for std::accumulate
-// #include <algorithm> // for std::sort, std::unique, std::accumulate
-// #include <unordered_set> // for std::unordered_set
-// #include <limits> // for std::numeric_limits
-// #include <cmath> // For std::isnan
-//
-// /**
-//  * Computes lagged neighborhoods for a given lag number, expanding the neighborhoods iteratively
-//  * by including neighbors of neighbors up to the specified lag number.
-//  *
-//  * Parameters:
-//  *   spNeighbor - A 2D vector representing the spatial neighbors for each spatial unit, where each element is a list of neighbors.
-//  *   lagNum     - The number of lags to expand the neighborhoods.
-//  *                A lagNum of 1 means only the immediate neighbors are considered.
-//  *
-//  * Returns:
-//  *   A 2D vector where each element is a list of cumulative neighbor indices for a given spatial unit,
-//  *   including neighbors up to the specified lagNum. If lagNum is less than 1, an empty vector is returned.
-//  *
-//  * Note:
-//  *   The return value corresponds to the cumulative neighbor indices for the specified lagNum.
-//  *   The neighborhoods are expanded by including neighbors of neighbors, and duplicates are removed at each step.
-//  */
-// std::vector<std::vector<int>> CppLaggedVar4Lattice(std::vector<std::vector<int>> spNeighbor,
-//                                                    int lagNum) {
-//   // If lagNum is less than 1, return an empty vector
-//   if (lagNum < 1) {
-//     return {};
-//   }
-//
-//   // Initialize the lagged neighborhood as a copy of spNeighbor
-//   std::vector<std::vector<int>> lagSpNeighbor = spNeighbor;
-//
-//   // If lagNum is greater than 1, expand the neighborhoods
-//   if (lagNum > 1) {
-//     std::vector<std::vector<int>> curSpNeighbor = spNeighbor;
-//
-//     // Iterate from 1 to lagNum - 1 to expand the neighborhoods
-//     for (int lag = 1; lag < lagNum; ++lag) {
-//       std::vector<std::vector<int>> preSpNeighbor = curSpNeighbor;
-//
-//       // Update the current neighborhood for each node
-//       for (size_t i = 0; i < preSpNeighbor.size(); ++i) {
-//         std::vector<int> curChain = preSpNeighbor[i];
-//         std::vector<int> newRings = curChain;
-//
-//         // Expand the neighborhood by including neighbors of neighbors
-//         for (int neigh : curChain) {
-//           if (neigh >= 0) {
-//             std::vector<int> nextChain = spNeighbor[neigh]; // Use 0-based index
-//             newRings.insert(newRings.end(), nextChain.begin(), nextChain.end());
-//           }
-//         }
-//
-//         // Remove duplicates and sort the new neighborhood
-//         std::sort(newRings.begin(), newRings.end());
-//         newRings.erase(std::unique(newRings.begin(), newRings.end()), newRings.end());
-//
-//         // Update the current neighborhood
-//         curSpNeighbor[i] = newRings;
-//       }
-//     }
-//
-//     // Remove the original neighbors and the node itself from the lagged neighborhood
-//     for (size_t i = 0; i < curSpNeighbor.size(); ++i) {
-//       std::vector<int> newRings = curSpNeighbor[i];
-//       std::vector<int> original = spNeighbor[i];
-//       original.push_back(i); // Add the node itself (0-based index)
-//
-//       // Remove original neighbors and the node itself
-//       std::vector<int> filteredRings;
-//       for (int ring : newRings) {
-//         if (std::find(original.begin(), original.end(), ring) == original.end()) {
-//           filteredRings.push_back(ring);
-//         }
-//       }
-//
-//       // Update the lagged neighborhood
-//       lagSpNeighbor[i] = filteredRings;
-//     }
-//   }
-//
-//   return lagSpNeighbor;
-// }
-//
-// /**
-//  * Generates embeddings for a given vector and neighborhood matrix by computing the mean of neighbor values
-//  * for each spatial unit, considering both the immediate neighbors and neighbors up to a specified lag number.
-//  *
-//  * Parameters:
-//  *   vec  - A vector of values, one for each spatial unit, to be embedded.
-//  *   nb   - A 2D matrix where each row represents the neighbors of a spatial unit.
-//  *   E    - The embedding dimension, specifying how many lags to consider in the embeddings.
-//  *   tau  - The spatial lag step for constructing lagged state-space vectors.
-//  *
-//  * Returns:
-//  *   A 2D vector representing the embeddings for each spatial unit, where each spatial unit has a row in the matrix
-//  *   corresponding to its embedding values for each lag number. If no valid embedding columns remain after removing
-//  *   columns containing only NaN values, a filtered matrix is returned.
-//  */
-// std::vector<std::vector<double>> GenLatticeEmbeddings(
-//     const std::vector<double>& vec,
-//     const std::vector<std::vector<int>>& nb,
-//     int E,
-//     int tau)
-// {
-//   // Get the number of nodes
-//   int n = vec.size();
-//
-//   // Initialize the embeddings matrix with NaN values
-//   std::vector<std::vector<double>> xEmbedings(n, std::vector<double>(E, std::numeric_limits<double>::quiet_NaN()));
-//
-//   if (tau == 0) {
-//     // When E >= 1, fill the first column of xEmbedings with the values from vec
-//     if (E >= 1) {
-//       for (int i = 0; i < n; ++i) {
-//         xEmbedings[i][0] = vec[i]; // Fill the first column with vec values
-//       }
-//     }
-//
-//     // Compute embeddings for each lag number from 1 to E
-//     for (int lagNum = 1; lagNum < E; ++lagNum) {
-//       // Compute the lagged neighborhoods
-//       std::vector<std::vector<int>> laggedResults = CppLaggedVar4Lattice(nb, lagNum);
-//
-//       // Remove duplicates with previous lagNum (if lagNum >= 2)
-//       if (lagNum >= 2) {
-//         std::vector<std::vector<int>> prev_laggedResults = CppLaggedVar4Lattice(nb, lagNum - 1);
-//         for (int i = 0; i < n; ++i) {
-//           // Convert previous lagged results to a set for fast lookup
-//           std::unordered_set<int> prev_set(prev_laggedResults[i].begin(), prev_laggedResults[i].end());
-//
-//           // Remove duplicates from current lagged results
-//           std::vector<int> new_indices;
-//           for (int index : laggedResults[i]) {
-//             if (prev_set.find(index) == prev_set.end()) {
-//               new_indices.push_back(index);
-//             }
-//           }
-//
-//           // If the new indices are empty, set it to a special value (e.g., std::numeric_limits<int>::min())
-//           if (new_indices.empty()) {
-//             new_indices.push_back(std::numeric_limits<int>::min());
-//           }
-//
-//           // Update the lagged results
-//           laggedResults[i] = new_indices;
-//         }
-//       }
-//
-//       // Compute the mean of neighbor values for each node
-//       for (size_t l = 0; l < laggedResults.size(); ++l) {
-//         std::vector<int> neighbors = laggedResults[l];
-//
-//         // If the neighbors are empty or contain only the special value, leave the embedding as NaN
-//         if (neighbors.empty() || (neighbors.size() == 1 && neighbors[0] == std::numeric_limits<int>::min())) {
-//           continue;
-//         }
-//
-//         // Compute the mean of neighbor values
-//         double sum = std::accumulate(neighbors.begin(), neighbors.end(), 0.0, [&](double acc, int idx) {
-//           return acc + vec[idx];
-//         });
-//         xEmbedings[l][lagNum] = sum / neighbors.size();
-//       }
-//     }
-//   } else {
-//     // Compute embeddings for each lag number from tau to E+tau-1
-//     for (int lagNum = tau; lagNum < E + tau; ++lagNum) {
-//       // Compute the lagged neighborhoods
-//       std::vector<std::vector<int>> laggedResults = CppLaggedVar4Lattice(nb, lagNum);
-//
-//       // Remove duplicates with previous lagNum (if lagNum >= 2)
-//       if (lagNum >= 2) {
-//         std::vector<std::vector<int>> prev_laggedResults = CppLaggedVar4Lattice(nb, lagNum - 1);
-//         for (int i = 0; i < n; ++i) {
-//           // Convert previous lagged results to a set for fast lookup
-//           std::unordered_set<int> prev_set(prev_laggedResults[i].begin(), prev_laggedResults[i].end());
-//
-//           // Remove duplicates from current lagged results
-//           std::vector<int> new_indices;
-//           for (int index : laggedResults[i]) {
-//             if (prev_set.find(index) == prev_set.end()) {
-//               new_indices.push_back(index);
-//             }
-//           }
-//
-//           // If the new indices are empty, set it to a special value (e.g., std::numeric_limits<int>::min())
-//           if (new_indices.empty()) {
-//             new_indices.push_back(std::numeric_limits<int>::min());
-//           }
-//
-//           // Update the lagged results
-//           laggedResults[i] = new_indices;
-//         }
-//       }
-//
-//       // Compute the mean of neighbor values for each node
-//       for (size_t l = 0; l < laggedResults.size(); ++l) {
-//         std::vector<int> neighbors = laggedResults[l];
-//
-//         // If the neighbors are empty or contain only the special value, leave the embedding as NaN
-//         if (neighbors.empty() || (neighbors.size() == 1 && neighbors[0] == std::numeric_limits<int>::min())) {
-//           continue;
-//         }
-//
-//         // Compute the mean of neighbor values
-//         double sum = std::accumulate(neighbors.begin(), neighbors.end(), 0.0, [&](double acc, int idx) {
-//           return acc + vec[idx];
-//         });
-//         xEmbedings[l][lagNum - 1] = sum / neighbors.size();
-//       }
-//     }
-//   }
-//
-//   // Calculate validColumns (indices of columns that are not entirely NaN)
-//   std::vector<size_t> validColumns; // To store indices of valid columns
-//
-//   // Iterate over each column to check if it contains any non-NaN values
-//   for (size_t col = 0; col < xEmbedings[0].size(); ++col) {
-//     bool isAllNaN = true;
-//     for (size_t row = 0; row < xEmbedings.size(); ++row) {
-//       if (!std::isnan(xEmbedings[row][col])) {
-//         isAllNaN = false;
-//         break;
-//       }
-//     }
-//     if (!isAllNaN) {
-//       validColumns.push_back(col); // Store the index of valid columns
-//     }
-//   }
-//
-//   // If no columns are removed, return the original xEmbedings
-//   if (validColumns.size() == xEmbedings[0].size()) {
-//     return xEmbedings;
-//   } else {
-//     // // Issue a warning if any columns are removed
-//     // std::cerr << "Warning: remove all-NA embedding vector columns caused by excessive embedding dimension E selection." << std::endl;
-//
-//     // Construct the filtered embeddings matrix
-//     std::vector<std::vector<double>> filteredEmbeddings;
-//     for (size_t row = 0; row < xEmbedings.size(); ++row) {
-//       std::vector<double> filteredRow;
-//       for (size_t col : validColumns) {
-//         filteredRow.push_back(xEmbedings[row][col]);
-//       }
-//       filteredEmbeddings.push_back(filteredRow);
-//     }
-//
-//     // Return the filtered embeddings matrix
-//     return filteredEmbeddings;
-//   }
-// }
+/**
+ * @brief Generate a list of k nearest neighbors for each spatial location based on lattice connectivity.
+ *
+ * This function constructs neighborhood information for each element in a spatial process
+ * using both direct connectivity and value similarity. It ensures that each location has
+ * at least k unique neighbors by expanding through its neighbors' neighbors recursively,
+ * if necessary. All neighbors must be indices present in the provided `lib` vector.
+ *
+ * The procedure consists of:
+ * 1. Starting with directly connected neighbors from `nb` that are also in `lib`.
+ * 2. If fewer than k unique neighbors are found, iteratively expand the neighborhood using
+ *    a breadth-first search (BFS) on the adjacency list (only considering nodes in `lib`).
+ * 3. Among all collected neighbors, the function selects the k most similar ones in terms of
+ *    absolute value difference from the center location.
+ *
+ * @param vec A vector of values representing the spatial process (used for sorting by similarity).
+ * @param nb A list of adjacency lists where `nb[i]` gives the direct neighbors of location i.
+ * @param lib A vector of indices representing valid neighbors to consider for all locations.
+ * @param k The desired number of neighbors for each location.
+ *
+ * @return A vector of vectors, where each subvector contains the indices of the k nearest neighbors
+ *         for each location, based on lattice structure and value similarity.
+ *
+ * @throw std::runtime_error If any location cannot find enough valid neighbors from `lib` to meet the k requirement.
+ * @throw std::invalid_argument If `lib` contains invalid indices outside the range of `vec`.
+ */
+std::vector<std::vector<int>> GenLatticeNeighbors(
+    const std::vector<double>& vec,
+    const std::vector<std::vector<int>>& nb,
+    const std::vector<int>& lib,
+    size_t k) {
+
+  // Preconvert lib into a set for fast lookup
+  std::unordered_set<int> libSet(lib.begin(), lib.end());
+
+  // // Check whether indices in lib are valid (recommended for robustness)
+  // for (int idx : lib) {
+  //   if (idx < 0 || idx >= static_cast<int>(vec.size())) {
+  //     throw std::invalid_argument("Invalid index " + std::to_string(idx) + " found in 'lib'");
+  //   }
+  // }
+
+  std::vector<std::vector<int>> result(vec.size());
+
+  for (size_t i = 0; i < vec.size(); ++i) {
+    std::unordered_set<int> uniqueNeighbors;
+
+    // Initial stage: collect directly connected neighbors that exist in lib
+    for (int neighborIdx : nb[i]) {
+      if (libSet.count(neighborIdx)) {
+        uniqueNeighbors.insert(neighborIdx);
+      }
+    }
+
+    // If direct neighbors are not enough, expand using BFS (only nodes in lib)
+    if (uniqueNeighbors.size() < k) {
+      std::queue<int> neighborQueue;
+
+      // Initialize the queue with valid direct neighbors
+      for (int neighborIdx : nb[i]) {
+        if (libSet.count(neighborIdx)) {
+          neighborQueue.push(neighborIdx);
+        }
+      }
+
+      // Expand neighbors using BFS until we reach k or cannot expand further
+      while (!neighborQueue.empty() && uniqueNeighbors.size() < k) {
+        int currentIdx = neighborQueue.front();
+        neighborQueue.pop();
+
+        // Traverse neighbors of current node and add new valid ones
+        for (int nextNeighborIdx : nb[currentIdx]) {
+          if (libSet.count(nextNeighborIdx) &&
+              uniqueNeighbors.find(nextNeighborIdx) == uniqueNeighbors.end()) {
+            uniqueNeighbors.insert(nextNeighborIdx);
+            neighborQueue.push(nextNeighborIdx);
+          }
+        }
+      }
+    }
+
+    // // Check whether enough neighbors were found
+    // if (uniqueNeighbors.size() < k) {
+    //   throw std::runtime_error("Location " + std::to_string(i) +
+    //                            " cannot find enough (" + std::to_string(k) +
+    //                            ") valid neighbors from the provided 'lib' set");
+    // }
+
+    // Convert the set to a vector and sort by value similarity
+    std::vector<int> neighbors(uniqueNeighbors.begin(), uniqueNeighbors.end());
+    std::sort(neighbors.begin(), neighbors.end(), [&](int a, int b) {
+      return std::abs(vec[a] - vec[i]) < std::abs(vec[b] - vec[i]);
+    });
+
+    // Keep only the top-k most similar neighbors
+    if (neighbors.size() > k) {
+      neighbors.resize(k);
+    }
+
+    result[i] = neighbors;
+  }
+
+  return result;
+}
+
+/**
+ * @brief Generate symbolization values for a spatial cross-sectional series using a lattice-based
+ *        neighborhood approach, based on the method described by Herrera et al. (2016).
+ *
+ * This function implements a symbolic transformation of a univariate spatial process,
+ * where each spatial location is associated with a value from the original series and
+ * its surrounding neighborhood. The symbolization is based on comparing local median-based
+ * indicators within a defined spatial neighborhood.
+ *
+ * The procedure follows three main steps:
+ * 1. Compute the global median of the input series `vec`.
+ * 2. For each location in `pred`, define a binary indicator (`tau_s`) which is 1 if the value
+ *    at that location is greater than or equal to the median, and 0 otherwise.
+ * 3. For each location in `pred`, compare its indicator with those of its k nearest neighbors.
+ *    The final symbolic value is the count of neighbors that share the same indicator value.
+ *
+ * @param vec A vector of double values representing the spatial process.
+ * @param nb A nested vector containing neighborhood information (e.g., lattice connectivity).
+ * @param lib A vector of indices representing valid neighbors to consider for each location.
+ * @param pred A vector of indices specifying which elements to compute the symbolization for.
+ * @param k The number of nearest neighbors to consider for each location.
+ *
+ * @return A vector of symbolic values (as double) for each spatial location specified in `pred`.
+ */
+std::vector<double> GenLatticeSymbolization(
+    const std::vector<double>& vec,
+    const std::vector<std::vector<int>>& nb,
+    const std::vector<int>& lib,
+    const std::vector<int>& pred,
+    size_t k) {
+
+  // Initialize the result vector with the same size as pred
+  std::vector<double> result(pred.size());
+
+  // Generate neighbors for the elements in pred
+  std::vector<std::vector<int>> neighbors = GenLatticeNeighbors(vec, nb, lib, k);
+
+  // The median of the series vec
+  double vec_me = CppMedian(vec, true);
+  // // Compute global median of the 'pred' series
+  // double vec_me = CppMedian(pred, true);
+
+  // The first indicator function
+  std::vector<double> tau_s(vec.size());
+  for (size_t i = 0; i < vec.size(); ++i) {
+    tau_s[i] = (vec[i] >= vec_me) ? 1.0 : 0.0;
+  }
+
+  // The second indicator function and the symbolization map
+  for (size_t s = 0; s < pred.size(); ++s) {
+    int currentIndex = pred[s];
+    size_t num_neighbors = neighbors[currentIndex].size();
+    std::vector<double> l_s(num_neighbors);
+    std::vector<int> local_neighbors = neighbors[currentIndex];
+    double taus = tau_s[currentIndex];
+
+    for (size_t i = 0; i < num_neighbors; ++i) {
+      l_s[i] = (tau_s[local_neighbors[i]] == taus) ? 1.0 : 0.0;
+    }
+
+    // Count the number of neighbors that share the same indicator value
+    double fs = std::accumulate(l_s.begin(), l_s.end(), 0.0);
+    result[s] = fs;
+  }
+
+  return result;
+}
+
+/**
+ * @brief Divide a spatial lattice into connected blocks of approximately equal size.
+ *
+ * This function partitions a spatial domain represented by an adjacency list (neighbor structure)
+ * into `b` spatially contiguous blocks. It ensures that each block is connected and handles isolated
+ * units by merging them into the smallest neighboring block.
+ *
+ * @param nb A vector of vectors representing the adjacency list (i.e., neighboring indices)
+ *           for each spatial unit; `nb[i]` contains the indices of neighbors of unit `i`.
+ * @param b  The number of blocks to divide the lattice into.
+ *
+ * @return A vector of integers of length `N` where each entry corresponds to the assigned block label
+ *         (ranging from 0 to b-1) of the spatial unit at that index.
+ */
+std::vector<int> CppDivideLattice(const std::vector<std::vector<int>>& nb, int b) {
+  int N = static_cast<int>(nb.size());
+  int base_size = N / b;
+  int surplus = N % b;
+
+  std::vector<bool> visited(N, false);
+  std::vector<int> labels(N, -1);
+  int current_block = 0;
+
+  // Step 1: Divide the lattice into `b` blocks using BFS
+  while (current_block < b) {
+    int target_size = (current_block == b - 1) ? (base_size + surplus) : base_size;
+
+    // Find the next unvisited starting point with the highest degree
+    int start = -1;
+    int max_degree = -1;
+    for (int i = 0; i < N; ++i) {
+      if (!visited[i] && static_cast<int>(nb[i].size()) > max_degree) {
+        start = i;
+        max_degree = nb[i].size();
+      }
+    }
+    if (start == -1) break; // no more unvisited nodes
+
+    std::queue<int> q;
+    std::vector<int> block_members;
+
+    q.push(start);
+    visited[start] = true;
+
+    // Perform BFS to collect connected nodes for the current block
+    while (!q.empty() && static_cast<int>(block_members.size()) < target_size) {
+      int current = q.front();
+      q.pop();
+
+      block_members.push_back(current);
+
+      for (int neighbor : nb[current]) {
+        if (!visited[neighbor]) {
+          visited[neighbor] = true;
+          q.push(neighbor);
+        }
+      }
+    }
+
+    // If not enough neighbors collected, prioritize connected unvisited nodes
+    for (int i = 0; static_cast<int>(block_members.size()) < target_size && i < N; ++i) {
+      if (!visited[i]) {
+        // Check if the node is connected to any block member
+        bool is_connected = false;
+        for (int member : block_members) {
+          if (std::find(nb[member].begin(), nb[member].end(), i) != nb[member].end()) {
+            is_connected = true;
+            break;
+          }
+        }
+        if (is_connected) {
+          visited[i] = true;
+          block_members.push_back(i);
+        }
+      }
+    }
+
+    // Assign label to all members of the current block
+    for (int idx : block_members) {
+      labels[idx] = current_block;
+    }
+
+    ++current_block;
+  }
+
+  // Step 2: Check for isolated units and merge them into the smallest neighboring block
+  for (int i = 0; i < N; ++i) {
+    bool is_isolated = true;
+    for (int neighbor : nb[i]) {
+      if (labels[neighbor] == labels[i]) {
+        is_isolated = false;
+        break;
+      }
+    }
+    if (is_isolated) {
+      // Find the smallest block among neighbors
+      int smallest_block = b; // Initialize with an invalid value
+      for (int neighbor : nb[i]) {
+        if (labels[neighbor] != -1 && labels[neighbor] < smallest_block) {
+          smallest_block = labels[neighbor];
+        }
+      }
+      if (smallest_block != b) {
+        labels[i] = smallest_block; // Merge into the smallest neighboring block
+      }
+    }
+  }
+
+  return labels;
+}

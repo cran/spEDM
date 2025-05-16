@@ -1,5 +1,7 @@
 #include <vector>
 #include <cmath>
+#include <string>
+#include <algorithm>
 #include "CppStats.h"
 #include "CppGridUtils.h"
 #include "Forecast4Grid.h"
@@ -7,6 +9,8 @@
 #include "GCCM4Grid.h"
 #include "SCPCM4Grid.h"
 #include "CrossMappingCardinality.h"
+#include "FalseNearestNeighbors.h"
+#include "SGC4Grid.h"
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
 // #include <Rcpp.h>
 
@@ -83,6 +87,164 @@ Rcpp::NumericMatrix RcppGenGridEmbeddings(const Rcpp::NumericMatrix& mat,
       result(i, j) = embeddings[i][j];
     }
   }
+
+  return result;
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector RcppGenGridSymbolization(const Rcpp::NumericMatrix& mat,
+                                             const Rcpp::IntegerMatrix& lib,
+                                             const Rcpp::IntegerMatrix& pred,
+                                             int k) {
+  // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
+  int numRows = mat.nrow();
+  int numCols = mat.ncol();
+  std::vector<std::vector<double>> cppMat(numRows, std::vector<double>(numCols));
+
+  for (int r = 0; r < numRows; ++r) {
+    for (int c = 0; c < numCols; ++c) {
+      cppMat[r][c] = mat(r, c);
+    }
+  }
+
+  // Convert lib to a fundamental C++ data type
+  int lib_dim = lib.ncol();
+  std::vector<std::pair<int, int>> lib_std(lib.nrow());
+
+  if (lib_dim == 1){
+    for (int i = 0; i < lib.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(lib(i, 0) - 1, numCols);
+      lib_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < lib.nrow(); ++i) {
+      lib_std[i] = std::make_pair(lib(i, 0) - 1, lib(i, 1) - 1);
+    }
+  }
+
+  // Convert pred to a fundamental C++ data type
+  int pred_dim = pred.ncol();
+  std::vector<std::pair<int, int>> pred_std(pred.nrow());
+
+  if (pred_dim == 1){
+    for (int i = 0; i < pred.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(pred(i, 0) - 1, numCols);
+      pred_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < pred.nrow(); ++i) {
+      pred_std[i] = std::make_pair(pred(i, 0) - 1, pred(i, 1) - 1);
+    }
+  }
+
+  // Call the GenGridSymbolization function
+  std::vector<double> symbolmap = GenGridSymbolization(
+    cppMat, lib_std, pred_std, static_cast<size_t>(std::abs(k))
+  );
+
+  // Convert the result back to Rcpp::NumericVector
+  return Rcpp::wrap(symbolmap);
+}
+
+// [[Rcpp::export]]
+Rcpp::IntegerVector RcppDivideGrid(const Rcpp::NumericMatrix& mat,
+                                   int b, int shape = 3) {
+  // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
+  int numRows = mat.nrow();
+  int numCols = mat.ncol();
+  std::vector<std::vector<double>> cppMat(numRows, std::vector<double>(numCols));
+
+  for (int r = 0; r < numRows; ++r) {
+    for (int c = 0; c < numCols; ++c) {
+      cppMat[r][c] = mat(r, c);
+    }
+  }
+
+  // Call the CppDivideGrid function
+  std::vector<int> blocks = CppDivideGrid(cppMat, b, shape);
+
+  // Convert the result back to Rcpp::IntegerVector
+  return Rcpp::wrap(blocks);
+}
+
+// [[Rcpp::export]]
+Rcpp::NumericVector RcppFNN4Grid(
+    const Rcpp::NumericMatrix& mat,
+    const Rcpp::NumericVector& rt,
+    const Rcpp::NumericVector& eps,
+    const Rcpp::IntegerMatrix& lib,
+    const Rcpp::IntegerMatrix& pred,
+    const Rcpp::IntegerVector& E,
+    int tau,
+    int threads){
+  // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
+  int numRows = mat.nrow();
+  int numCols = mat.ncol();
+  std::vector<std::vector<double>> cppMat(numRows, std::vector<double>(numCols));
+
+  double validCellNum = 0;
+  for (int r = 0; r < numRows; ++r) {
+    for (int c = 0; c < numCols; ++c) {
+      cppMat[r][c] = mat(r, c);
+      if (!std::isnan(mat(r, c))){
+        validCellNum += 1;
+      }
+    }
+  }
+
+  // Convert Rcpp NumericVector to std::vector<double>
+  std::vector<double> rt_std = Rcpp::as<std::vector<double>>(rt);
+  std::vector<double> eps_std = Rcpp::as<std::vector<double>>(eps);
+
+  // Convert Rcpp IntegerMatrix to std::vector<int>
+  int n_libcol = lib.ncol();
+  int n_predcol = pred.ncol();
+
+  std::vector<int> lib_std;
+  if (n_libcol == 1){
+    for (int i = 0; i < lib.nrow(); ++i) {
+      lib_std.push_back(lib(i,0) - 1);
+    }
+  } else {
+    for (int i = 0; i < lib.nrow(); ++i) {
+      int rowLibIndice = lib(i,0);
+      int colLibIndice = lib(i,1);
+      if (!std::isnan(cppMat[rowLibIndice-1][colLibIndice-1])){
+        lib_std.push_back(LocateGridIndices(rowLibIndice, colLibIndice, numRows, numCols));
+      }
+    }
+  }
+
+  std::vector<int> pred_std;
+  if (n_predcol == 1){
+    for (int i = 0; i < pred.nrow(); ++i) {
+      pred_std.push_back(pred(i,0) - 1);
+    }
+  } else {
+    for (int i = 0; i < pred.nrow(); ++i) {
+      int rowPredIndice = pred(i,0);
+      int colPredIndice = pred(i,1);
+      if (!std::isnan(cppMat[rowPredIndice-1][colPredIndice-1])){
+        pred_std.push_back(LocateGridIndices(rowPredIndice, colPredIndice, numRows, numCols));
+      }
+    }
+  }
+
+  // Generate embeddings
+  std::vector<double> E_std = Rcpp::as<std::vector<double>>(E);
+  int max_E = CppMax(E_std, true);
+  std::vector<std::vector<double>> embeddings = GenGridEmbeddings(cppMat, max_E, tau);
+
+  // Perform FNN for spatial grid data
+  std::vector<double> fnn = CppFNN(embeddings,lib_std,pred_std,rt_std,eps_std,true,threads);
+
+  // Convert the result back to Rcpp::NumericVector and set names as "E:1", "E:2", ..., "E:n"
+  Rcpp::NumericVector result = Rcpp::wrap(fnn);
+  Rcpp::CharacterVector resnames(result.size());
+  for (int i = 0; i < result.size(); ++i) {
+    resnames[i] = "E:" + std::to_string(i + 1);
+  }
+  result.names() = resnames;
 
   return result;
 }
@@ -282,22 +444,29 @@ Rcpp::NumericMatrix RcppMultiView4Grid(const Rcpp::NumericMatrix& xMatrix,
   int numRows = yMatrix.nrow();
   int numCols = yMatrix.ncol();
 
-  // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
-  std::vector<std::vector<double>> yMatrix_cpp(yMatrix.nrow(), std::vector<double>(yMatrix.ncol()));
-  for (int i = 0; i < yMatrix.nrow(); ++i) {
-    for (int j = 0; j < yMatrix.ncol(); ++j) {
-      yMatrix_cpp[i][j] = yMatrix(i, j);
+  // Convert yMatrix to std::vector<double>
+  std::vector<double> target(numRows * numCols);
+
+  if (numCols == 1){
+    for (int i = 0; i < numRows; ++i) {
+      target[i] =  yMatrix(i,0);
     }
+  } else {
+    // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
+    std::vector<std::vector<double>> yMatrix_cpp(numRows, std::vector<double>(numCols));
+    for (int i = 0; i < numRows; ++i) {
+      for (int j = 0; j < numCols; ++j) {
+        yMatrix_cpp[i][j] = yMatrix(i, j);
+      }
+    }
+    target = GridMat2Vec(yMatrix_cpp);
   }
-  std::vector<double> target = GridMat2Vec(yMatrix_cpp);
 
   // Initialize lib_indices and pred_indices with all false
   std::vector<bool> pred_indices(numRows * numCols, false);
   std::vector<bool> lib_indices(numRows * numCols, false);
 
   // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
-  int currow;
-  int curcol;
   int lib_col = lib.ncol();
   int pred_col = pred.ncol();
 
@@ -308,10 +477,11 @@ Rcpp::NumericMatrix RcppMultiView4Grid(const Rcpp::NumericMatrix& xMatrix,
   } else {
     for (int i = 0; i < lib.nrow(); ++i) {
       // Convert to 0-based index
-      currow = lib(i,0);
-      curcol = lib(i,1);
-      if (!std::isnan(yMatrix_cpp[currow-1][curcol-1])){
-        lib_indices[LocateGridIndices(currow, curcol, numRows, numCols)] = true;
+      int currow = lib(i,0);
+      int curcol = lib(i,1);
+      int cellindice = LocateGridIndices(currow, curcol, numRows, numCols);
+      if (!std::isnan(target[cellindice])){
+        lib_indices[cellindice] = true;
       }
     }
   }
@@ -323,10 +493,11 @@ Rcpp::NumericMatrix RcppMultiView4Grid(const Rcpp::NumericMatrix& xMatrix,
   } else {
     for (int i = 0; i < pred.nrow(); ++i) {
       // Convert to 0-based index
-      currow = pred(i,0);
-      curcol = pred(i,1);
-      if (!std::isnan(yMatrix_cpp[currow-1][curcol-1])){
-        pred_indices[LocateGridIndices(currow, curcol, numRows, numCols)] = true;
+      int currow = pred(i,0);
+      int curcol = pred(i,1);
+      int cellindice = LocateGridIndices(currow, curcol, numRows, numCols);
+      if (!std::isnan(target[cellindice])){
+        pred_indices[cellindice] = true;
       }
     }
   }
@@ -473,7 +644,7 @@ Rcpp::NumericMatrix RcppGCCM4Grid(
   if (libsizes_dim == 1){
     if (lib_dim == 1){
       for (int i = 0; i < lib.nrow(); ++i) {
-        lib_cpp1.push_back(lib(i, 0));
+        lib_cpp1.push_back(lib(i, 0) - 1);
       }
     } else {
       for (int i = 0; i < lib.nrow(); ++i) {
@@ -493,7 +664,7 @@ Rcpp::NumericMatrix RcppGCCM4Grid(
       }
     } else {
       for (int i = 0; i < lib.nrow(); ++i) {
-        lib_cpp2[i] = std::make_pair(lib(i, 0), lib(i, 1));
+        lib_cpp2[i] = std::make_pair(lib(i, 0) - 1, lib(i, 1) - 1);
       }
     }
   }
@@ -505,7 +676,7 @@ Rcpp::NumericMatrix RcppGCCM4Grid(
   if (libsizes_dim == 1){
     if (pred_dim == 1){
       for (int i = 0; i < pred.nrow(); ++i) {
-        pred_cpp1.push_back(pred(i, 0));
+        pred_cpp1.push_back(pred(i, 0) - 1);
       }
     } else {
       for (int i = 0; i < pred.nrow(); ++i) {
@@ -525,7 +696,7 @@ Rcpp::NumericMatrix RcppGCCM4Grid(
       }
     } else {
       for (int i = 0; i < pred.nrow(); ++i) {
-        pred_cpp2[i] = std::make_pair(pred(i, 0), pred(i, 1));
+        pred_cpp2[i] = std::make_pair(pred(i, 0) - 1, pred(i, 1) - 1);
       }
     }
   }
@@ -647,7 +818,7 @@ Rcpp::NumericMatrix RcppSCPCM4Grid(
   if (libsizes_dim == 1){
     if (lib_dim == 1){
       for (int i = 0; i < lib.nrow(); ++i) {
-        lib_cpp1.push_back(lib(i, 0));
+        lib_cpp1.push_back(lib(i, 0) - 1);
       }
     } else {
       for (int i = 0; i < lib.nrow(); ++i) {
@@ -667,7 +838,7 @@ Rcpp::NumericMatrix RcppSCPCM4Grid(
       }
     } else {
       for (int i = 0; i < lib.nrow(); ++i) {
-        lib_cpp2[i] = std::make_pair(lib(i, 0), lib(i, 1));
+        lib_cpp2[i] = std::make_pair(lib(i, 0) - 1, lib(i, 1) - 1);
       }
     }
   }
@@ -679,7 +850,7 @@ Rcpp::NumericMatrix RcppSCPCM4Grid(
   if (libsizes_dim == 1){
     if (pred_dim == 1){
       for (int i = 0; i < pred.nrow(); ++i) {
-        pred_cpp1.push_back(pred(i, 0));
+        pred_cpp1.push_back(pred(i, 0) - 1);
       }
     } else {
       for (int i = 0; i < pred.nrow(); ++i) {
@@ -699,7 +870,7 @@ Rcpp::NumericMatrix RcppSCPCM4Grid(
       }
     } else {
       for (int i = 0; i < pred.nrow(); ++i) {
-        pred_cpp2[i] = std::make_pair(pred(i, 0), pred(i, 1));
+        pred_cpp2[i] = std::make_pair(pred(i, 0) - 1, pred(i, 1) - 1);
       }
     }
   }
@@ -771,7 +942,7 @@ Rcpp::NumericMatrix RcppSCPCM4Grid(
   return resultMatrix;
 }
 
-// Wrapper function to perform GCMC Grid and return a NumericVector
+// Wrapper function to perform GCMC for spatial grid data
 // [[Rcpp::export]]
 Rcpp::NumericMatrix RcppGCMC4Grid(
     const Rcpp::NumericMatrix& xMatrix,
@@ -810,14 +981,13 @@ Rcpp::NumericMatrix RcppGCMC4Grid(
   std::vector<int> b_std = Rcpp::as<std::vector<int>>(b);
   std::vector<int> maxr_std = Rcpp::as<std::vector<int>>(max_r);
 
-  // Process b_std to handle <= 0 values
-  for (size_t i = 0; i < b_std.size(); ++i) {
-    if (b_std[i] <= 0) {
-      // use sqrt of sample number to search
-      b_std[i] = static_cast<int>(std::floor(std::sqrt(validCellNum)));
-    } else if (b_std[i] > validCellNum - maxr_std[i]){
-      b_std[i] = validCellNum - maxr_std[i];
-    }
+  // Remove values in b_std that are greater than validCellNum or less than or equal to 3
+  b_std.erase(std::remove_if(b_std.begin(), b_std.end(),
+                             [validCellNum](int x) { return x > validCellNum || x <= 3; }),
+                             b_std.end());
+
+  if (b_std.empty()) {
+    Rcpp::stop("k cannot be less than or equal to 3 or greater than the number of non-NA values.");
   }
 
   // Remove duplicates for b_std
@@ -826,7 +996,7 @@ Rcpp::NumericMatrix RcppGCMC4Grid(
 
   // Convert Rcpp IntegerMatrix to std::vector<int>
   int n_libcol = lib.ncol();
-  int n_predcol = lib.ncol();
+  int n_predcol = pred.ncol();
   int numRows = yMatrix.nrow();
   int numCols = yMatrix.ncol();
 
@@ -864,7 +1034,7 @@ Rcpp::NumericMatrix RcppGCMC4Grid(
   std::vector<std::vector<double>> e1 = GenGridEmbeddings(xMatrix_cpp, E[0], tau_std[0]);
   std::vector<std::vector<double>> e2 = GenGridEmbeddings(yMatrix_cpp, E[1], tau_std[1]);
 
-  // Perform GCMC For Grid
+  // Perform GCMC for spatial grid data
   std::vector<std::vector<double>> cs1 = CrossMappingCardinality(e1,e2,lib_std,pred_std,b_std,maxr_std,threads,progressbar);
 
   Rcpp::NumericMatrix resultMatrix(b_std.size(), 5);
@@ -879,4 +1049,191 @@ Rcpp::NumericMatrix RcppGCMC4Grid(
                  "x_xmap_y_mean","x_xmap_y_sig",
                  "x_xmap_y_upper","x_xmap_y_lower");
   return resultMatrix;
+}
+
+// Wrapper function to perform SGC for spatial grid data without bootstrapped significance
+// [[Rcpp::export]]
+Rcpp::NumericVector RcppSGCSingle4Grid(const Rcpp::NumericMatrix& x,
+                                       const Rcpp::NumericMatrix& y,
+                                       const Rcpp::IntegerMatrix& lib,
+                                       const Rcpp::IntegerMatrix& pred,
+                                       int k,
+                                       double base = 2,
+                                       bool symbolize = true,
+                                       bool normalize = false){
+  int numRows = y.nrow();
+  int numCols = y.ncol();
+
+  // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
+  std::vector<std::vector<double>> xmat(x.nrow(), std::vector<double>(x.ncol()));
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      xmat[i][j] = x(i, j);
+    }
+  }
+  std::vector<std::vector<double>> ymat(y.nrow(), std::vector<double>(y.ncol()));
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      ymat[i][j] = y(i, j);
+    }
+  }
+
+  // Convert lib to a fundamental C++ data type
+  int lib_dim = lib.ncol();
+  std::vector<std::pair<int, int>> lib_std(lib.nrow());
+
+  if (lib_dim == 1){
+    for (int i = 0; i < lib.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(lib(i, 0) - 1, numCols);
+      lib_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < lib.nrow(); ++i) {
+      lib_std[i] = std::make_pair(lib(i, 0) - 1, lib(i, 1) - 1);
+    }
+  }
+
+  // Convert pred to a fundamental C++ data type
+  int pred_dim = pred.ncol();
+  std::vector<std::pair<int, int>> pred_std(pred.nrow());
+
+  if (pred_dim == 1){
+    for (int i = 0; i < pred.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(pred(i, 0) - 1, numCols);
+      pred_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < pred.nrow(); ++i) {
+      pred_std[i] = std::make_pair(pred(i, 0) - 1, pred(i, 1) - 1);
+    }
+  }
+
+  // Perform SGC for spatial grid data
+  std::vector<double> sc = SGCSingle4Grid(
+    xmat,
+    ymat,
+    lib_std,
+    pred_std,
+    k,
+    base,
+    symbolize,
+    normalize
+  );
+
+  // Convert the result back to Rcpp::NumericVector
+  Rcpp::NumericVector sc_res = Rcpp::wrap(sc);
+  sc_res.names() = Rcpp::CharacterVector::create(
+    "statistic for x → y causality",
+    "statistic for y → x causality"
+  );
+
+  return sc_res;
+}
+
+
+// Wrapper function to perform SGC for spatial grid data
+// [[Rcpp::export]]
+Rcpp::NumericVector RcppSGC4Grid(const Rcpp::NumericMatrix& x,
+                                 const Rcpp::NumericMatrix& y,
+                                 const Rcpp::IntegerMatrix& lib,
+                                 const Rcpp::IntegerMatrix& pred,
+                                 const Rcpp::IntegerMatrix& block,
+                                 int k,
+                                 int threads,
+                                 int boot = 399,
+                                 double base = 2,
+                                 unsigned int seed = 42,
+                                 bool symbolize = true,
+                                 bool normalize = false,
+                                 bool progressbar = true){
+  int numRows = y.nrow();
+  int numCols = y.ncol();
+
+  // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
+  std::vector<std::vector<double>> xmat(x.nrow(), std::vector<double>(x.ncol()));
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      xmat[i][j] = x(i, j);
+    }
+  }
+  std::vector<std::vector<double>> ymat(y.nrow(), std::vector<double>(y.ncol()));
+  for (int i = 0; i < numRows; ++i) {
+    for (int j = 0; j < numCols; ++j) {
+      ymat[i][j] = y(i, j);
+    }
+  }
+
+  // Convert lib to a fundamental C++ data type
+  int lib_dim = lib.ncol();
+  std::vector<std::pair<int, int>> lib_std(lib.nrow());
+
+  if (lib_dim == 1){
+    for (int i = 0; i < lib.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(lib(i, 0) - 1, numCols);
+      lib_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < lib.nrow(); ++i) {
+      lib_std[i] = std::make_pair(lib(i, 0) - 1, lib(i, 1) - 1);
+    }
+  }
+
+  // Convert pred to a fundamental C++ data type
+  int pred_dim = pred.ncol();
+  std::vector<std::pair<int, int>> pred_std(pred.nrow());
+
+  if (pred_dim == 1){
+    for (int i = 0; i < pred.nrow(); ++i) {
+      std::vector<int> rowcolnum = RowColFromGrid(pred(i, 0) - 1, numCols);
+      pred_std[i] = std::make_pair(rowcolnum[0], rowcolnum[1]);
+    }
+  } else {
+    for (int i = 0; i < pred.nrow(); ++i) {
+      pred_std[i] = std::make_pair(pred(i, 0) - 1, pred(i, 1) - 1);
+    }
+  }
+
+  // Convert block to a fundamental C++ data type
+  int b_dim = block.ncol();
+  std::vector<int> b_std;
+  if (b_dim == 1){
+    for (int i = 0; i < block.nrow(); ++i) {
+      b_std.push_back(block(i, 0));
+    }
+  } else {
+    for (int i = 0; i < block.nrow(); ++i) {
+        // Convert to 0-based index
+        int currow = block(i,0);
+        int curcol = block(i,1);
+        b_std.push_back(LocateGridIndices(currow, curcol, numRows, numCols));
+      }
+  }
+
+  // Perform SGC for spatial grid data
+  std::vector<double> sc = SGC4Grid(
+    xmat,
+    ymat,
+    lib_std,
+    pred_std,
+    b_std,
+    k,
+    threads,
+    boot,
+    base,
+    seed,
+    symbolize,
+    normalize,
+    progressbar
+  );
+
+  // Convert the result back to Rcpp::NumericVector
+  Rcpp::NumericVector sc_res = Rcpp::wrap(sc);
+  sc_res.names() = Rcpp::CharacterVector::create(
+    "statistic for x → y causality",
+    "significance for x → y causality",
+    "statistic for y → x causality",
+    "significance for y → x causality"
+  );
+
+  return sc_res;
 }

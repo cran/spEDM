@@ -69,15 +69,37 @@ print.xmap_self = \(x,...){
   }
 }
 
+#' print sc result
+#' @noRd
+#' @export
+print.sc_res = \(x,...){
+  sc = round(x$sc,3)
+  varname = x$varname
+  cat(c("spatial causality test",
+        paste0(paste0(x$varname[1], " -> ", x$varname[2],": statistic = "), sc[1], ", p value = ", sc[2]),
+        paste0(paste0(x$varname[2], " -> ", x$varname[1],": statistic = "), sc[3], ", p value = ", sc[4])),
+      sep = "\n")
+}
+
 #' plot ccm result
 #' @noRd
 #' @export
-plot.ccm_res = \(x, family = "serif", xbreaks = NULL, xlimits = NULL,
-                 ybreaks = seq(0, 1, by = 0.1), ylimits = c(-0.05, 1), ...){
+plot.ccm_res = \(x, family = "serif",
+                 legend_texts = NULL,
+                 legend_cols = c("#608dbe","#ed795b"),
+                 xbreaks = NULL, xlimits = NULL,
+                 ybreaks = seq(0, 1, by = 0.1),
+                 ylimits = c(-0.05, 1), ...){
   resdf = x[[1]]
   bidirectional = x[[3]]
+
   if(is.null(xbreaks)) xbreaks = resdf$libsizes
   if(is.null(xlimits)) xlimits = c(min(xbreaks)-1,max(xbreaks)+1)
+  if (is.null(legend_texts)) legend_texts = c(paste0(x$varname[1], " xmap ", x$varname[2]),
+                                              paste0(x$varname[2], " xmap ", x$varname[1]))
+  legend_texts = .check_inputelementnum(legend_texts,2)
+  legend_cols = .check_inputelementnum(legend_cols,2)
+  names(legend_cols) = c("x xmap y","y xmap x")
 
   fig1 = ggplot2::ggplot(data = resdf,
                          ggplot2::aes(x = libsizes)) +
@@ -93,13 +115,11 @@ plot.ccm_res = \(x, family = "serif", xbreaks = NULL, xlimits = NULL,
 
   fig1 = fig1 +
     ggplot2::scale_x_continuous(breaks = xbreaks, limits = xlimits,
-                                expand = c(0, 0), name = "Lib of Sizes") +
+                                expand = c(0, 0), name = "Library size") +
     ggplot2::scale_y_continuous(breaks = ybreaks, limits = ylimits,
                                 expand = c(0, 0), name = expression(rho)) +
-    ggplot2::scale_color_manual(values = c("x xmap y" = "#608dbe",
-                                           "y xmap x" = "#ed795b"),
-                                labels = c(paste0(x$varname[2], " causes ", x$varname[1]),
-                                           paste0(x$varname[1], " causes ", x$varname[2])),
+    ggplot2::scale_color_manual(values = legend_cols,
+                                labels = legend_texts,
                                 name = "") +
     ggplot2::theme_bw() +
     ggplot2::theme(axis.text = ggplot2::element_text(family = family),
@@ -116,9 +136,10 @@ plot.ccm_res = \(x, family = "serif", xbreaks = NULL, xlimits = NULL,
 #' plot pcm result
 #' @noRd
 #' @export
-plot.pcm_res = \(x, ...){
-  pxmap = x[-2]
-  class(pxmap) = "ccm"
-  fig1 = plot.ccm_res(pxmap,...)
+plot.pcm_res = \(x, partial = TRUE, ...){
+  indice = ifelse(partial,-2,-1)
+  xmap = x[indice]
+  class(xmap) = "ccm"
+  fig1 = plot.ccm_res(xmap,...)
   return(fig1)
 }

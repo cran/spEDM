@@ -8,8 +8,15 @@
   return(xstrs)
 }
 
-.check_inputelementnum = \(x,n){
-  return(abs(rep(x,length.out = n)))
+.check_inputelementnum = \(x,n,condsnum = NULL){
+  if (is.null(condsnum) || length(x) == 1){
+    res = rep(x,length.out = n)
+  } else if (length(x) == 2) {
+    res = c(rep(x[1],2),rep(x[2],condsnum))
+  } else {
+    res = c(x[1:2],rep(x[c(-1,-2)],length.out = condsnum))
+  }
+  return(res)
 }
 
 .check_parallellevel = \(parallel.level){
@@ -20,23 +27,12 @@
   return(pl)
 }
 
-.internal_varname = \(mediator = NULL){
+.internal_varname = \(conds = NULL){
   .varname = c("cause","effect")
-  if (!is.null(mediator)){
-    .varname = c(.varname,paste0("z",seq_along(mediator)))
+  if (!is.null(conds)){
+    .varname = c(.varname,paste0("z",seq_along(conds)))
   }
   return(.varname)
-}
-
-.internal_samplemat = \(mat,size = NULL,seed = 123){
-  nnaindice = which(!is.na(mat), arr.ind = TRUE)
-  if (is.null(size)){
-    return(nnaindice)
-  } else {
-    set.seed(seed)
-    indices = sample(nrow(nnaindice), size = min(size,nrow(nnaindice)), replace = FALSE)
-    return(nnaindice[indices])
-  }
 }
 
 .internal_lattice_nb = \(data){
@@ -62,7 +58,13 @@
   return(data)
 }
 
-.uni_lattice = \(data,target,trend.rm){
+.internal_library = \(data,mat = FALSE){
+  nnaindice = which(apply(is.na(data),1,\(.x) !any(.x)))
+  if (mat) nnaindice = matrix(nnaindice,ncol = 1)
+  return(nnaindice)
+}
+
+.uni_lattice = \(data,target,trend.rm = FALSE){
   target = .check_character(target)
   coords = as.data.frame(sdsfun::sf_coordinates(data))
   data = sf::st_drop_geometry(data)
@@ -75,7 +77,7 @@
   return(res)
 }
 
-.uni_grid = \(data,target,trend.rm){
+.uni_grid = \(data,target,trend.rm = FALSE){
   target = .check_character(target)
   data = data[[target]]
   names(data) = "target"
@@ -87,7 +89,7 @@
   return(res)
 }
 
-.multivar_lattice = \(data,columns,trend.rm){
+.multivar_lattice = \(data,columns,trend.rm = FALSE){
   columns = .check_character(columns)
   coords = as.data.frame(sdsfun::sf_coordinates(data))
   data = sf::st_drop_geometry(data)
@@ -101,7 +103,7 @@
   return(res)
 }
 
-.multivar_grid = \(data,columns,trend.rm){
+.multivar_grid = \(data,columns,trend.rm = FALSE){
   columns = .check_character(columns)
   data = data[[columns]]
   .varname = paste0("z",seq_along(columns))

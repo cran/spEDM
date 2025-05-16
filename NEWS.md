@@ -1,3 +1,37 @@
+# spEDM 1.6
+
+### new
+
+* Enact `fnn` R API support for false nearest neighbours method (#512).
+
+* Integrate R API and vignette for geographical cross mapping cardinality (#455).
+
+* Provide R-level API and vignette for spatial causality test (#403).
+
+### enhancements
+
+* Enable custom legend texts and colors in `gccm` S4 generic (#535).
+
+* Reduce computational load in vignettes (#476).
+
+* Document overall structure and usage of spEDM in a dedicated vignette (#415).
+
+* Create `SSR` vignette for spatial cross-sectional data state-space reconstruction (#412).
+
+* Include references for algorithms in `spEDM` (#367).
+
+### breaking changes
+
+* Use non-NA spatial units for `lib`/`pred` by default (#499).
+
+* Refine internal case data (#348).
+
+### bug fixes
+
+* Patch memory error caused by mismatch between C++ (0-based) and R (1-based) indexing (#480).
+
+* Fix error from non-matrix input in grid-type handling due to R matrix slicing (#474).
+
 # spEDM 1.5
 
 ### new
@@ -17,8 +51,6 @@
 * Add `trend.rm` option in the R API for `embedded`, `simplex`, and `smap` methods to align with `gccm` behavior (#191).
 
 * Refactor indexing of lag values and embedding vector generation for spatial lattice ([#186](https://github.com/stscl/spEDM/pull/186),[#184](https://github.com/stscl/spEDM/pull/184)) and grid data ([#183](https://github.com/stscl/spEDM/pull/183),[#181](https://github.com/stscl/spEDM/pull/181)).
-
-* Centered around example cases in the `gccm` vignette (#170).
 
 ### breaking changes
 
@@ -96,4 +128,4 @@
 
 ### new
 
-* Implementing the `GCCM` method for spatial lattice and grid data using pure `C++11`.
+* Implementing the `GCCM` method for spatial lattice and grid data using modern C++.

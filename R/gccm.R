@@ -9,7 +9,6 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
   pl = .check_parallellevel(parallel.level)
   .varname = .internal_varname()
   if (is.null(nb)) nb = .internal_lattice_nb(data)
-  if (nrow(data) != length(nb)) stop("Incompatible Data Dimensions!")
   coords = as.data.frame(sdsfun::sf_coordinates(data))
   data = sf::st_drop_geometry(data)
   data = data[,varname]
@@ -21,7 +20,7 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
   cause = data[,"cause",drop = TRUE]
   effect = data[,"effect",drop = TRUE]
 
-  if (is.null(lib)) lib = 1:nrow(data)
+  if (is.null(lib)) lib = .internal_library(data)
   if (is.null(pred)) pred = lib
 
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
@@ -53,8 +52,8 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
   causemat = matrix(dtf[,"cause"],nrow = terra::nrow(data),byrow = TRUE)
   effectmat = matrix(dtf[,"effect"],nrow = terra::nrow(data),byrow = TRUE)
 
-  if (is.null(lib)) lib = .internal_samplemat(effectmat)
-  if (is.null(pred)) pred = .internal_samplemat(effectmat,floor(sqrt(length(effectmat))))
+  if (is.null(lib)) lib = .internal_library(dtf,TRUE)
+  if (is.null(pred)) pred = lib
 
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
   x_xmap_y = NULL
@@ -71,26 +70,26 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
 #' @param data The observation data.
 #' @param cause Name of causal variable.
 #' @param effect Name of effect variable.
-#' @param libsizes A vector of library sizes to use.
+#' @param libsizes Number of spatial units used in prediction.
 #' @param E (optional) Dimensions of the embedding.
 #' @param tau (optional) Step of spatial lags.
-#' @param k (optional) Number of nearest neighbors to use for prediction.
+#' @param k (optional) Number of nearest neighbors used in prediction.
 #' @param theta (optional) Weighting parameter for distances, useful when `algorithm` is `smap`.
-#' @param algorithm (optional) Algorithm used for prediction.
+#' @param algorithm (optional) Algorithm used in prediction.
 #' @param lib (optional) Libraries indices.
 #' @param pred (optional) Predictions indices.
 #' @param nb (optional) The neighbours list.
 #' @param threads (optional) Number of threads.
 #' @param parallel.level (optional) Level of parallelism, `low` or `high`.
-#' @param bidirectional (optional) whether to identify bidirectional causal associations.
+#' @param bidirectional (optional) whether to examine bidirectional causality.
 #' @param trend.rm (optional) Whether to remove the linear trend.
-#' @param progressbar (optional) whether to print the progress bar.
+#' @param progressbar (optional) whether to show the progress bar.
 #'
 #' @return A list
 #' \describe{
-#' \item{\code{xmap}}{cross mapping prediction results}
+#' \item{\code{xmap}}{cross mapping results}
 #' \item{\code{varname}}{names of causal and effect variable}
-#' \item{\code{bidirectional}}{whether to identify bidirectional causal associations}
+#' \item{\code{bidirectional}}{whether to examine bidirectional causality}
 #' }
 #' @export
 #' @importFrom methods setGeneric
@@ -98,11 +97,13 @@ methods::setGeneric("gccm", function(data, ...) standardGeneric("gccm"))
 #' @name gccm
 #' @rdname gccm
 #' @aliases gccm,sf-method
+#' @references
+#' Gao, B., Yang, J., Chen, Z. et al. Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nat Commun 14, 5875 (2023).
 #'
 #' @examples
-#' columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+#' columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 #' \donttest{
-#' g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,45,5),E = 6)
+#' g = gccm(columbus,"hoval","crime",libsizes = seq(5,45,5),E = 6)
 #' g
 #' plot(g, ylimits = c(0,0.85))
 #' }

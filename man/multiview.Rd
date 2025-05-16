@@ -54,11 +54,11 @@
 
 \item{tau}{(optional) Step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors used for prediction.}
+\item{k}{(optional) Number of nearest neighbors used in prediction.}
 
 \item{nb}{(optional) The neighbours list.}
 
-\item{top}{(optional) Number of reconstructions used for MVE forecast.}
+\item{top}{(optional) Number of reconstructions used in MVE forecast.}
 
 \item{threads}{(optional) Number of threads.}
 
@@ -71,10 +71,13 @@ A vector (when input is sf object) or matrix
 multiview embedding forecast
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
 multiview(columbus,
-          columns = c("INC","CRIME","OPEN","PLUMB","DISCBD"),
-          target = "HOVAL", nvar = 3)
+          columns = c("inc","crime","open","plumb","discbd"),
+          target = "hoval", nvar = 3)
 }
+}
+\references{
+Ye H., and G. Sugihara, 2016. Information leverage in interconnected ecosystems: Overcoming the curse of dimensionality. Science 353:922-925.
 }

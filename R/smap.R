@@ -5,7 +5,7 @@ methods::setGeneric("smap", function(data, ...) standardGeneric("smap"))
                               0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8),
                     nb = NULL, threads = detectThreads(), trend.rm = TRUE){
   vec = .uni_lattice(data,target,trend.rm)
-  if (is.null(lib)) lib = 1:nrow(data)
+  if (is.null(lib)) lib = which(!is.na(vec))
   if (is.null(pred)) pred = lib
   if (is.null(nb)) nb = .internal_lattice_nb(data)
   res = RcppSMap4Lattice(vec,nb,lib,pred,theta,E,tau,k,threads)
@@ -17,7 +17,7 @@ methods::setGeneric("smap", function(data, ...) standardGeneric("smap"))
                                       0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8),
                             threads = detectThreads(), trend.rm = TRUE){
   mat = .uni_grid(data,target,trend.rm)
-  if (is.null(lib)) lib = .internal_samplemat(mat)
+  if (is.null(lib)) lib = which(!is.na(mat), arr.ind = TRUE)
   if (is.null(pred)) pred = lib
   res = RcppSMap4Grid(mat,lib,pred,theta,E,tau,k,threads)
   return(.bind_xmapself(res,target))
@@ -38,11 +38,13 @@ methods::setGeneric("smap", function(data, ...) standardGeneric("smap"))
 #' @name smap
 #' @rdname smap
 #' @aliases smap,sf-method
+#' @references
+#' Sugihara G. 1994. Nonlinear forecasting for the classification of natural time series. Philosophical Transactions: Physical Sciences and Engineering, 348 (1688):477-495.
 #'
 #' @examples
-#' columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+#' columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 #' \donttest{
-#' smap(columbus,target = "INC")
+#' smap(columbus,"inc")
 #' }
 methods::setMethod("smap", "sf", .smap_sf_method)
 

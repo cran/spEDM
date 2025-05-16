@@ -48,7 +48,7 @@
 
 \item{tau}{(optional) Step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors used for prediction.}
+\item{k}{(optional) Number of nearest neighbors used in prediction.}
 
 \item{theta}{(optional) Weighting parameter for distances.}
 
@@ -69,8 +69,11 @@ A list
 smap forecast
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-smap(columbus,target = "INC")
+smap(columbus,"inc")
 }
+}
+\references{
+Sugihara G. 1994. Nonlinear forecasting for the classification of natural time series. Philosophical Transactions: Physical Sciences and Engineering, 348 (1688):477-495.
 }

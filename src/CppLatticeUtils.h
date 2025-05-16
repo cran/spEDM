@@ -2,13 +2,17 @@
 #define CppLatticeUtils_H
 
 #include <iostream>
+#include <stdexcept>
 #include <vector>
+#include <queue> // for std::queue
 #include <numeric>   // for std::accumulate
 #include <algorithm> // for std::sort, std::unique, std::accumulate
 #include <unordered_set> // for std::unordered_set
 #include <unordered_map> // for std::unordered_map
 #include <limits> // for std::numeric_limits
 #include <cmath> // For std::isnan
+#include <string>
+#include "CppStats.h"
 
 /**
  * Computes the lagged neighbors for a lattice structure up to a specified lag number.
@@ -71,5 +75,86 @@ std::vector<std::vector<double>> GenLatticeEmbeddings(
     const std::vector<std::vector<int>>& nb,
     int E,
     int tau);
+
+/**
+ * @brief Generate a list of k nearest neighbors for each spatial location based on lattice connectivity.
+ *
+ * This function constructs neighborhood information for each element in a spatial process
+ * using both direct connectivity and value similarity. It ensures that each location has
+ * at least k unique neighbors by expanding through its neighbors' neighbors recursively,
+ * if necessary. All neighbors must be indices present in the provided `lib` vector.
+ *
+ * The procedure consists of:
+ * 1. Starting with directly connected neighbors from `nb` that are also in `lib`.
+ * 2. If fewer than k unique neighbors are found, iteratively expand the neighborhood using
+ *    a breadth-first search (BFS) on the adjacency list (only considering nodes in `lib`).
+ * 3. Among all collected neighbors, the function selects the k most similar ones in terms of
+ *    absolute value difference from the center location.
+ *
+ * @param vec A vector of values representing the spatial process (used for sorting by similarity).
+ * @param nb A list of adjacency lists where `nb[i]` gives the direct neighbors of location i.
+ * @param lib A vector of indices representing valid neighbors to consider for all locations.
+ * @param k The desired number of neighbors for each location.
+ *
+ * @return A vector of vectors, where each subvector contains the indices of the k nearest neighbors
+ *         for each location, based on lattice structure and value similarity.
+ *
+ * @throw std::runtime_error If any location cannot find enough valid neighbors from `lib` to meet the k requirement.
+ * @throw std::invalid_argument If `lib` contains invalid indices outside the range of `vec`.
+ */
+std::vector<std::vector<int>> GenLatticeNeighbors(
+    const std::vector<double>& vec,
+    const std::vector<std::vector<int>>& nb,
+    const std::vector<int>& lib,
+    size_t k);
+
+/**
+ * @brief Generate symbolization values for a spatial cross-sectional series using a lattice-based
+ *        neighborhood approach, based on the method described by Herrera et al. (2016).
+ *
+ * This function implements a symbolic transformation of a univariate spatial process,
+ * where each spatial location is associated with a value from the original series and
+ * its surrounding neighborhood. The symbolization is based on comparing local median-based
+ * indicators within a defined spatial neighborhood.
+ *
+ * The procedure follows three main steps:
+ * 1. Compute the global median of the input series `vec`.
+ * 2. For each location in `pred`, define a binary indicator (`tau_s`) which is 1 if the value
+ *    at that location is greater than or equal to the median, and 0 otherwise.
+ * 3. For each location in `pred`, compare its indicator with those of its k nearest neighbors.
+ *    The final symbolic value is the count of neighbors that share the same indicator value.
+ *
+ * @param vec A vector of double values representing the spatial process.
+ * @param nb A nested vector containing neighborhood information (e.g., lattice connectivity).
+ * @param lib A vector of indices representing valid neighbors to consider for each location.
+ * @param pred A vector of indices specifying which elements to compute the symbolization for.
+ * @param k The number of nearest neighbors to consider for each location.
+ *
+ * @return A vector of symbolic values (as double) for each spatial location specified in `pred`.
+ */
+std::vector<double> GenLatticeSymbolization(
+    const std::vector<double>& vec,
+    const std::vector<std::vector<int>>& nb,
+    const std::vector<int>& lib,
+    const std::vector<int>& pred,
+    size_t k);
+
+/**
+ * @brief Divide a spatial lattice into connected blocks of approximately equal size.
+ *
+ * This function partitions a spatial domain represented by an adjacency list (neighbor structure)
+ * into `b` spatially contiguous blocks. It ensures that each block is connected and handles isolated
+ * units by merging them into the smallest neighboring block.
+ *
+ * @param nb A vector of vectors representing the adjacency list (i.e., neighboring indices)
+ *           for each spatial unit; `nb[i]` contains the indices of neighbors of unit `i`.
+ * @param b  The number of blocks to divide the lattice into.
+ *
+ * @return A vector of integers of length `N` where each entry corresponds to the assigned block label
+ *         (ranging from 0 to b-1) of the spatial unit at that index.
+ */
+std::vector<int> CppDivideLattice(
+    const std::vector<std::vector<int>>& nb,
+    int b);
 
 #endif // CppLatticeUtils_H

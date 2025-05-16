@@ -1,7 +1,10 @@
+#include <cmath>
 #include <vector>
 #include <string>
 #include "CppStats.h"
+#include "CppCombn.h"
 #include "DeLongPlacements.h"
+#include "SpatialBlockBootstrap.h"
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
 // #include <Rcpp.h>
 #include <RcppArmadillo.h>
@@ -18,32 +21,86 @@ double RcppCombine(int n,int k){
 };
 
 // [[Rcpp::export]]
+Rcpp::List RcppCombn(const Rcpp::RObject& vec, int m) {
+  if (TYPEOF(vec) == REALSXP) {
+    std::vector<double> input = Rcpp::as<std::vector<double>>(vec);
+    return Rcpp::wrap(CppCombn(input, m));  // Calls the double version of the template
+  } else if (TYPEOF(vec) == INTSXP) {
+    std::vector<int> input = Rcpp::as<std::vector<int>>(vec);
+    return Rcpp::wrap(CppCombn(input, m));  // Calls the int version of the template
+  } else if (TYPEOF(vec) == STRSXP) {
+    std::vector<std::string> input = Rcpp::as<std::vector<std::string>>(vec);
+    return Rcpp::wrap(CppCombn(input, m));  // Calls the string version of the template
+  } else {
+    Rcpp::stop("Unsupported vector type. Must be numeric, integer, or character.");
+  }
+}
+
+// [[Rcpp::export]]
+Rcpp::List RcppGenSubsets(const Rcpp::RObject& vec) {
+  if (TYPEOF(vec) == REALSXP) {
+    std::vector<double> input = Rcpp::as<std::vector<double>>(vec);
+    return Rcpp::wrap(CppGenSubsets(input));  // Calls the double version of the template
+  } else if (TYPEOF(vec) == INTSXP) {
+    std::vector<int> input = Rcpp::as<std::vector<int>>(vec);
+    return Rcpp::wrap(CppGenSubsets(input));  // Calls the int version of the template
+  } else if (TYPEOF(vec) == STRSXP) {
+    std::vector<std::string> input = Rcpp::as<std::vector<std::string>>(vec);
+    return Rcpp::wrap(CppGenSubsets(input));  // Calls the string version of the template
+  } else {
+    Rcpp::stop("Unsupported vector type. Must be numeric, integer, or character.");
+  }
+}
+
+// [[Rcpp::export]]
+double RcppDigamma(double x){
+  return(CppDigamma(x));
+};
+
+// [[Rcpp::export]]
+double RcppLog(double x, double base = 10){
+  return(CppLog(x, base));
+};
+
+// [[Rcpp::export]]
+double RcppMedian(const Rcpp::NumericVector& vec,
+                  bool NA_rm = false) {
+  std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
+  return CppMedian(y, NA_rm);
+}
+
+// [[Rcpp::export]]
 double RcppMean(const Rcpp::NumericVector& vec,
                 bool NA_rm = false) {
-  // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
-
-  // Call the ArmaPearsonCor function
   return CppMean(y, NA_rm);
+}
+
+// [[Rcpp::export]]
+double RcppMin(const Rcpp::NumericVector& vec,
+               bool NA_rm = false) {
+  std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
+  return CppMin(y, NA_rm);
+}
+
+// [[Rcpp::export]]
+double RcppMax(const Rcpp::NumericVector& vec,
+               bool NA_rm = false) {
+  std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
+  return CppMax(y, NA_rm);
 }
 
 // [[Rcpp::export]]
 double RcppSum(const Rcpp::NumericVector& vec,
                bool NA_rm = false) {
-  // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
-
-  // Call the ArmaPearsonCor function
   return CppSum(y, NA_rm);
 }
 
 // [[Rcpp::export]]
 double RcppVariance(const Rcpp::NumericVector& vec,
                     bool NA_rm = false) {
-  // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
-
-  // Call the ArmaPearsonCor function
   return CppVariance(y, NA_rm);
 }
 
@@ -55,7 +112,7 @@ double RcppCovariance(const Rcpp::NumericVector& vec1,
   std::vector<double> x1_vec = Rcpp::as<std::vector<double>>(vec1);
   std::vector<double> x2_vec = Rcpp::as<std::vector<double>>(vec2);
 
-  // Call the CppMAE function
+  // Call the CppCovariance function
   return CppCovariance(x1_vec, x2_vec, NA_rm);
 }
 
@@ -110,7 +167,8 @@ Rcpp::NumericVector RcppAbsDiff(const Rcpp::NumericVector& vec1,
 }
 
 // [[Rcpp::export]]
-Rcpp::NumericVector RcppSumNormalize(const Rcpp::NumericVector& vec, bool NA_rm = false) {
+Rcpp::NumericVector RcppSumNormalize(const Rcpp::NumericVector& vec,
+                                     bool NA_rm = false) {
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> vec_cpp = Rcpp::as<std::vector<double>>(vec);
 
@@ -127,19 +185,6 @@ Rcpp::NumericVector RcppArithmeticSeq(double from, double to, int length_out) {
   std::vector<double> result = CppArithmeticSeq(from, to, length_out);
   // Convert the result back to Rcpp::NumericVector
   return Rcpp::wrap(result);
-}
-
-// [[Rcpp::export]]
-double RcppDistance(const Rcpp::NumericVector& vec1,
-                    const Rcpp::NumericVector& vec2,
-                    bool L1norm = false,
-                    bool NA_rm = false){
-  // Convert Rcpp::NumericVector to std::vector<double>
-  std::vector<double> v1 = Rcpp::as<std::vector<double>>(vec1);
-  std::vector<double> v2 = Rcpp::as<std::vector<double>>(vec2);
-
-  // Call the CppDistance function
-  return CppDistance(v1, v2, L1norm ,NA_rm);
 }
 
 // [[Rcpp::export]]
@@ -201,7 +246,8 @@ double RcppCorSignificance(double r, int n, int k = 0){
 
 // Wrapper function to calculate the confidence interval for a (partial) correlation coefficient and return a NumericVector
 // [[Rcpp::export]]
-Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0, double level = 0.05) {
+Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0,
+                                      double level = 0.05) {
   // Calculate the confidence interval
   std::vector<double> result = CppCorConfidence(r, n, k, level);
 
@@ -244,10 +290,41 @@ Rcpp::NumericVector RcppCMCTest(const Rcpp::NumericVector& cases,
   return Rcpp::wrap(result);
 }
 
+// Wrapper function to compute distance between two vectors
+// [[Rcpp::export]]
+double RcppDistance(const Rcpp::NumericVector& vec1,
+                    const Rcpp::NumericVector& vec2,
+                    bool L1norm = false,
+                    bool NA_rm = false){
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> v1 = Rcpp::as<std::vector<double>>(vec1);
+  std::vector<double> v2 = Rcpp::as<std::vector<double>>(vec2);
+
+  // Call the CppDistance function
+  return CppDistance(v1, v2, L1norm ,NA_rm);
+}
+
+// Wrapper function to compute the k-th nearest distance for a vector.
+// [[Rcpp::export]]
+Rcpp::NumericVector RcppKNearestDistance(const Rcpp::NumericVector& vec1,
+                                         int k,
+                                         bool L1norm = false,
+                                         bool NA_rm = false){
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> v1 = Rcpp::as<std::vector<double>>(vec1);
+
+  // Call the CppKNearestDistance function
+  std::vector<double> res = CppKNearestDistance(v1, static_cast<size_t>(std::abs(k)), L1norm ,NA_rm);
+
+  // Convert std::vector<double> to Rcpp::NumericVector
+  return Rcpp::wrap(res);
+}
+
 // Wrapper function to compute the distance matrix of a given matrix 'mat'
 // [[Rcpp::export]]
 Rcpp::NumericMatrix RcppMatDistance(const Rcpp::NumericMatrix& mat,
-                                    bool L1norm = false, bool NA_rm = false) {
+                                    bool L1norm = false,
+                                    bool NA_rm = false) {
 
   // Convert the Rcpp::NumericMatrix to a C++ vector of vectors (std::vector)
   size_t rownum = mat.nrow();
@@ -275,13 +352,34 @@ Rcpp::NumericMatrix RcppMatDistance(const Rcpp::NumericMatrix& mat,
   return result;
 }
 
+// Wrapper function to compute the number of neighbors for each point within a given radius.
+// [[Rcpp::export]]
+Rcpp::IntegerVector RcppNeighborsNum(
+    const Rcpp::NumericVector& vec,
+    const Rcpp::NumericVector& radius,
+    bool equal = false,
+    bool L1norm = false,
+    bool NA_rm = false){
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> v = Rcpp::as<std::vector<double>>(vec);
+  std::vector<double> r = Rcpp::as<std::vector<double>>(radius);
+
+  // Call the CppKNearestDistance function
+  std::vector<int> res = CppNeighborsNum(v,r,equal,L1norm,NA_rm);
+
+  // Convert std::vector<int> to Rcpp::IntegerVector
+  return Rcpp::wrap(res);
+}
+
 // Wrapper function to find k-nearest neighbors of a given index in the embedding space
 // [[Rcpp::export]]
 Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
-                                  int target_idx, int k) {
+                                  int target_idx,
+                                  int k,
+                                  const Rcpp::IntegerVector& lib) {
   // Get the number of rows and columns
-  std::size_t n_rows = embedding_space.nrow();
-  std::size_t n_cols = embedding_space.ncol();
+  size_t n_rows = embedding_space.nrow();
+  size_t n_cols = embedding_space.ncol();
 
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> embedding_vec(n_rows, std::vector<double>(n_cols));
@@ -292,7 +390,7 @@ Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
   }
 
   // Ensure target index is within valid range
-  if (target_idx < 0 || static_cast<std::size_t>(target_idx) >= n_rows) {
+  if (target_idx < 0 || static_cast<size_t>(target_idx) >= n_rows) {
     Rcpp::stop("target_idx is out of range.");
   }
 
@@ -301,14 +399,22 @@ Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
     Rcpp::stop("k must be greater than 0.");
   }
 
+  // Convert lib(1-based R index) to lib_std (0-based C++ index)
+  std::vector<int> lib_std;
+  size_t n_libsize = lib.size();
+  for (size_t i = 0; i < n_libsize; ++i) {
+    lib_std.push_back(lib[i] - 1); // Convert to 0-based index
+  }
+
   // Call the C++ function
-  std::vector<std::size_t> knn_indices = CppKNNIndice(embedding_vec,
-                                                      static_cast<std::size_t>(target_idx - 1),
-                                                      static_cast<std::size_t>(k));
+  std::vector<size_t> knn_indices = CppKNNIndice(embedding_vec,
+                                                 static_cast<size_t>(target_idx - 1),
+                                                 static_cast<size_t>(k),
+                                                 lib_std);
 
   // Convert result to Rcpp::IntegerVector (R uses 1-based indexing)
   Rcpp::IntegerVector result(knn_indices.size());
-  for (std::size_t i = 0; i < knn_indices.size(); ++i) {
+  for (size_t i = 0; i < knn_indices.size(); ++i) {
     result[i] = static_cast<int>(knn_indices[i]) + 1;  // Convert to 1-based index
   }
 
@@ -318,21 +424,23 @@ Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
 // Wrapper function to find k-nearest neighbors of a given index using a precomputed distance matrix
 // [[Rcpp::export]]
 Rcpp::IntegerVector RcppDistKNNIndice(const Rcpp::NumericMatrix& dist_mat,
-                                      int target_idx, int k) {
+                                      int target_idx,
+                                      int k,
+                                      const Rcpp::IntegerVector& lib) {
   // Get the number of rows and columns
-  std::size_t n_rows = dist_mat.nrow();
-  std::size_t n_cols = dist_mat.ncol();
+  size_t n_rows = dist_mat.nrow();
+  size_t n_cols = dist_mat.ncol();
 
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> distmat(n_rows, std::vector<double>(n_cols));
-  for (std::size_t i = 0; i < n_rows; ++i) {
-    for (std::size_t j = 0; j < n_cols; ++j) {
+  for (size_t i = 0; i < n_rows; ++i) {
+    for (size_t j = 0; j < n_cols; ++j) {
       distmat[i][j] = dist_mat(i, j);
     }
   }
 
   // Ensure target index is within valid range
-  if (target_idx < 0 || static_cast<std::size_t>(target_idx) >= n_rows) {
+  if (target_idx < 0 || static_cast<size_t>(target_idx) >= n_rows) {
     Rcpp::stop("target_idx is out of range.");
   }
 
@@ -341,14 +449,22 @@ Rcpp::IntegerVector RcppDistKNNIndice(const Rcpp::NumericMatrix& dist_mat,
     Rcpp::stop("k must be greater than 0.");
   }
 
+  // Convert lib(1-based R index) to lib_std (0-based C++ index)
+  std::vector<int> lib_std;
+  size_t n_libsize = lib.size();
+  for (size_t i = 0; i < n_libsize; ++i) {
+    lib_std.push_back(lib[i] - 1); // Convert to 0-based index
+  }
+
   // Call the C++ function
-  std::vector<std::size_t> knn_indices = CppDistKNNIndice(distmat,
-                                                          static_cast<std::size_t>(target_idx - 1),
-                                                          static_cast<std::size_t>(k));
+  std::vector<size_t> knn_indices = CppDistKNNIndice(distmat,
+                                                     static_cast<size_t>(target_idx - 1),
+                                                     static_cast<size_t>(k),
+                                                     lib_std);
 
   // Convert result to Rcpp::IntegerVector (R uses 1-based indexing)
   Rcpp::IntegerVector result(knn_indices.size());
-  for (std::size_t i = 0; i < knn_indices.size(); ++i) {
+  for (size_t i = 0; i < knn_indices.size(); ++i) {
     result[i] = static_cast<int>(knn_indices[i]) + 1;  // Convert to 1-based index
   }
 
@@ -441,4 +557,14 @@ Rcpp::List RcppDeLongPlacements(const Rcpp::NumericVector& cases,
     Rcpp::Named("X") = result.X,
     Rcpp::Named("Y") = result.Y
   );
+}
+
+// Rcpp wrapper function for SpatialBlockBootstrap
+// [[Rcpp::export]]
+Rcpp::IntegerVector RcppSpatialBlockBootstrap(
+    const Rcpp::IntegerVector& block,
+    unsigned int seed = 42){
+  std::vector<int> b_std = Rcpp::as<std::vector<int>>(block);
+  std::vector<int> result = SpatialBlockBootstrap(b_std,seed);
+  return Rcpp::wrap(result);
 }

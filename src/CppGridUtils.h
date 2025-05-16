@@ -2,11 +2,14 @@
 #define CppGridUtils_H
 
 #include <iostream>
+#include <stdexcept>
 #include <vector>
 #include <cmath>
 #include <limits>
 #include <numeric>
 #include <algorithm>
+#include <utility>
+#include "CppStats.h"
 
 /**
  * Converts a 2D grid position (row, column) to a 1D index in row-major order.
@@ -110,5 +113,72 @@ std::vector<std::vector<double>> GenGridEmbeddings(
     int E,
     int tau
 );
+
+/**
+ * @brief Perform grid-based symbolization on a 2D numeric matrix using local neighborhood statistics.
+ *
+ * This function calculates a symbolic representation (`fs`) for each non-NaN grid cell based on its
+ * k most similar neighbors in terms of value difference. The process expands radially (Queen's case)
+ * around each cell until at least k valid neighbors are collected. The final symbol for each cell
+ * reflects its local homogeneity pattern relative to the global median.
+ *
+ * The steps include:
+ * 1. Flatten the matrix to compute the global median `s_me` using all valid values.
+ * 2. For each grid cell:
+ *    - Find up to k nearest neighbors by increasing the neighborhood lag until k valid neighbors are found.
+ *    - Sort neighbors by absolute difference in value from the center cell.
+ *    - Select the top k values and compute a first indicator vector (`tau_s`) by comparing to global median.
+ *    - Compute a second indicator vector (`l_s`) by comparing `tau_s[i]` to the center cell’s own indicator (`taus`).
+ *    - Sum `l_s` to get a symbolic value `fs` representing the symbolic spatial consistency.
+ *
+ * @param mat A 2D grid (matrix) of values to be symbolized. `NaN` values are treated as missing.
+ * @param lib Valid library locations as (row,col) pairs
+ * @param pred Prediction locations to process as (row,col) pairs
+ * @param k The number of neighbors to consider for the symbolization of each cell.
+ *
+ * @return A flattened 1D vector representing the symbolic values of for prediction locations (row-major order).
+ *         Cells with no valid value or insufficient neighbors remain as `NaN`.
+ *
+ * Note:
+ * - Uses Queen's neighborhood definition for expanding neighborhoods (8 directions per layer).
+ * - Grid edges and missing values are handled robustly during expansion.
+ * - Useful for symbolic dynamics, pattern analysis, or spatial entropy estimation.
+ */
+std::vector<double> GenGridSymbolization(
+    const std::vector<std::vector<double>>& mat,
+    const std::vector<std::pair<int, int>>& lib,
+    const std::vector<std::pair<int, int>>& pred,
+    size_t k);
+
+/**
+ * @brief Divide a 2D grid (matrix) into approximately square or shaped blocks.
+ *
+ * This function partitions a 2D matrix into `b` blocks of roughly equal size.
+ * The matrix is represented as a vector of row vectors and assumed to be
+ * row-major (i.e., each inner vector represents a row of the matrix).
+ *
+ * The grid can be divided in different ways based on the `shape` parameter:
+ * - 1: Horizontal cuts (blocks are divided row-wise).
+ * - 2: Vertical cuts (blocks are divided column-wise).
+ * - 3: Radial cuts (blocks are divided in a radial pattern from the center).
+ *
+ * The grid is divided by first estimating a grid layout of `br` rows and `bc` columns
+ * such that br * bc >= b and the blocks are as square as possible for shapes 1 and 2.
+ * For radial cuts, the grid is divided into concentric rings and sectors.
+ *
+ * Each cell in the matrix is assigned a block ID ranging from 0 to b-1, stored in
+ * a 1D vector corresponding to the flattened row-major order of the matrix.
+ *
+ * Any leftover blocks are merged into the last block.
+ *
+ * @param mat A 2D grid represented as a vector of vectors (row-major).
+ * @param b   Number of blocks to divide the grid into.
+ * @param shape The shape of the cuts (1: horizontal, 2: vertical, 3: radial).
+ * @return A vector of size rows * cols where each element is the block label
+ *         assigned to the corresponding cell.
+ */
+std::vector<int> CppDivideGrid(
+    const std::vector<std::vector<double>>& mat,
+    int b, int shape = 3);
 
 #endif // CppGridUtils_H

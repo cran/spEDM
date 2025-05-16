@@ -12,7 +12,6 @@
 #include "spEDMDataStruct.h"
 #include <RcppThread.h>
 
-// [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppThread)]]
 
 /**
@@ -69,7 +68,6 @@ std::vector<double> PartialSimplex4Lattice(
       rho[0] = PearsonCor(target,target_pred,true);
       rho[1] = PartialCorTrivar(target,target_pred,con_pred,true,false);
     }
-
   } else {
     std::vector<std::vector<double>> con_pred(n_controls);
     std::vector<double> temp_pred;
@@ -87,8 +85,8 @@ std::vector<double> PartialSimplex4Lattice(
       rho[0] = PearsonCor(target,target_pred,true);
       rho[1] = PartialCor(target,target_pred,con_pred,true,false);
     }
-
   }
+
   return rho;
 }
 
@@ -151,7 +149,6 @@ std::vector<double> PartialSMap4Lattice(
       rho[0] = PearsonCor(target,target_pred,true);
       rho[1] = PartialCorTrivar(target,target_pred,con_pred,true,false);
     }
-
   } else {
     std::vector<std::vector<double>> con_pred(n_controls);
     std::vector<double> temp_pred;
@@ -169,7 +166,6 @@ std::vector<double> PartialSMap4Lattice(
       rho[0] = PearsonCor(target,target_pred,true);
       rho[1] = PartialCor(target,target_pred,con_pred,true,false);
     }
-
   }
 
   return rho;
@@ -240,7 +236,6 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
     x_xmap_y.emplace_back(lib_size, rho[0], rho[1]);
     return x_xmap_y;
   } else if (parallel_level == 0){
-
     // Precompute valid indices for the library
     std::vector<std::vector<int>> valid_lib_indices;
     for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
@@ -287,7 +282,6 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
 
     return x_xmap_y;
   } else {
-
     std::vector<PartialCorRes> x_xmap_y;
 
     for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
@@ -330,8 +324,8 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
  * - controls: Cross-sectional data of control variables (**stored by row**).
  * - nb_vec: A nested vector containing neighborhood information for lattice data.
  * - lib_sizes: A vector specifying different library sizes for SCPCM analysis.
- * - lib: A vector specifying the library indices (1-based in R, converted to 0-based in C++).
- * - pred: A vector specifying the prediction indices (1-based in R, converted to 0-based in C++).
+ * - lib: A vector of representing the indices of spatial units to be the library.
+ * - pred: A vector of representing the indices of spatial units to be predicted.
  * - Es: A vector specifying the embedding dimensions for attractor reconstruction using x and control variables.
  * - taus: A vector specifying the spatial lag steps for constructing lagged state-space vectors using x and control variables.
  * - b: A vector specifying the numbers of nearest neighbors used for prediction.
@@ -404,17 +398,17 @@ std::vector<std::vector<double>> SCPCM4Lattice(
 
   std::vector<int> possible_lib_indices;
   for (size_t i = 0; i < lib.size(); ++i) {
-    possible_lib_indices.push_back(lib[i]-1);
+    possible_lib_indices.push_back(lib[i]);
   }
   int max_lib_size = static_cast<int>(possible_lib_indices.size()); // Maximum lib size
 
   std::vector<bool> pred_indices(n, false);
   for (size_t i = 0; i < pred.size(); ++i) {
     // // Do not strictly exclude spatial units with embedded state-space vectors containing NaN values from participating in cross mapping.
-    // if (!checkOneDimVectorHasNaN(x_vectors[pred[i] - 1])){
-    //   pred_indices[pred[i] - 1] = true;
+    // if (!checkOneDimVectorHasNaN(x_vectors[pred[i]])){
+    //   pred_indices[pred[i]] = true;
     // }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    pred_indices[pred[i]] = true; // Convert to 0-based index
   }
 
   std::vector<int> unique_lib_sizes(lib_sizes.begin(), lib_sizes.end());
@@ -431,20 +425,20 @@ std::vector<std::vector<double>> SCPCM4Lattice(
   std::sort(unique_lib_sizes.begin(), unique_lib_sizes.end());
   unique_lib_sizes.erase(std::unique(unique_lib_sizes.begin(), unique_lib_sizes.end()), unique_lib_sizes.end());
 
-  // Initialize the result container
-  std::vector<PartialCorRes> x_xmap_y;
+  // Local results for each library
+  std::vector<std::vector<PartialCorRes>> local_results(unique_lib_sizes.size());
 
   if (parallel_level == 0){
     // Iterate over each library size
     if (progressbar) {
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
-      for (int lib_size : unique_lib_sizes) {
-        auto results = SCPCMSingle4Lattice(
+      for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
+        local_results[i] = SCPCMSingle4Lattice(
           x_vectors,
           y,
           controls,
           nb_vec,
-          lib_size,
+          unique_lib_sizes[i],
           max_lib_size,
           possible_lib_indices,
           pred_indices,
@@ -457,17 +451,16 @@ std::vector<std::vector<double>> SCPCM4Lattice(
           parallel_level,
           cumulate
         );
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
         bar++;
       }
     } else {
-      for (int lib_size : unique_lib_sizes) {
-        auto results = SCPCMSingle4Lattice(
+      for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
+        local_results[i] = SCPCMSingle4Lattice(
           x_vectors,
           y,
           controls,
           nb_vec,
-          lib_size,
+          unique_lib_sizes[i],
           max_lib_size,
           possible_lib_indices,
           pred_indices,
@@ -480,7 +473,6 @@ std::vector<std::vector<double>> SCPCM4Lattice(
           parallel_level,
           cumulate
         );
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
       }
     }
   } else {
@@ -489,7 +481,7 @@ std::vector<std::vector<double>> SCPCM4Lattice(
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        auto results = SCPCMSingle4Lattice(
+        local_results[i] = SCPCMSingle4Lattice(
           x_vectors,
           y,
           controls,
@@ -507,13 +499,12 @@ std::vector<std::vector<double>> SCPCM4Lattice(
           parallel_level,
           cumulate
         );
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
         bar++;
       }, threads_sizet);
     } else {
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        auto results = SCPCMSingle4Lattice(
+        local_results[i] = SCPCMSingle4Lattice(
           x_vectors,
           y,
           controls,
@@ -531,9 +522,16 @@ std::vector<std::vector<double>> SCPCM4Lattice(
           parallel_level,
           cumulate
         );
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
       }, threads_sizet);
     }
+  }
+
+  // Initialize the result container
+  std::vector<PartialCorRes> x_xmap_y;
+
+  // Merge all local results into the final result
+  for (const auto& local_result : local_results) {
+    x_xmap_y.insert(x_xmap_y.end(), local_result.begin(), local_result.end());
   }
 
   // Group by the first int and store second and third values as pairs

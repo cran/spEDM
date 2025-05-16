@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include <numeric> // for std::accumulate
 #include <limits>  // for std::numeric_limits
 #include "DeLongPlacements.h"
@@ -23,8 +24,21 @@ unsigned long long CppFactorial(unsigned int n);
 
 unsigned long long CppCombine(unsigned int n, unsigned int k);
 
+double CppDigamma(double x);
+
+double CppLog(double x, double base = 10);
+
+double CppMedian(const std::vector<double>& vec,
+                 bool NA_rm = false);
+
 double CppMean(const std::vector<double>& vec,
                bool NA_rm = false);
+
+double CppMin(const std::vector<double>& vec,
+              bool NA_rm = false);
+
+double CppMax(const std::vector<double>& vec,
+              bool NA_rm = false);
 
 double CppSum(const std::vector<double>& vec,
               bool NA_rm = false);
@@ -94,20 +108,49 @@ double CppDistance(const std::vector<double>& vec1,
                    bool L1norm = false,
                    bool NA_rm = false);
 
+double CppChebyshevDistance(const std::vector<double>& vec1,
+                            const std::vector<double>& vec2,
+                            bool NA_rm = false);
+
+std::vector<double> CppKNearestDistance(const std::vector<double>& vec, size_t k,
+                                        bool L1norm = false, bool NA_rm = false);
+
+std::vector<double> CppMatKNearestDistance(const std::vector<std::vector<double>>& mat,
+                                           size_t k, bool NA_rm = false);
+
 std::vector<std::vector<double>> CppMatDistance(
     const std::vector<std::vector<double>>& mat,
     bool L1norm = false,
     bool NA_rm = false);
 
-std::vector<std::size_t> CppKNNIndice(
-    const std::vector<std::vector<double>>& embedding_space,
-    std::size_t target_idx,
-    std::size_t k);
+std::vector<std::vector<double>> CppMatChebyshevDistance(
+    const std::vector<std::vector<double>>& mat,
+    bool NA_rm = false);
 
-std::vector<std::size_t> CppDistKNNIndice(
+std::vector<int> CppNeighborsNum(
+    const std::vector<double>& vec,
+    const std::vector<double>& radius,
+    bool equal = false,
+    bool L1norm = false,
+    bool NA_rm = false);
+
+std::vector<int> CppMatNeighborsNum(
+    const std::vector<std::vector<double>>& mat,
+    const std::vector<double>& radius,
+    bool equal = false,
+    bool NA_rm = false);
+
+std::vector<size_t> CppKNNIndice(
+    const std::vector<std::vector<double>>& embedding_space,
+    size_t target_idx,
+    size_t k,
+    const std::vector<int>& lib);
+
+std::vector<size_t> CppDistKNNIndice(
     const std::vector<std::vector<double>>& dist_mat,
-    std::size_t target_idx,
-    std::size_t k);
+    size_t target_idx,
+    size_t k,
+    const std::vector<int>& lib);
 
 std::vector<std::vector<std::vector<double>>> CppSVD(const std::vector<std::vector<double>>& X);
 

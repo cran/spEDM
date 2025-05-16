@@ -44,7 +44,7 @@
 
 \item{tau}{(optional) Step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors used for prediction.}
+\item{k}{(optional) Number of nearest neighbors used in prediction.}
 
 \item{nb}{(optional) The neighbours list.}
 
@@ -63,8 +63,11 @@ A list
 simplex forecast
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-simplex(columbus,target = "CRIME")
+simplex(columbus,"crime")
 }
+}
+\references{
+Sugihara G. and May R. 1990. Nonlinear forecasting as a way of distinguishing chaos from measurement error in time series. Nature, 344:734-741.
 }

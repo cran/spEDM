@@ -1,0 +1,155 @@
+---
+title: "Introduction to the spEDM package"
+author: "Wenbo Lv"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{spEDM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##",
+  fig.path = "man/figures/pkgintro/"
+)
+```
+
+## Overview
+
+The *spEDM* package is an open-source, computationally efficient toolkit designed to provide a unified API for **Spatial Empirical Dynamic Modeling**. It supports a suite of prediction-based causal inference algorithms, including *spatial granger causality test*, *spatial state-space reconstruction*, and *geographically convergent cross mapping*.
+
+To support both learning and practical application, *spEDM* offers four carefully curated spatial cross-sectional datasets, each paired with a detailed example showcasing the use of key algorithms in the package.
+
+## Installation
+
+Install the stable version from [CRAN](https://CRAN.R-project.org/package=spEDM) with:
+
+```r
+install.packages("spEDM", dep = TRUE)
+```
+
+Alternatively, you can install the development version from [R-universe](https://stscl.r-universe.dev/spEDM) with:
+
+```r
+install.packages("spEDM",
+                 repos = c("https://stscl.r-universe.dev",
+                           "https://cloud.r-project.org"),
+                 dep = TRUE)
+```
+
+## Data
+
+The *spEDM* package includes four illustrative datasets with well-known causation to demonstrate key functionalities:
+
+1. **Columbus, OH** dataset — A classic spatial dataset widely used in spatial econometrics, included here for benchmarking and demonstration purposes.
+   *Data files*: `columbus.gpkg`
+
+2. **Population density and its potential drivers in mainland China** — A county-level dataset capturing population density alongside relevant socio-environmental drivers.
+   *Data files*: `popd.csv`, `popd_nb.gal`
+
+3. **Soil copper (Cu) contamination** — A raster-based dataset representing soil Cu concentrations, with associated layers on nighttime light intensity and industrial density, useful for exploring the influence of human activities on environmental pollution.
+   *Data files*: `cu.tif`
+
+4. **Farmland NPP and related variables** — A raster dataset capturing net primary productivity (NPP) of farmland, key climatic variables, elevation, and human activity footprints across mainland China, suitable for analyzing the interactions between agricultural productivity, environmental conditions, and human activities.
+   *Data files*: `npp.tif`
+
+These datasets can be loaded as shown below, including basic visualization for raster data:
+
+### Columbus OH spatial analysis dataset
+
+```{r columbus}
+library(spEDM)
+
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus
+```
+
+### County-level population density in mainland China
+
+```{r popd}
+library(spEDM)
+
+popd_nb = spdep::read.gal(system.file("case/popd_nb.gal",package = "spEDM"))
+popd_nb
+
+popd = readr::read_csv(system.file("case/popd.csv",package = "spEDM"))
+popd
+
+popd_sf = sf::st_as_sf(popd, coords = c("x","y"), crs = 4326)
+popd_sf
+```
+
+### Soil Cu heavy metal contamination
+
+```{r cu,fig.width=6.55,fig.height=2.60,fig.dpi=100,fig.cap=knitr::asis_output("**Figure 1**. Maps of soil Cu contamination, the density of industrial pollutants and nightlight.")}
+library(spEDM)
+
+cu = terra::rast(system.file("case/cu.tif", package="spEDM"))
+cu
+
+options(terra.pal = grDevices::terrain.colors(100,rev = T))
+terra::plot(cu, nc = 3,
+            mar = rep(0.1,4),
+            oma = rep(0.1,4),
+            axes = FALSE,
+            legend = FALSE)
+```
+
+### Farmland NPP and related variables in mainland China
+
+```{r npp,fig.width=4.75,fig.height=5.55,fig.dpi=100,fig.cap=knitr::asis_output("**Figure 2**. Maps of farmland NPP and climate factors.")}
+library(spEDM)
+npp = terra::rast(system.file("case/npp.tif", package = "spEDM"))
+npp
+
+# directly visualize the raster layer
+options(terra.pal = grDevices::terrain.colors(100,rev = T))
+terra::plot(npp, nc = 2,
+            axes = FALSE,
+            legend = FALSE)
+```
+
+```{r npp2,fig.width=4.75,fig.height=7.25,fig.dpi=100,fig.cap=knitr::asis_output("**Figure 3**. Maps of farmland NPP and climate factors.")}
+# add China's land borders and the ten-dash line in the South China Sea
+
+# install.packages("geocn",
+#                  repos = c("https://stscl.r-universe.dev",
+#                            "https://cloud.r-project.org"),
+#                  dep = TRUE)
+
+cn_border = geocn::load_cn_border() |>
+  terra::vect() |>
+  terra::project(terra::crs(npp))
+
+par(mfrow = c(3, 2))
+for (i in 1:terra::nlyr(npp)) {
+  terra::plot(cn_border, lwd = 1.5, main = names(npp)[i],
+              col = "grey40", axes = FALSE)
+  terra::plot(npp[[i]], axes = FALSE,
+              legend = FALSE, add = TRUE)
+}
+```
+
+## Usage
+
+Users can refer to several additional vignettes for more detailed examples of using *spEDM*, namely:
+
+| *Model* | *Vignette* |
+|---------------------|---------------------|
+| State Space Reconstruction | [SSR](https://stscl.github.io/spEDM/articles/SSR.html) |
+| Geographical Convergent Cross Mapping | [GCCM](https://stscl.github.io/spEDM/articles/GCCM.html) |
+| Geographical Cross Mapping Cardinality | [GCMC](https://stscl.github.io/spEDM/articles/GCMC.html) |
+| Spatial Causality Test |[SCT](https://stscl.github.io/spEDM/articles/SCT.html) |
+
+## References
+
+Takens, F. (1981). Detecting strange attractors in turbulence. Dynamical Systems and Turbulence, Warwick 1980, 366–381. https://doi.org/10.1007/bfb0091924
+
+Mañé, R. (1981). On the dimension of the compact invariant sets of certain non-linear maps. Dynamical Systems and Turbulence, Warwick 1980, 230–242. https://doi.org/10.1007/bfb0091916
+
+Herrera, M., Mur, J., & Ruiz, M. (2016). Detecting causal relationships between spatial processes. Papers in Regional Science, 95(3), 577–595. https://doi.org/10.1111/pirs.12144
+
+Gao, B., Yang, J., Chen, Z., Sugihara, G., Li, M., Stein, A., Kwan, M.-P., & Wang, J. (2023). Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nature Communications, 14(1). https://doi.org/10.1038/s41467-023-41619-6

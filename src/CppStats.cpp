@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include <numeric> // for std::accumulate
 #include <limits>  // for std::numeric_limits
 #include "DeLongPlacements.h"
@@ -90,6 +91,80 @@ unsigned long long CppCombine(unsigned int n, unsigned int k) {
   return result;
 }
 
+/**
+ * @brief Computes the digamma (ψ) function approximation for a given input x.
+ *
+ * This function provides an approximation of the digamma function, which is
+ * the first derivative of the logarithm of the gamma function. The implementation
+ * follows an asymptotic expansion for large values of x and applies a recurrence
+ * relation to shift smaller values upward.
+ *
+ * The approach consists of:
+ * - A loop to increase x if it is less than or equal to 5, adjusting the result accordingly.
+ * - An asymptotic series expansion for the digamma function when x is sufficiently large.
+ * - The final result is computed as a sum of the logarithm term, correction terms,
+ *   and accumulated adjustments from the recurrence relation.
+ *
+ * @param x The input value for which the digamma function is evaluated.
+ * @return The approximate digamma function value ψ(x).
+ */
+double CppDigamma(double x) {
+  double a = 0;
+  while (x <= 5) {
+    a -= 1 / x;
+    x += 1;
+  }
+
+  double b = 1 / (x * x);
+  double c = b * (-1/12.0 +
+             b * (1/120.0 +
+             b * (-1/252.0 +
+             b * (1/240.0 +
+             b * (-1/132.0 +
+             b * (691/32760.0 +
+             b * (-1/12.0 +
+             b * 3617/8160.0)))))));
+
+  return (a + std::log(x) - 0.5 / x + c);
+}
+
+// Function to calculate the logarithm of x with the specified base
+double CppLog(double x, double base = 10) {
+  return std::log(x) / std::log(base);
+}
+
+// Function to calculate the median of a vector.
+double CppMedian(const std::vector<double>& vec, bool NA_rm = false) {
+  std::vector<double> filtered_vec;
+  for (const double& value : vec) {
+    if (std::isnan(value)) {
+      if (!NA_rm) {
+        // Return NaN immediately if not removing NaNs
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+      // else skip the NaN
+    } else {
+      filtered_vec.push_back(value);
+    }
+  }
+
+  // If no valid values remain, return NaN
+  if (filtered_vec.empty()) return std::numeric_limits<double>::quiet_NaN();
+
+  // Sort the filtered vector
+  std::sort(filtered_vec.begin(), filtered_vec.end());
+
+  // Compute the median
+  size_t n = filtered_vec.size();
+  if (n % 2 == 0) {
+    // If even, return the average of the two middle values
+    return (filtered_vec[n / 2 - 1] + filtered_vec[n / 2]) / 2.0;
+  } else {
+    // If odd, return the middle value
+    return filtered_vec[n / 2];
+  }
+}
+
 // Function to calculate the mean of a vector, ignoring NA values
 double CppMean(const std::vector<double>& vec, bool NA_rm = false) {
   double sum = 0.0;
@@ -101,6 +176,52 @@ double CppMean(const std::vector<double>& vec, bool NA_rm = false) {
     }
   }
   return count > 0 ? sum / count : std::numeric_limits<double>::quiet_NaN();
+}
+
+// Function to calculate the minimum of a vector, ignoring NA values if NA_rm is true
+double CppMin(const std::vector<double>& vec, bool NA_rm = false) {
+  double min_val = std::numeric_limits<double>::infinity();
+  bool found_valid = false;
+
+  for (const auto& value : vec) {
+    if (isNA(value)) {
+      if (!NA_rm) {
+        // Return NaN immediately if NA_rm is false and we hit a NaN
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+      continue;  // skip if NA_rm is true
+    }
+
+    if (!found_valid || value < min_val) {
+      min_val = value;
+      found_valid = true;
+    }
+  }
+
+  // Return NaN if no valid value was found
+  return found_valid ? min_val : std::numeric_limits<double>::quiet_NaN();
+}
+
+
+// Function to calculate the maximum of a vector, ignoring NA values if NA_rm is true
+double CppMax(const std::vector<double>& vec, bool NA_rm = false) {
+  double max_val = -std::numeric_limits<double>::infinity();
+  bool found_valid = false;
+
+  for (const auto& value : vec) {
+    if (isNA(value)) {
+      if (!NA_rm) return std::numeric_limits<double>::quiet_NaN();
+      continue;
+    }
+
+    if (!found_valid || value > max_val) {
+      max_val = value;
+      found_valid = true;
+    }
+  }
+
+  // Return NaN if no valid value was found
+  return found_valid ? max_val : std::numeric_limits<double>::quiet_NaN();
 }
 
 // Function to calculate the sum of a vector, ignoring NA values if NA_rm is true
@@ -546,13 +667,62 @@ double PartialCorTrivar(const std::vector<double>& y,
   return res;
 }
 
-// Function to calculate the significance of a (partial) correlation coefficient
+/**
+ * Calculates the significance (two-sided p-value) of a (partial) correlation coefficient.
+ *
+ * This function computes the t-statistic for a given (partial) correlation coefficient `r`
+ * and returns the corresponding two-tailed p-value under the null hypothesis that the true
+ * correlation is zero.
+ *
+ * The t-statistic is calculated using:
+ *     t = r * sqrt((n - k - 2) / (1 - r^2))
+ * where:
+ *     - r is the correlation coefficient
+ *     - n is the sample size
+ *     - k is the number of control variables (0 for simple correlation)
+ *
+ * The degrees of freedom used is (n - k - 2). The resulting two-sided p-value is computed
+ * using the cumulative distribution function of the t-distribution.
+ *
+ * @param r The (partial) correlation coefficient.
+ * @param n The number of observations.
+ * @param k The number of control variables (default = 0).
+ * @return The two-sided p-value.
+ */
 double CppCorSignificance(double r, int n, int k = 0) {
-  double t = r * std::sqrt((n - k - 2) / (1 - r * r));
-  return (1 - R::pt(t, n - 2, true, false)) * 2;
+  double df = n - k - 2;
+  double t = r * std::sqrt(df / (1 - r * r));
+
+  double pvalue = (1 - R::pt(t, df, true, false)) * 2;
+  // Ensure p value is within valid range [-1, 1]
+  if (pvalue < 0) pvalue = 0;
+  if (pvalue > 1.0) pvalue = 1.0;
+
+  return pvalue;
 }
 
-// Function to calculate the confidence interval for a (partial) correlation coefficient
+/**
+ * Calculates the confidence interval for a (partial) correlation coefficient.
+ *
+ * This function uses Fisher's z-transformation to compute the confidence interval
+ * for a correlation or partial correlation coefficient `r`. The transformation
+ * stabilizes the variance of `r` for more accurate interval estimation.
+ *
+ * The steps include:
+ *   1. Transforming r using Fisher's z.
+ *   2. Computing the standard error of z.
+ *   3. Determining the critical z-value for the specified confidence level.
+ *   4. Calculating the confidence interval in the z-domain.
+ *   5. Back-transforming to get the interval in the correlation domain.
+ *
+ * The degrees of freedom are adjusted for partial correlation with `k` control variables.
+ *
+ * @param r The (partial) correlation coefficient.
+ * @param n The number of observations.
+ * @param k The number of control variables (default = 0; use 0 for simple correlation).
+ * @param level The significance level α for the confidence interval (default = 0.05).
+ * @return A vector containing the upper and lower bounds of the confidence interval.
+ */
 std::vector<double> CppCorConfidence(double r, int n, int k = 0,
                                      double level = 0.05) {
   // Calculate the Fisher's z-transformation
@@ -698,11 +868,13 @@ std::vector<double> CppCMCTest(const std::vector<double>& cases,
   // Compute the Z-score for the p-value
   double z = (theta - 0.5) / std::sqrt(S);
 
-  // // Compute the two-tailed p-value (AUC ≠ 0.5)
-  // double p_value = 2 * R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
+  // Compute the two-tailed p-value (AUC ≠ 0.5)
+  double p_value = 2 * R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
 
-  // Compute the one-sided test (right-tailed) p-value (AUC > 0.5)
-  double p_value = R::pnorm(z, 0.0, 1.0, true, false);
+  // // Compute the one-sided test (right-tailed) p-value (AUC > 0.5)
+  // // double p_value = R::pnorm(z, 0.0, 1.0, true, false);
+  // // Set theta to negative when sample size is small to mitigate sample size effect`
+  // double p_value = R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
 
   // Compute the confidence interval using R::qnorm
   double ci_lower = R::qnorm(level / 2, theta, std::sqrt(S), true, false);
@@ -742,11 +914,11 @@ double CppDistance(const std::vector<double>& vec1,
 
   double dist_res = 0.0;
   if (L1norm) {
-    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
+    for (size_t i = 0; i < clean_v1.size(); ++i) {
       dist_res += std::abs(clean_v1[i] - clean_v2[i]);
     }
   } else {
-    for (std::size_t i = 0; i < clean_v1.size(); ++i) {
+    for (size_t i = 0; i < clean_v1.size(); ++i) {
       dist_res += (clean_v1[i] - clean_v2[i]) * (clean_v1[i] - clean_v2[i]);
     }
     dist_res = std::sqrt(dist_res);
@@ -755,13 +927,144 @@ double CppDistance(const std::vector<double>& vec1,
   return dist_res;
 }
 
+// Function to compute the chebyshev distance between two vectors:
+double CppChebyshevDistance(const std::vector<double>& vec1,
+                            const std::vector<double>& vec2,
+                            bool NA_rm = false){
+  // Handle NA values
+  std::vector<double> clean_v1, clean_v2;
+  for (size_t i = 0; i < vec1.size(); ++i) {
+    bool is_na = isNA(vec1[i]) || isNA(vec2[i]);
+    if (is_na) {
+      if (!NA_rm) {
+        return std::numeric_limits<double>::quiet_NaN(); // Return NaN if NA_rm is false
+      }
+    } else {
+      clean_v1.push_back(vec1[i]);
+      clean_v2.push_back(vec2[i]);
+    }
+  }
+
+  // If no valid data, return NaN
+  if (clean_v1.empty()) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  double dist_res = 0.0;
+  for (size_t i = 0; i < clean_v1.size(); ++i){
+    if (dist_res < std::abs(clean_v1[i] - clean_v2[i])){
+      dist_res = std::abs(clean_v1[i] - clean_v2[i]);
+    }
+  }
+
+  return dist_res;
+}
+
+// Function to compute the k-th nearest distance for a vector.
+std::vector<double> CppKNearestDistance(const std::vector<double>& vec, size_t k,
+                                        bool L1norm = false, bool NA_rm = false) {
+  size_t n = vec.size();
+  std::vector<double> result(n,std::numeric_limits<double>::quiet_NaN());  // Vector to store the k-th nearest distances
+
+  for (size_t i = 0; i < n; ++i) {
+    if (std::isnan(vec[i])) {
+      continue;  // Skip if NA is encountered
+    }
+
+    std::vector<double> distances;
+    distances.reserve(n);  // Reserve space to avoid repeated allocations
+
+    for (size_t j = 0; j < n; ++j) {
+      if (std::isnan(vec[j])) {
+        if (!NA_rm) {
+          distances.push_back(std::numeric_limits<double>::quiet_NaN());
+          continue;  // Skip if NA is encountered and NA_rm is false
+        } else {
+          continue;  // Skip if NA is encountered and NA_rm is true
+        }
+      }
+
+      double dist_res;
+      if (L1norm) {
+        dist_res = std::abs(vec[i] - vec[j]);  // Manhattan distance (L1)
+      } else {
+        double diff = vec[i] - vec[j];
+        dist_res = diff * diff;  // Squared Euclidean distance (L2 squared)
+      }
+      distances.push_back(dist_res);
+    }
+
+    // Use nth_element to partially sort the distances up to the k-th element
+    // This is more efficient than fully sorting the entire vector.
+    if (k < distances.size()) {
+      std::nth_element(distances.begin(), distances.begin() + k, distances.end());
+      result[i] = distances[k];  // (k+1)-th smallest distance (exclude itself)
+    } else {
+      result[i] = *std::max_element(distances.begin(), distances.end());  // Handle case where k is out of bounds
+    }
+
+    // If using Euclidean distance, take the square root of the k-th nearest squared distance
+    if (!L1norm) {
+      result[i] = std::sqrt(result[i]);
+    }
+  }
+
+  return result;
+}
+
+// Function to compute the k-th nearest Chebyshev distance for each sample in a matrix
+std::vector<double> CppMatKNearestDistance(const std::vector<std::vector<double>>& mat,
+                                           size_t k, bool NA_rm = false) {
+  size_t n = mat.size();
+  std::vector<double> result(n, std::numeric_limits<double>::quiet_NaN());
+
+  for (size_t i = 0; i < n; ++i) {
+    const auto& vec_i = mat[i];
+
+    if (std::any_of(vec_i.begin(), vec_i.end(), [](double val) { return std::isnan(val); }) && !NA_rm) {
+      continue;  // Skip if NA and NA_rm is false
+    }
+
+    std::vector<double> distances;
+    distances.reserve(n - 1);
+
+    for (size_t j = 0; j < n; ++j) {
+      if (i == j) continue;
+
+      double dist = CppChebyshevDistance(vec_i, mat[j], NA_rm);
+      if (std::isnan(dist)) {
+        if (!NA_rm) {
+          distances.clear();
+          break;
+        } else {
+          continue;
+        }
+      }
+
+      distances.push_back(dist);
+    }
+
+    if (distances.empty()) continue;
+
+    if (k < distances.size()) {
+      std::nth_element(distances.begin(), distances.begin() + k, distances.end());
+      result[i] = distances[k];
+    } else {
+      result[i] = *std::max_element(distances.begin(), distances.end());  // fallback if not enough neighbors
+    }
+  }
+
+  return result;
+}
+
 // Function to compute distance for a matrix:
 std::vector<std::vector<double>> CppMatDistance(
     const std::vector<std::vector<double>>& mat,
     bool L1norm = false,
     bool NA_rm = false){
   size_t n = mat.size();
-  std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, 0.0));
+  // std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, std::numeric_limits<double>::quiet_NaN()));
+  std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, 0));
 
   // Compute distance between every pair of rows
   for (size_t i = 0; i < n; ++i) {
@@ -775,17 +1078,114 @@ std::vector<std::vector<double>> CppMatDistance(
   return distance_matrix;
 }
 
-// Function to find k-nearest neighbors of a given index in the embedding space
-std::vector<std::size_t> CppKNNIndice(
-    const std::vector<std::vector<double>>& embedding_space,
-    std::size_t target_idx,
-    std::size_t k)
-{
-  std::size_t n = embedding_space.size();
-  std::vector<std::pair<double, std::size_t>> distances;
+// Function to compute chebyshev distance for a matrix:
+std::vector<std::vector<double>> CppMatChebyshevDistance(
+    const std::vector<std::vector<double>>& mat,
+    bool NA_rm = false){
+  size_t n = mat.size();
+  // std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, std::numeric_limits<double>::quiet_NaN()));
+  std::vector<std::vector<double>> distance_matrix(n, std::vector<double>(n, 0));
 
-  for (std::size_t i = 0; i < n; ++i) {
-    if (i == target_idx) continue;
+  // Compute distance between every pair of rows
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = i+1; j < n; ++j) {  // <-- Corrected: increment j
+      double distv = CppChebyshevDistance(mat[i], mat[j], NA_rm);
+      distance_matrix[i][j] = distv;  // Correctly assign distance to upper triangle
+      distance_matrix[j][i] = distv;  // Mirror the value to the lower triangle
+      // distance_matrix[i][j] = distance_matrix[j][i] = CppDistance(mat[i],mat[j],L1norm,NA_rm);
+    }
+  }
+  return distance_matrix;
+}
+
+// Function to compute the number of neighbors for each point (in a vector) within a given radius.
+std::vector<int> CppNeighborsNum(
+    const std::vector<double>& vec,     // A vector of 1D points.
+    const std::vector<double>& radius,  // A vector where radius[i] specifies the search radius for the i-th point.
+    bool equal = false,                 // Flag to include points at exactly the radius distance (default: false).
+    bool L1norm = false,                // Flag to use Manhattan distance or Euclidean distance
+    bool NA_rm = false                  // Whether to remove the nan value in cpp
+) {
+  size_t N = vec.size();
+  std::vector<int> NAx(N, 0); // Initialize neighbor counts to 0
+
+  // Iterate over all pairs of points (i, j)
+  for (size_t i = 0; i < N; ++i) {
+    if (std::isnan(vec[i])) {
+      continue;  // Skip if NA is encountered
+    }
+
+    for (size_t j = 0; j < N; ++j) {
+      if (i != j) { // Skip self-comparison
+        if (std::isnan(vec[j])) {
+          continue;  // Skip if NA is encountered
+        }
+
+        double distance;
+        if (L1norm) {
+          distance = std::abs(vec[i] - vec[j]);  // Manhattan distance (L1)
+        } else {
+          double diff = vec[i] - vec[j];
+          distance = std::sqrt(diff * diff);  // Euclidean distance (L2)
+        }
+
+        // Check neighbor condition based on the 'equal' flag
+        if (!equal && distance < radius[i]) {
+          NAx[i]++;
+        } else if (equal && distance <= radius[i]) {
+          NAx[i]++;
+        }
+      }
+    }
+  }
+
+  return NAx;
+}
+
+// Function to compute the number of neighbors for each point (in a matrix) within a given radius.
+// use the chebyshev distance
+std::vector<int> CppMatNeighborsNum(
+    const std::vector<std::vector<double>>& mat,     // A vector of 2D points.
+    const std::vector<double>& radius,               // A vector where radius[i] specifies the search radius for the i-th point.
+    bool equal = false,                              // Flag to include points at exactly the radius distance (default: false).
+    bool NA_rm = false                               // Whether to remove the nan value in cpp
+) {
+  size_t N = mat.size();
+  std::vector<int> NAx(N, 0); // Initialize neighbor counts to 0
+
+  std::vector<std::vector<double>> dist = CppMatChebyshevDistance(mat,NA_rm);
+
+  // Iterate over all pairs of points (i, j)
+  for (size_t i = 0; i < N; ++i) {
+    for (size_t j = 0; j < N; ++j) {
+      if (i != j) { // Skip self-comparison
+        double distance = dist[i][j];
+        // Check neighbor condition based on the 'equal' flag
+        if (!equal && distance < radius[i]) {
+          NAx[i]++;
+        } else if (equal && distance <= radius[i]) {
+          NAx[i]++;
+        }
+      }
+    }
+  }
+
+  return NAx;
+}
+
+// Function to find k-nearest neighbors of a given index in the embedding space
+// The `lib` parameter specifies the indices from which the k-nearest neighbors should be selected
+std::vector<size_t> CppKNNIndice(
+    const std::vector<std::vector<double>>& embedding_space,  // Embedding space containing vectors
+    size_t target_idx,                                        // Target index for which to find neighbors
+    size_t k,                                                 // Number of nearest neighbors to find
+    const std::vector<int>& lib)                              // Indices from which to select neighbors
+{
+  std::vector<std::pair<double, size_t>> distances;
+
+  // Iterate through the specified library indices to collect valid distances
+  for (std::size_t i : lib) {
+    if (i == target_idx) continue;  // Skip the target index itself
 
     // Check if the entire embedding_space[i] is NaN
     if (std::all_of(embedding_space[i].begin(), embedding_space[i].end(),
@@ -793,6 +1193,7 @@ std::vector<std::size_t> CppKNNIndice(
       continue;
     }
 
+    // Compute the distance between the target and the current index
     double dist = CppDistance(embedding_space[target_idx], embedding_space[i], false, true);
 
     // Skip NaN distances
@@ -804,6 +1205,7 @@ std::vector<std::size_t> CppKNNIndice(
   // Partial sort to get k-nearest neighbors, excluding NaN distances
   std::partial_sort(distances.begin(), distances.begin() + std::min(k, distances.size()), distances.end());
 
+  // Extract the indices of the k-nearest neighbors
   std::vector<std::size_t> neighbors;
   for (std::size_t i = 0; i < k && i < distances.size(); ++i) {
     neighbors.push_back(distances[i].second);
@@ -813,16 +1215,17 @@ std::vector<std::size_t> CppKNNIndice(
 }
 
 // Function to find k-nearest neighbors of a given index using a precomputed distance matrix
-std::vector<std::size_t> CppDistKNNIndice(
+// The `lib` parameter specifies the indices from which the k-nearest neighbors should be selected
+std::vector<size_t> CppDistKNNIndice(
     const std::vector<std::vector<double>>& dist_mat,  // Precomputed n * n distance matrix
-    std::size_t target_idx,                            // Target index for which to find neighbors
-    std::size_t k)                                     // Number of nearest neighbors to find
+    size_t target_idx,                                 // Target index for which to find neighbors
+    size_t k,                                          // Number of nearest neighbors to find
+    const std::vector<int>& lib)                       // Indices from which to select neighbors
 {
-  std::size_t n = dist_mat.size();
-  std::vector<std::pair<double, std::size_t>> distances;
+  std::vector<std::pair<double, size_t>> distances;
 
-  // Iterate through the distance matrix to collect valid distances
-  for (std::size_t i = 0; i < n; ++i) {
+  // Iterate through the specified library indices to collect valid distances
+  for (size_t i : lib) {
     if (i == target_idx) continue;  // Skip the target index itself
 
     double dist = dist_mat[target_idx][i];

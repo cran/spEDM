@@ -30,7 +30,12 @@ A matrix
 embedding spatial cross sectional data
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
-embedded(columbus,target = "CRIME", E = 3)
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+v = embedded(columbus,"crime")
+v[1:5,]
+
+cu = terra::rast(system.file("case/cu.tif", package="spEDM"))
+r = embedded(cu,"cu")
+r[1:5,]
 
 }

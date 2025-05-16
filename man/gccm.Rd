@@ -52,17 +52,17 @@
 
 \item{effect}{Name of effect variable.}
 
-\item{libsizes}{A vector of library sizes to use.}
+\item{libsizes}{Number of spatial units used in prediction.}
 
 \item{E}{(optional) Dimensions of the embedding.}
 
 \item{tau}{(optional) Step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors to use for prediction.}
+\item{k}{(optional) Number of nearest neighbors used in prediction.}
 
 \item{theta}{(optional) Weighting parameter for distances, useful when \code{algorithm} is \code{smap}.}
 
-\item{algorithm}{(optional) Algorithm used for prediction.}
+\item{algorithm}{(optional) Algorithm used in prediction.}
 
 \item{lib}{(optional) Libraries indices.}
 
@@ -74,28 +74,31 @@
 
 \item{parallel.level}{(optional) Level of parallelism, \code{low} or \code{high}.}
 
-\item{bidirectional}{(optional) whether to identify bidirectional causal associations.}
+\item{bidirectional}{(optional) whether to examine bidirectional causality.}
 
 \item{trend.rm}{(optional) Whether to remove the linear trend.}
 
-\item{progressbar}{(optional) whether to print the progress bar.}
+\item{progressbar}{(optional) whether to show the progress bar.}
 }
 \value{
 A list
 \describe{
-\item{\code{xmap}}{cross mapping prediction results}
+\item{\code{xmap}}{cross mapping results}
 \item{\code{varname}}{names of causal and effect variable}
-\item{\code{bidirectional}}{whether to identify bidirectional causal associations}
+\item{\code{bidirectional}}{whether to examine bidirectional causality}
 }
 }
 \description{
 geographical convergent cross mapping
 }
 \examples{
-columbus = sf::read_sf(system.file("shapes/columbus.gpkg", package="spData"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-g = gccm(columbus,"HOVAL","CRIME",libsizes = seq(5,45,5),E = 6)
+g = gccm(columbus,"hoval","crime",libsizes = seq(5,45,5),E = 6)
 g
 plot(g, ylimits = c(0,0.85))
 }
+}
+\references{
+Gao, B., Yang, J., Chen, Z. et al. Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nat Commun 14, 5875 (2023).
 }

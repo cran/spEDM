@@ -11,7 +11,6 @@
 #include "SMap.h"
 #include <RcppThread.h>
 
-// [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::depends(RcppThread)]]
 
 /*
@@ -69,7 +68,6 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
     x_xmap_y.emplace_back(lib_size, rho);
     return x_xmap_y;
   } else if (parallel_level == 0){
-
     // Precompute valid indices for the library
     std::vector<std::vector<int>> valid_lib_indices;
     for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
@@ -116,7 +114,6 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
 
     return x_xmap_y;
   } else {
-
     std::vector<std::pair<int, double>> x_xmap_y;
 
     for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
@@ -158,8 +155,8 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
  * - y: Spatial cross-section series used as the target variable (**cross mapping to**).
  * - nb_vec: A nested vector containing neighborhood information for lattice data.
  * - lib_sizes: A vector specifying different library sizes for GCCM analysis.
- * - lib: A vector specifying the library indices (1-based in R, converted to 0-based in C++).
- * - pred: A vector specifying the prediction indices (1-based in R, converted to 0-based in C++).
+ * - lib: A vector of representing the indices of spatial units to be the library.
+ * - pred: A vector of representing the indices of spatial units to be predicted.
  * - E: Embedding dimension for attractor reconstruction.
  * - tau: the step of spatial lags for prediction.
  * - b: Number of nearest neighbors used for prediction.
@@ -209,17 +206,17 @@ std::vector<std::vector<double>> GCCM4Lattice(
 
   std::vector<int> possible_lib_indices;
   for (size_t i = 0; i < lib.size(); ++i) {
-    possible_lib_indices.push_back(lib[i]-1);
+    possible_lib_indices.push_back(lib[i]);
   }
   int max_lib_size = static_cast<int>(possible_lib_indices.size()); // Maximum lib size
 
   std::vector<bool> pred_indices(n, false);
   for (size_t i = 0; i < pred.size(); ++i) {
     // // Do not strictly exclude spatial units with embedded state-space vectors containing NaN values from participating in cross mapping.
-    // if (!checkOneDimVectorHasNaN(x_vectors[pred[i] - 1])){
-    //   pred_indices[pred[i] - 1] = true;
+    // if (!checkOneDimVectorHasNaN(x_vectors[pred[i]])){
+    //   pred_indices[pred[i]] = true;
     // }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    pred_indices[pred[i]] = true; // Convert to 0-based index
   }
 
   std::vector<int> unique_lib_sizes(lib_sizes.begin(), lib_sizes.end());
@@ -236,42 +233,42 @@ std::vector<std::vector<double>> GCCM4Lattice(
   std::sort(unique_lib_sizes.begin(), unique_lib_sizes.end());
   unique_lib_sizes.erase(std::unique(unique_lib_sizes.begin(), unique_lib_sizes.end()), unique_lib_sizes.end());
 
-  // Initialize the result container
-  std::vector<std::pair<int, double>> x_xmap_y;
+  // Local results for each library
+  std::vector<std::vector<std::pair<int, double>>> local_results(unique_lib_sizes.size());
 
   if (parallel_level == 0){
     // Iterate over each library size
     if (progressbar) {
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
-      for (int lib_size : unique_lib_sizes) {
-        auto results = GCCMSingle4Lattice(x_vectors,
-                                          y,
-                                          lib_size,
-                                          max_lib_size,
-                                          possible_lib_indices,
-                                          pred_indices,
-                                          b,
-                                          simplex,
-                                          theta,
-                                          threads_sizet,
-                                          parallel_level);
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
+      for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
+        local_results[i] = GCCMSingle4Lattice(
+          x_vectors,
+          y,
+          unique_lib_sizes[i],
+          max_lib_size,
+          possible_lib_indices,
+          pred_indices,
+          b,
+          simplex,
+          theta,
+          threads_sizet,
+          parallel_level);
         bar++;
       }
     } else {
-      for (int lib_size : unique_lib_sizes) {
-        auto results = GCCMSingle4Lattice(x_vectors,
-                                          y,
-                                          lib_size,
-                                          max_lib_size,
-                                          possible_lib_indices,
-                                          pred_indices,
-                                          b,
-                                          simplex,
-                                          theta,
-                                          threads_sizet,
-                                          parallel_level);
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
+      for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
+        local_results[i] = GCCMSingle4Lattice(
+          x_vectors,
+          y,
+          unique_lib_sizes[i],
+          max_lib_size,
+          possible_lib_indices,
+          pred_indices,
+          b,
+          simplex,
+          theta,
+          threads_sizet,
+          parallel_level);
       }
     }
   } else {
@@ -280,37 +277,45 @@ std::vector<std::vector<double>> GCCM4Lattice(
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        auto results = GCCMSingle4Lattice(x_vectors,
-                                          y,
-                                          lib_size,
-                                          max_lib_size,
-                                          possible_lib_indices,
-                                          pred_indices,
-                                          b,
-                                          simplex,
-                                          theta,
-                                          threads_sizet,
-                                          parallel_level);
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
+        local_results[i] = GCCMSingle4Lattice(
+          x_vectors,
+          y,
+          lib_size,
+          max_lib_size,
+          possible_lib_indices,
+          pred_indices,
+          b,
+          simplex,
+          theta,
+          threads_sizet,
+          parallel_level);
         bar++;
       }, threads_sizet);
     } else {
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        auto results = GCCMSingle4Lattice(x_vectors,
-                                          y,
-                                          lib_size,
-                                          max_lib_size,
-                                          possible_lib_indices,
-                                          pred_indices,
-                                          b,
-                                          simplex,
-                                          theta,
-                                          threads_sizet,
-                                          parallel_level);
-        x_xmap_y.insert(x_xmap_y.end(), results.begin(), results.end());
+        local_results[i] = GCCMSingle4Lattice(
+          x_vectors,
+          y,
+          lib_size,
+          max_lib_size,
+          possible_lib_indices,
+          pred_indices,
+          b,
+          simplex,
+          theta,
+          threads_sizet,
+          parallel_level);
       }, threads_sizet);
     }
+  }
+
+  // Initialize the result container
+  std::vector<std::pair<int, double>> x_xmap_y;
+
+  // Merge all local results into the final result
+  for (const auto& local_result : local_results) {
+    x_xmap_y.insert(x_xmap_y.end(), local_result.begin(), local_result.end());
   }
 
   // Group by the first int(lib_size) and compute the mean (rho)

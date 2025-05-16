@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Wenbo Lv" />
+
+<meta name="date" content="2025-05-16" />
+
+<title>Spatial Causality Test (SCT)</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Spatial Causality Test (SCT)</h1>
+<h4 class="author">Wenbo Lv</h4>
+<h4 class="date">2025-05-16</h4>
+
+
+
+<div id="model-principles" class="section level2">
+<h2>Model principles</h2>
+<p>Let us begin by defining two spatial cross-sectional series <span class="math inline">\(\{x_s\}_{s \in S}\)</span> and <span class="math inline">\(\{y_s\}_{s \in S}\)</span>, where <span class="math inline">\(S\)</span> represents the study area.</p>
+<p>We use:</p>
+<p><span class="math display">\[
+\mathcal{X}_W = \{ W_i x \mid W_i \in \mathcal{W}(x, y) \}
+\]</span></p>
+<p><span class="math display">\[
+\mathcal{Y}_W = \{ W_i y \mid W_i \in \mathcal{W}(x, y) \}
+\]</span></p>
+<p>to denote the sets of spatial lags of <span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span> given by all the weighting matrices in
+<span class="math inline">\(\mathcal{W}(x, y)\)</span>(that is the set
+of spatial dependence structures between <span class="math inline">\(x\)</span> and <span class="math inline">\(y\)</span>).</p>
+<p>We say that <span class="math inline">\(\{x_s\}_{s \in S}\)</span>
+does not cause <span class="math inline">\(\{y_s\}_{s \in S}\)</span>
+<strong>under the spatial structures</strong> <span class="math inline">\(\mathcal{X}_W\)</span> and <span class="math inline">\(\mathcal{Y}_W\)</span> if</p>
+<p><span class="math display">\[
+h_{y |\mathcal{Y}_W}(m) = h_{y | \mathcal{Y}_W,\mathcal{X}_W}(m)
+\]</span> A unilateral non-parametric test can be applied to assess the
+spatial causality via the following null hypothesis:</p>
+<p><span class="math display">\[
+H_0 : \{x_s\}_{s \in S} \text{ does not cause } \{y_s\}_{s \in S} \text{
+under the spatial structures } \mathcal{X}_W \text{ and } \mathcal{Y}_W,
+\]</span></p>
+<p>with the following statistic:</p>
+<p><span class="math display">\[
+\hat{\delta}(\mathcal{Y}_W, \mathcal{X}_W) = \hat{h}_{y
+|\mathcal{Y}_W}(m) - \hat{h}_{y | \mathcal{Y}_W,\mathcal{X}_W}(m)
+\]</span></p>
+<p>where <span class="math inline">\(\hat{h}_*(m)\)</span> is the
+estimated conditional symbolic entropy using Shannon’s entropy with
+<span class="math inline">\(m-1\)</span> nearest neighbors. The
+alternative is that the null hypothesis of is not true.</p>
+<p>If <span class="math inline">\(\mathcal{X}_W\)</span> does not
+contain extra information about <span class="math inline">\(y\)</span>
+then <span class="math inline">\(\hat{\delta}(\mathcal{Y}_W,
+\mathcal{X}_W) = 0\)</span>, otherwise, $ (_W, _W) &gt; 0$.</p>
+<p><span class="math inline">\(h_{y |\mathcal{Y}_W}(m)\)</span> measures
+the uncertainty of the distribution of symbols of <span class="math inline">\(y\)</span>, conditional to the symbols of its
+spatial lag, $ _W$. Moreover, <span class="math inline">\(h_{y |
+\mathcal{Y}_W,\mathcal{X}_W}(m)\)</span> measures the uncertainty of the
+distribution of symbols of <span class="math inline">\(y\)</span>,
+conditional to the symbols of the spatial lags of <span class="math inline">\(y\)</span>, <span class="math inline">\(\mathcal{Y}_W\)</span>, and of <span class="math inline">\(x\)</span>, $ _W$. If the second variable, <span class="math inline">\(x\)</span>, indeed causes the first one then there
+should be a significant decrease in the entropy, and the statistic <span class="math inline">\(\hat{\delta}(\mathcal{Y}_W,
+\mathcal{X}_W)\)</span> will take on high positive values. If there is
+only a spatial correlation, but not causation, the difference between
+both entropies will be small. The statistical significance of <span class="math inline">\(\hat{\delta}(\mathcal{Y}_W,
+\mathcal{X}_W)\)</span> is assessed using spatial block bootstrap.</p>
+</div>
+<div id="usage-examples" class="section level2">
+<h2>Usage examples</h2>
+<div id="an-example-of-spatial-lattice-data" class="section level3">
+<h3>An example of spatial lattice data</h3>
+<p>Load the <code>spEDM</code> package and the columbus OH dataset:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(spEDM)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>columbus <span class="ot">=</span> sf<span class="sc">::</span><span class="fu">read_sf</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/columbus.gpkg&quot;</span>, <span class="at">package=</span><span class="st">&quot;spEDM&quot;</span>))</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>columbus</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">## Simple feature collection with 49 features and 6 fields</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">## Geometry type: POLYGON</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## Dimension:     XY</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">## Bounding box:  xmin: 5.874907 ymin: 10.78863 xmax: 11.28742 ymax: 14.74245</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">## Projected CRS: Undefined Cartesian SRS with unknown unit</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## # A tibble: 49 × 7</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">##    hoval   inc  crime  open plumb discbd                                    geom</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">##    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;                               &lt;POLYGON&gt;</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.5597 14.74245, …</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.282758 14.22994,…</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.81814 14.00205,…</span></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="do">##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473408 13.83227…</span></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="do">##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677577 13.72221…</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="do">##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.434411 13.69427,…</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="do">##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062716 13.60452…</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="do">##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.2795 13.5965, 8…</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="do">##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671007 13.27361…</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="do">## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.0925 13.05275,…</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="do">## # ℹ 39 more rows</span></span></code></pre></div>
+<p>Detect spatial causality among the variables <em>inc</em>,
+<em>crime</em>, and <em>hoval</em> :</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># house value and crime</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;hoval&quot;</span>, <span class="st">&quot;crime&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## hoval -&gt; crime: statistic = 1.114, p value = 0.539</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">## crime -&gt; hoval: statistic = 1.555, p value = 0.005</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># household income and crime</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;inc&quot;</span>, <span class="st">&quot;crime&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## inc -&gt; crime: statistic = 0.739, p value = 0.965</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="do">## crime -&gt; inc: statistic = 0.946, p value = 0.784</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co"># household income and house value</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;inc&quot;</span>, <span class="st">&quot;hoval&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="do">## inc -&gt; hoval: statistic = 1.211, p value = 0.301</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## hoval -&gt; inc: statistic = 0.992, p value = 0.674</span></span></code></pre></div>
+</div>
+<div id="an-example-of-spatial-grid-data" class="section level3">
+<h3>An example of spatial grid data</h3>
+<p>Load the <code>spEDM</code> package and its farmland NPP data:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(spEDM)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>npp <span class="ot">=</span> terra<span class="sc">::</span><span class="fu">rast</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/npp.tif&quot;</span>, <span class="at">package =</span> <span class="st">&quot;spEDM&quot;</span>))</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># To save the computation time, we will aggregate the data by 3 times</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>npp <span class="ot">=</span> terra<span class="sc">::</span><span class="fu">aggregate</span>(npp, <span class="at">fact =</span> <span class="dv">3</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>npp</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="do">## class       : SpatRaster </span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="do">## dimensions  : 135, 161, 5  (nrow, ncol, nlyr)</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="do">## resolution  : 30000, 30000  (x, y)</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="do">## extent      : -2625763, 2204237, 1867078, 5917078  (xmin, xmax, ymin, ymax)</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="do">## coord. ref. : CGCS2000_Albers </span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="do">## source(s)   : memory</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="do">## names       :      npp,        pre,      tem,      elev,         hfp </span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="do">## min values  :   187.50,   390.3351, -47.8194, -110.1494,  0.04434316 </span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="do">## max values  : 15381.89, 23734.5330, 262.8576, 5217.6431, 42.68803711</span></span></code></pre></div>
+<p>Detect spatial causality among the variables <em>pre</em>,
+<em>tem</em>, and <em>npp</em> :</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># precipitation and npp</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;pre&quot;</span>,<span class="st">&quot;npp&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="do">## pre -&gt; npp: statistic = 0.224, p value = 0</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="do">## npp -&gt; pre: statistic = 0.15, p value = 0</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># temperature and npp</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;tem&quot;</span>,<span class="st">&quot;npp&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="do">## tem -&gt; npp: statistic = 0.172, p value = 0</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="do">## npp -&gt; tem: statistic = 0.168, p value = 0</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># precipitation and temperature</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;pre&quot;</span>,<span class="st">&quot;tem&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="do">## pre -&gt; tem: statistic = 0.19, p value = 0</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="do">## tem -&gt; pre: statistic = 0.145, p value = 0</span></span></code></pre></div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
