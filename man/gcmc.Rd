@@ -10,16 +10,17 @@
   data,
   cause,
   effect,
+  libsizes = NULL,
   E = 3,
   tau = 1,
-  k = NULL,
-  r = 0,
+  k = pmin(E^2),
   lib = NULL,
   pred = NULL,
   nb = NULL,
   threads = detectThreads(),
+  parallel.level = "low",
   bidirectional = TRUE,
-  trend.rm = TRUE,
+  detrend = FALSE,
   progressbar = TRUE
 )
 
@@ -27,44 +28,47 @@
   data,
   cause,
   effect,
+  libsizes = NULL,
   E = 3,
   tau = 1,
-  k = NULL,
-  r = 0,
+  k = pmin(E^2),
   lib = NULL,
   pred = NULL,
   threads = detectThreads(),
+  parallel.level = "low",
   bidirectional = TRUE,
-  trend.rm = TRUE,
+  detrend = FALSE,
   progressbar = TRUE
 )
 }
 \arguments{
-\item{data}{The observation data.}
+\item{data}{observation data.}
 
-\item{cause}{Name of causal variable.}
+\item{cause}{name of causal variable.}
 
-\item{effect}{Name of effect variable.}
+\item{effect}{name of effect variable.}
 
-\item{E}{(optional) Dimensions of the embedding.}
+\item{libsizes}{(optional) number of spatial units used.}
 
-\item{tau}{(optional) Step of spatial lags.}
+\item{E}{(optional) embedding dimensions.}
 
-\item{k}{(optional) Number of nearest neighbors used in intersection.}
+\item{tau}{(optional) step of spatial lags.}
 
-\item{r}{(optional) Number of excluded neighbors in intersection.}
+\item{k}{(optional) number of nearest neighbors.}
 
-\item{lib}{(optional) Libraries indices.}
+\item{lib}{(optional) libraries indices.}
 
-\item{pred}{(optional) Predictions indices.}
+\item{pred}{(optional) predictions indices.}
 
-\item{nb}{(optional) The neighbours list.}
+\item{nb}{(optional) neighbours list.}
 
-\item{threads}{(optional) Number of threads.}
+\item{threads}{(optional) number of threads to use.}
+
+\item{parallel.level}{(optional) level of parallelism, \code{low} or \code{high}.}
 
 \item{bidirectional}{(optional) whether to examine bidirectional causality.}
 
-\item{trend.rm}{(optional) Whether to remove the linear trend.}
+\item{detrend}{(optional) whether to remove the linear trend.}
 
 \item{progressbar}{(optional) whether to show the progress bar.}
 }
@@ -72,6 +76,7 @@
 A list
 \describe{
 \item{\code{xmap}}{cross mapping results}
+\item{\code{cs}}{causal strength}
 \item{\code{varname}}{names of causal and effect variable}
 \item{\code{bidirectional}}{whether to examine bidirectional causality}
 }
@@ -82,7 +87,7 @@ geographical cross mapping cardinality
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-g = gcmc(columbus,"hoval","crime",E = 5)
+g = gcmc(columbus,"hoval","crime",E = 2,k = 25)
 g
 }
 }

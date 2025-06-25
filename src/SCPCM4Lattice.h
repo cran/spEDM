@@ -20,11 +20,11 @@
  *        incorporating control variables using a lattice-based embedding approach.
  *
  * @param vectors: Reconstructed state-space, where each row represents a separate state vector.
- * @param target: Spatial cross-section series to be used as the target, aligned with 'vectors'.
+ * @param target: Spatial cross-sectional series to be used as the target, aligned with 'vectors'.
  * @param controls: Cross-sectional data of control variables, stored row-wise.
  * @param nb_vec: Neighbor indices for each spatial unit.
- * @param lib_indices: Boolean vector indicating which states to include when searching for neighbors.
- * @param pred_indices: Boolean vector indicating which states to use for predictions.
+ * @param lib_indices: Vector of indices indicating which states to include when searching for neighbors.
+ * @param pred_indices: Vector of indices indicating which states to predict from.
  * @param conEs: Vector specifying the number of dimensions for attractor reconstruction with control variables.
  * @param taus: Vector specifying the spatial lag step for constructing lagged state-space vectors with control variables.
  * @param num_neighbors: Vector specifying the numbers of neighbors to use for simplex projection.
@@ -39,8 +39,8 @@ std::vector<double> PartialSimplex4Lattice(
     const std::vector<double>& target,
     const std::vector<std::vector<double>>& controls,
     const std::vector<std::vector<int>>& nb_vec,
-    const std::vector<bool>& lib_indices,
-    const std::vector<bool>& pred_indices,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
     const std::vector<int>& conEs,
     const std::vector<int>& taus,
     const std::vector<int>& num_neighbors,
@@ -48,7 +48,7 @@ std::vector<double> PartialSimplex4Lattice(
 );
 
 /**
- * @brief Computes the partial correlation between a spatial cross-section series and its prediction
+ * @brief Computes the partial correlation between a spatial cross-sectional series and its prediction
  *        using the S-Map method, incorporating control variables.
  *
  * This function performs state-space reconstruction and S-Map prediction while accounting for
@@ -56,11 +56,11 @@ std::vector<double> PartialSimplex4Lattice(
  * independent in terms of incorporating control variables.
  *
  * @param vectors: Reconstructed state-space where each row represents a separate vector/state.
- * @param target: Spatial cross-section series used as the prediction target.
+ * @param target: Spatial cross-sectional series used as the prediction target.
  * @param controls: Cross-sectional data of control variables, stored row-wise.
  * @param nb_vec: Neighbor indices vector specifying spatial unit neighbors.
- * @param lib_indices: Boolean vector indicating which states to include when searching for neighbors.
- * @param pred_indices: Boolean vector indicating which states to predict from.
+ * @param lib_indices: Vector of indices indicating which states to include when searching for neighbors.
+ * @param pred_indices: Vector of indices indicating which states to predict from.
  * @param conEs: Vector specifying the number of dimensions for attractor reconstruction with control variables.
  * @param taus: Vector specifying the spatial lag step for constructing lagged state-space vectors with control variables.
  * @param num_neighbors: Vector specifying the numbers of neighbors to use for S-Map prediction.
@@ -75,8 +75,8 @@ std::vector<double> PartialSMap4Lattice(
     const std::vector<double>& target,
     const std::vector<std::vector<double>>& controls,
     const std::vector<std::vector<int>>& nb_vec,
-    const std::vector<bool>& lib_indices,
-    const std::vector<bool>& pred_indices,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
     const std::vector<int>& conEs,
     const std::vector<int>& taus,
     const std::vector<int>& num_neighbors,
@@ -89,13 +89,12 @@ std::vector<double> PartialSMap4Lattice(
  *
  * Parameters:
  *   - x_vectors: Reconstructed state-space (each row represents a separate vector/state).
- *   - y: Spatial cross-section series used as the target (should align with x_vectors).
+ *   - y: Spatial cross-sectional series used as the target (should align with x_vectors).
  *   - controls: Cross-sectional data of control variables (stored by row).
  *   - nb_vec: Neighbor indices vector of the spatial units.
  *   - lib_size: Size of the library used for cross mapping.
- *   - max_lib_size: Maximum size of the library.
- *   - possible_lib_indices: Indices of possible library states.
- *   - pred_indices: A boolean vector indicating which states to use for prediction.
+ *   - lib_indices: Vector of indices indicating which states to include when searching for neighbors.
+ *   - pred_indices: Vector of indices indicating which states to predict from.
  *   - conEs: Number of dimensions for attractor reconstruction with control variables.
  *   - taus: Spatial lag step for constructing lagged state-space vectors with control variables.
  *   - b: A vector specifying the numbers of neighbors to use for simplex projection.
@@ -113,20 +112,19 @@ std::vector<double> PartialSMap4Lattice(
  */
 std::vector<PartialCorRes> SCPCMSingle4Lattice(
     const std::vector<std::vector<double>>& x_vectors,  // Reconstructed state-space (each row is a separate vector/state)
-    const std::vector<double>& y,                       // Spatial cross-section series to be used as the target (should line up with vectors)
+    const std::vector<double>& y,                       // Spatial cross-sectional series to be used as the target (should line up with vectors)
     const std::vector<std::vector<double>>& controls,   // Cross-sectional data of control variables (**stored by row**)
     const std::vector<std::vector<int>>& nb_vec,        // Neighbor indices vector of the spatial units
     int lib_size,                                       // Size of the library
-    int max_lib_size,                                   // Maximum size of the library
-    const std::vector<int>& possible_lib_indices,       // Indices of possible library states
-    const std::vector<bool>& pred_indices,              // Vector of T/F values (which states to predict from)
+    const std::vector<int>& lib_indices,                // Indices of possible library states
+    const std::vector<int>& pred_indices,               // Vector of indices indicating which states to predict from
     const std::vector<int>& conEs,                      // Number of dimensions for the attractor reconstruction with control variables
     const std::vector<int>& taus,                       // Spatial lag step for constructing lagged state-space vectors with control variables
     const std::vector<int>& b,                          // Numbers of neighbors to use for simplex projection
     bool simplex,                                       // Algorithm used for prediction; Use simplex projection if true, and s-mapping if false
     double theta,                                       // Distance weighting parameter for the local neighbours in the manifold
     size_t threads,                                     // Number of threads to use for parallel processing
-    int parallel_level,                                  // Level of parallel computing: 0 for `lower`, 1 for `higher`
+    int parallel_level,                                 // Level of parallel computing: 0 for `lower`, 1 for `higher`
     bool cumulate                                       // Whether to cumulate the partial correlations
 );
 
@@ -134,8 +132,8 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
  * Performs SCPCM on a spatial lattice dataset.
  *
  * Parameters:
- * - x: Spatial cross-section series used as the predictor variable (**cross mapping from**).
- * - y: Spatial cross-section series used as the target variable (**cross mapping to**).
+ * - x: Spatial cross-sectional series used as the predictor variable (**cross mapping from**).
+ * - y: Spatial cross-sectional series used as the target variable (**cross mapping to**).
  * - controls: Cross-sectional data of control variables (**stored by row**).
  * - nb_vec: A nested vector containing neighborhood information for lattice data.
  * - lib_sizes: A vector specifying different library sizes for SCPCM analysis.
@@ -164,8 +162,8 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
  *      - The lower bound of the partial correlation confidence interval.
  */
 std::vector<std::vector<double>> SCPCM4Lattice(
-    const std::vector<double>& x,                       // Spatial cross-section series to cross map from
-    const std::vector<double>& y,                       // Spatial cross-section series to cross map to
+    const std::vector<double>& x,                       // Spatial cross-sectional series to cross map from
+    const std::vector<double>& y,                       // Spatial cross-sectional series to cross map to
     const std::vector<std::vector<double>>& controls,   // Cross-sectional data of control variables (**stored by row**)
     const std::vector<std::vector<int>>& nb_vec,        // Neighbor indices vector of the spatial units
     const std::vector<int>& lib_sizes,                  // Vector of library sizes to use

@@ -1,7 +1,7 @@
 ---
 title: "Geographical Cross Mapping Cardinality (GCMC)"
 author: "Wenbo Lv"
-date: "2025-05-16"
+date: "2025-06-25"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{GCMC}
@@ -15,7 +15,7 @@ vignette: >
 
 The `GCMC` algorithm provided in this package is a research method currently **under peer review in the *International Journal of Geographical Information Science (IJGIS)* **. We provide early access to its implementation and a detailed vignette for reproducibility. Users should note that **methodological details may evolve** before final publication.
 
-## Model principles
+## Methodological Background
 
 To measure causal associations in spatial cross-sectional data, GCMC (Geographical Convergent Cross Mapping) employs a three-stage procedure:
 
@@ -69,35 +69,41 @@ popd_sf
 ## # ℹ 2,796 more rows
 ```
 
-Run GCMC:
+The false nearest neighbours (FNN) method helps identify the appropriate embedding dimension for reconstructing the state space of a time series or spatial cross-sectional data. A low embedding dimension that minimizes false neighbours is considered optimal.
+
+
+``` r
+fnn(popd_sf, "popd", E = 1:15,
+    eps = stats::sd(popd_sf$popd) / 10)
+##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 
+## 0.9707769 0.6404134 0.4885959 0.4012830 0.3346401 0.3296507 0.3260870 0.3150392 
+##       E:9      E:10      E:11      E:12      E:13      E:14 
+## 0.3150392 0.2957947 0.2875980 0.2915182 0.2701354 0.2494654
+```
+
+The false nearest neighbours (FNN) ratio decreased to approximately 0.3 when the embedding dimension E reached 10, and remained relatively stable thereafter. Therefore, we adopted $E = 10$ as the embedding dimension for subsequent GCMC analysis.
+
+Then, run GCMC:
 
 
 ``` r
 # temperature and population density
-g1 = gcmc(data = popd_sf, cause = "tem", effect = "popd", E = c(2,5),
-          k = 210, nb = popd_nb, trend.rm = TRUE, progressbar = FALSE)
+g1 = gcmc(popd_sf, "tem", "popd", E = 10, k = 200, nb = popd_nb, progressbar = FALSE)
 g1
 ##   neighbors tem->popd popd->tem
-## 1       210 0.7538776  0.197619
+## 1       200  0.574825    0.0892
 
 # elevation and population density
-g2 = gcmc(data = popd_sf, cause = "elev", effect = "popd", E = c(1,5),
-          k = 210, nb = popd_nb, trend.rm = TRUE, progressbar = FALSE)
+g2 = gcmc(popd_sf, "elev", "popd", E = 10, k = 200, nb = popd_nb, progressbar = FALSE)
 g2
 ##   neighbors elev->popd popd->elev
-## 1       210  0.8355329  0.2065986
+## 1       200   0.267125    0.07675
 
 # elevation and temperature
-g3 = gcmc(data = popd_sf, cause = "elev", effect = "tem", E = c(1,2),
-          k = 210, nb = popd_nb, trend.rm = TRUE, progressbar = FALSE)
-g3 # When there are insignificant results, we set spEDM to suppress output. This is not a bug.
-## [1] neighbors elev->tem tem->elev
-## <0 rows> (or 0-length row.names)
-g3$xmap
-##   neighbors x_xmap_y_mean x_xmap_y_sig x_xmap_y_upper x_xmap_y_lower
-## 1       210     0.5094785    0.7677155      0.5723751      0.4465818
-##   y_xmap_x_mean y_xmap_x_sig y_xmap_x_upper y_xmap_x_lower
-## 1     0.6279365 4.342088e-05      0.6892676      0.5666054
+g3 = gcmc(popd_sf, "elev", "tem", E = 10, k = 200, nb = popd_nb, progressbar = FALSE)
+g3
+##   neighbors elev->tem tem->elev
+## 1       200  0.224575   0.47705
 ```
 
 Here we define two functions to process the results and plot the causal association matrix.
@@ -172,13 +178,13 @@ res1 = list(g1,g2,g3) |>
   purrr::map(.process_xmap_result) |>
   purrr::list_rbind()
 res1
-##   cause effect        ca          sig
-## 1   tem   popd 0.7538776 1.110975e-19
-## 2  popd    tem 0.1976190 4.543832e-35
-## 3  elev   popd 0.8355329 9.586182e-44
-## 4  popd   elev 0.2065986 6.101271e-32
-## 5  elev    tem 0.6279365 4.342088e-05
-## 6   tem   elev 0.5094785 7.677155e-01
+##   cause effect       ca           sig
+## 1   tem   popd 0.574825  1.953434e-02
+## 2  popd    tem 0.089200 3.830104e-116
+## 3  elev   popd 0.267125  8.221767e-16
+## 4  popd   elev 0.076750 6.249810e-148
+## 5  elev    tem 0.224575  1.628641e-23
+## 6   tem   elev 0.477050  4.880176e-01
 ```
 
 Visualize the result:
@@ -199,22 +205,11 @@ Load the `spEDM` package and its farmland NPP data:
 library(spEDM)
 
 npp = terra::rast(system.file("case/npp.tif", package = "spEDM"))
-npp
-## class       : SpatRaster 
-## dimensions  : 404, 483, 5  (nrow, ncol, nlyr)
-## resolution  : 10000, 10000  (x, y)
-## extent      : -2625763, 2204237, 1877078, 5917078  (xmin, xmax, ymin, ymax)
-## coord. ref. : CGCS2000_Albers 
-## source      : npp.tif 
-## names       :      npp,        pre,      tem,      elev,         hfp 
-## min values  :   164.00,   384.3409, -47.8194, -122.2004,  0.03390418 
-## max values  : 16606.33, 23878.3555, 263.6938, 5350.4902, 44.90312195
-
 # To save the computation time, we will aggregate the data by 3 times
 npp = terra::aggregate(npp, fact = 3, na.rm = TRUE)
 npp
 ## class       : SpatRaster 
-## dimensions  : 135, 161, 5  (nrow, ncol, nlyr)
+## size        : 135, 161, 5  (nrow, ncol, nlyr)
 ## resolution  : 30000, 30000  (x, y)
 ## extent      : -2625763, 2204237, 1867078, 5917078  (xmin, xmax, ymin, ymax)
 ## coord. ref. : CGCS2000_Albers 
@@ -245,35 +240,39 @@ libindice = nnaindice[-indices,]
 predindice = nnaindice[indices,]
 ```
 
-Run GCMC:
+Determining optimal embedding dimension:
+
+
+``` r
+fnn(npp, "npp", E = 1:15, lib = predindice, pred = predindice,
+    eps = stats::sd(terra::values(npp[["npp"]]),na.rm = TRUE) / 10)
+##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 
+## 0.4666667 0.4000000 0.1333333 0.5333333 0.4000000 0.4000000 0.4666667 0.4000000 
+##       E:9      E:10      E:11      E:12      E:13      E:14 
+## 0.4666667 0.4000000 0.4666667 0.4000000 0.4000000 0.2666667
+```
+
+At E = 3, the false nearest neighbor ratio decreases to approximately 0.13, whereas it remains above 0.25 for all other embedding dimensions. Hence, E = 3 is chosen for the subsequent GCMC analysis.
 
 
 ``` r
 # precipitation and npp
-g1 = gcmc(data = npp, cause = "pre", effect = "npp", E = 2, k = 270,
-          lib = predindice, pred = predindice, trend.rm = TRUE, progressbar = FALSE)
+g1 = gcmc(npp, "pre", "npp", E = 3, k = 350, lib = predindice, pred = predindice, progressbar = FALSE)
 g1
-## [1] neighbors pre->npp  npp->pre 
-## <0 rows> (or 0-length row.names)
-g1$xmap
-##   neighbors x_xmap_y_mean x_xmap_y_sig x_xmap_y_upper x_xmap_y_lower
-## 1       270     0.5383539    0.1686404      0.5929617      0.4837461
-##   y_xmap_x_mean y_xmap_x_sig y_xmap_x_upper y_xmap_x_lower
-## 1     0.6088477 8.929335e-05      0.6632986      0.5543968
+##   neighbors  pre->npp  npp->pre
+## 1       350 0.2181796 0.1876816
 
 # temperature and npp
-g2 = gcmc(data = npp, cause = "tem", effect = "npp", E = 2, k = 270,
-          lib = predindice, pred = predindice, trend.rm = TRUE, progressbar = FALSE)
+g2 = gcmc(npp, "tem", "npp", E = 3, k = 350, lib = predindice, pred = predindice, progressbar = FALSE)
 g2
 ##   neighbors  tem->npp  npp->tem
-## 1       270 0.6401509 0.6113992
+## 1       350 0.3869143 0.3799673
 
 # precipitation and temperature
-g3 = gcmc(data = npp, cause = "pre", effect = "tem", E = 2, k = 270,
-          lib = predindice, pred = predindice, trend.rm = TRUE, progressbar = FALSE)
+g3 = gcmc(npp, "pre", "tem", E = 3, k = 350, lib = predindice, pred = predindice, progressbar = FALSE)
 g3
 ##   neighbors  pre->tem  tem->pre
-## 1       270 0.6800274 0.6381344
+## 1       350 0.3206776 0.2926694
 ```
 
 Organize the results into a long table:
@@ -285,12 +284,12 @@ res2 = list(g1,g2,g3) |>
   purrr::list_rbind()
 res2
 ##   cause effect        ca          sig
-## 1   pre    npp 0.6088477 8.929335e-05
-## 2   npp    pre 0.5383539 1.686404e-01
-## 3   tem    npp 0.6401509 2.548677e-07
-## 4   npp    tem 0.6113992 4.810113e-05
-## 5   pre    tem 0.6800274 1.305997e-11
-## 6   tem    pre 0.6381344 3.699711e-07
+## 1   pre    npp 0.2181796 4.990672e-48
+## 2   npp    pre 0.1876816 7.390331e-67
+## 3   tem    npp 0.3869143 1.716558e-06
+## 4   npp    tem 0.3799673 3.234268e-07
+## 5   pre    tem 0.3206776 1.429895e-15
+## 6   tem    pre 0.2926694 2.796329e-21
 ```
 
 Visualize the result:

@@ -8,7 +8,7 @@
 \usage{
 \S4method{multiview}{sf}(
   data,
-  columns,
+  column,
   target,
   nvar,
   lib = NULL,
@@ -19,12 +19,12 @@
   nb = NULL,
   top = NULL,
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 
 \S4method{multiview}{SpatRaster}(
   data,
-  columns,
+  column,
   target,
   nvar,
   lib = NULL,
@@ -34,35 +34,35 @@
   k = E + 2,
   top = NULL,
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 }
 \arguments{
-\item{data}{The observation data.}
+\item{data}{observation data.}
 
-\item{columns}{Names of individual variables.}
+\item{column}{name of library variable.}
 
-\item{target}{Name of target variable.}
+\item{target}{name of target variable.}
 
-\item{nvar}{Number of variable combinations.}
+\item{nvar}{number of variable combinations.}
 
-\item{lib}{(optional) Libraries indices.}
+\item{lib}{(optional) libraries indices.}
 
-\item{pred}{(optional) Predictions indices.}
+\item{pred}{(optional) predictions indices.}
 
-\item{E}{(optional) Dimensions of the embedding.}
+\item{E}{(optional) embedding dimensions.}
 
-\item{tau}{(optional) Step of spatial lags.}
+\item{tau}{(optional) step of spatial lags.}
 
-\item{k}{(optional) Number of nearest neighbors used in prediction.}
+\item{k}{(optional) number of nearest neighbors used.}
 
-\item{nb}{(optional) The neighbours list.}
+\item{nb}{(optional) neighbours list.}
 
-\item{top}{(optional) Number of reconstructions used in MVE forecast.}
+\item{top}{(optional) number of reconstructions used in MVE forecast.}
 
-\item{threads}{(optional) Number of threads.}
+\item{threads}{(optional) number of threads to use.}
 
-\item{trend.rm}{(optional) Whether to remove the linear trend.}
+\item{detrend}{(optional) whether to remove the linear trend.}
 }
 \value{
 A vector (when input is sf object) or matrix
@@ -74,7 +74,7 @@ multiview embedding forecast
 columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
 multiview(columbus,
-          columns = c("inc","crime","open","plumb","discbd"),
+          column = c("inc","crime","open","plumb","discbd"),
           target = "hoval", nvar = 3)
 }
 }

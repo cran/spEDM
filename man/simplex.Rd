@@ -8,6 +8,7 @@
 \usage{
 \S4method{simplex}{sf}(
   data,
+  column,
   target,
   lib = NULL,
   pred = NULL,
@@ -16,11 +17,12 @@
   k = E + 2,
   nb = NULL,
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 
 \S4method{simplex}{SpatRaster}(
   data,
+  column,
   target,
   lib = NULL,
   pred = NULL,
@@ -28,35 +30,39 @@
   tau = 1,
   k = E + 2,
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 }
 \arguments{
-\item{data}{The observation data.}
+\item{data}{observation data.}
 
-\item{target}{Name of target variable.}
+\item{column}{name of library variable.}
 
-\item{lib}{(optional) Libraries indices.}
+\item{target}{name of target variable.}
 
-\item{pred}{(optional) Predictions indices.}
+\item{lib}{(optional) libraries indices.}
 
-\item{E}{(optional) Dimensions of the embedding.}
+\item{pred}{(optional) predictions indices.}
 
-\item{tau}{(optional) Step of spatial lags.}
+\item{E}{(optional) embedding dimensions.}
 
-\item{k}{(optional) Number of nearest neighbors used in prediction.}
+\item{tau}{(optional) step of spatial lags.}
 
-\item{nb}{(optional) The neighbours list.}
+\item{k}{(optional) number of nearest neighbors used.}
 
-\item{threads}{(optional) Number of threads.}
+\item{nb}{(optional) neighbours list.}
 
-\item{trend.rm}{(optional) Whether to remove the linear trend.}
+\item{threads}{(optional) number of threads to use.}
+
+\item{detrend}{(optional) whether to remove the linear trend.}
 }
 \value{
 A list
 \describe{
-\item{\code{xmap}}{self mapping prediction results}
+\item{\code{xmap}}{forecast performance}
 \item{\code{varname}}{name of target variable}
+\item{\code{method}}{method of cross mapping}
+\item{\code{tau}}{step of time lag}
 }
 }
 \description{
@@ -65,7 +71,7 @@ simplex forecast
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-simplex(columbus,"crime")
+simplex(columbus,"inc","crime")
 }
 }
 \references{

@@ -366,7 +366,7 @@ std::vector<double> CppSumNormalize(const std::vector<double>& vec,
 
 // Generates an arithmetic sequence of numbers starting from `from` and ending at `to`,
 // with a total of `length_out` elements. The sequence is evenly spaced.
-std::vector<double> CppArithmeticSeq(double from, double to, int length_out) {
+std::vector<double> CppArithmeticSeq(double from, double to, size_t length_out) {
   // Check for invalid input
   if (length_out < 1) {
     throw std::invalid_argument("length_out must be at least 1.");
@@ -386,7 +386,7 @@ std::vector<double> CppArithmeticSeq(double from, double to, int length_out) {
   double step = (to - from) / (length_out - 1);
 
   // Generate the sequence
-  for (int i = 0; i < length_out; ++i) {
+  for (size_t i = 0; i < length_out; ++i) {
     res.push_back(from + i * step);
   }
 
@@ -521,6 +521,87 @@ double PearsonCor(const std::vector<double>& y,
 //
 //   return corr;
 // }
+
+// Function to compute Spearman correlation using Armadillo
+double SpearmanCor(const std::vector<double>& y,
+                   const std::vector<double>& y_hat,
+                   bool NA_rm = false) {
+  if (y.size() != y_hat.size()) {
+    throw std::invalid_argument("Input vectors must have the same size.");
+  }
+
+  std::vector<double> clean_y, clean_y_hat;
+  for (size_t i = 0; i < y.size(); ++i) {
+    bool is_na = isNA(y[i]) || isNA(y_hat[i]);
+    if (is_na) {
+      if (!NA_rm) {
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+    } else {
+      clean_y.push_back(y[i]);
+      clean_y_hat.push_back(y_hat[i]);
+    }
+  }
+
+  if (clean_y.empty()) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  arma::vec arma_y(clean_y);
+  arma::vec arma_y_hat(clean_y_hat);
+
+  // Rank-transform both vectors
+  arma::vec rank_y = arma::conv_to<arma::vec>::from(arma::sort_index(arma::sort_index(arma_y))) + 1;
+  arma::vec rank_y_hat = arma::conv_to<arma::vec>::from(arma::sort_index(arma::sort_index(arma_y_hat))) + 1;
+
+  // Compute Pearson correlation of ranks
+  double corr = arma::as_scalar(arma::cor(rank_y, rank_y_hat));
+  return std::max(-1.0, std::min(1.0, corr));
+}
+
+// Function to compute Kendall's tau correlation coefficient
+double KendallCor(const std::vector<double>& y,
+                  const std::vector<double>& y_hat,
+                  bool NA_rm = false) {
+  if (y.size() != y_hat.size()) {
+    throw std::invalid_argument("Input vectors must have the same size.");
+  }
+
+  std::vector<double> clean_y, clean_y_hat;
+  for (size_t i = 0; i < y.size(); ++i) {
+    bool is_na = isNA(y[i]) || isNA(y_hat[i]);
+    if (is_na) {
+      if (!NA_rm) {
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+    } else {
+      clean_y.push_back(y[i]);
+      clean_y_hat.push_back(y_hat[i]);
+    }
+  }
+
+  size_t n = clean_y.size();
+  if (n < 2) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+
+  // Count concordant and discordant pairs
+  int concordant = 0, discordant = 0;
+  for (size_t i = 0; i < n - 1; ++i) {
+    for (size_t j = i + 1; j < n; ++j) {
+      double dy = clean_y[i] - clean_y[j];
+      double dyh = clean_y_hat[i] - clean_y_hat[j];
+      double sign = dy * dyh;
+      if (sign > 0) ++concordant;
+      else if (sign < 0) ++discordant;
+      // ties are ignored (as in Kendall's tau-a)
+    }
+  }
+
+  double denom = 0.5 * n * (n - 1);
+  double tau = (concordant - discordant) / denom;
+  return std::max(-1.0, std::min(1.0, tau));
+}
 
 /*
  * Function to compute Partial Correlation using Armadillo
@@ -689,11 +770,17 @@ double PartialCorTrivar(const std::vector<double>& y,
  * @param k The number of control variables (default = 0).
  * @return The two-sided p-value.
  */
-double CppCorSignificance(double r, int n, int k = 0) {
-  double df = n - k - 2;
-  double t = r * std::sqrt(df / (1 - r * r));
+double CppCorSignificance(double r, size_t n, size_t k = 0) {
+  // Check if degrees of freedom are valid: df = n - k - 2 >= 1
+  if (n <= k + 2) {
+    return std::numeric_limits<double>::quiet_NaN();  // Invalid degrees of freedom, return non-significant result
+  }
+
+  double df = static_cast<double>(n - k - 2);
+  double t = r * std::sqrt(df / (1.0 - r * r));
 
   double pvalue = (1 - R::pt(t, df, true, false)) * 2;
+
   // Ensure p value is within valid range [-1, 1]
   if (pvalue < 0) pvalue = 0;
   if (pvalue > 1.0) pvalue = 1.0;
@@ -723,13 +810,18 @@ double CppCorSignificance(double r, int n, int k = 0) {
  * @param level The significance level α for the confidence interval (default = 0.05).
  * @return A vector containing the upper and lower bounds of the confidence interval.
  */
-std::vector<double> CppCorConfidence(double r, int n, int k = 0,
+std::vector<double> CppCorConfidence(double r, size_t n, size_t k = 0,
                                      double level = 0.05) {
+  if (n <= k + 3) {
+    // Not enough degrees of freedom to compute confidence interval
+    return {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
+  }
+
   // Calculate the Fisher's z-transformation
   double z = 0.5 * std::log((1 + r) / (1 - r));
 
   // Calculate the standard error of z
-  double ztheta = 1 / std::sqrt(n - k - 3);
+  double ztheta = 1 / std::sqrt(static_cast<double>(n - k - 3));
 
   // Calculate the z-value for the given confidence level
   double qZ = R::qnorm(1 - level / 2, 0.0, 1.0, true, false);
@@ -813,7 +905,7 @@ std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
  * @param cases A vector of scores for the cases (positive class).
  * @param direction A string indicating the direction of comparison (">" for greater, "<" for less).
  * @param level The confidence level, default is 0.05.
- * @param sample_num Number of effective sample size
+ * @param num_samples Number of effective sample size
  *
  * @return A vector of four elements:
  *   - theta: The computed AUC value.
@@ -824,19 +916,17 @@ std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
 std::vector<double> CppCMCTest(const std::vector<double>& cases,
                                const std::string& direction,
                                double level = 0.05,
-                               int num_samples = 0) {
+                               size_t num_samples = 0) {
   size_t m = cases.size(), n = cases.size();  // Both m and n are set to cases.size()
 
   if (num_samples == 0){
-    num_samples = static_cast<int>(m);
+    num_samples = m;
   }
 
   std::vector<double> controls;
-  // for (size_t i = 0; i < cases.size(); ++i) {
-  //   controls.push_back(static_cast<double>(i) / num_samples);
-  // }
-  for (size_t i = 1; i <= cases.size(); ++i) {
-    controls.push_back(static_cast<double>(i) / num_samples);
+  for (size_t i = 0; i < cases.size(); ++i) {
+    // controls.push_back(static_cast<double>(i) / num_samples);
+    controls.push_back(static_cast<double>(i + 1) / num_samples);
   }
 
   // Compute DeLong placements
@@ -887,6 +977,98 @@ std::vector<double> CppCMCTest(const std::vector<double>& cases,
   // Return the results as a four-element vector
   return {theta, p_value, ci_upper, ci_lower};
 }
+
+// /**
+//  * Computes the AUC (via area method), p-value, and confidence interval using the DeLong method.
+//  *
+//  * @param cases A vector of scores for the cases (positive class).
+//  * @param direction A string indicating the direction of comparison (">" or "<").
+//  * @param level The confidence level, default is 0.05.
+//  * @param num_samples Number of effective sample size for the control group.
+//  *
+//  * @return A vector of four elements:
+//  *   - area_auc: AUC computed by trapezoidal rule (area method).
+//  *   - p_value: The p-value testing H0: AUC = 0.5 (via DeLong).
+//  *   - ci_upper: Upper bound of 100*(1-level)% confidence interval (via DeLong).
+//  *   - ci_lower: Lower bound of 100*(1-level)% confidence interval (via DeLong).
+//  */
+// std::vector<double> CppCMCTest(const std::vector<double>& cases,
+//                                const std::string& direction,
+//                                double level = 0.05,
+//                                size_t num_samples = 0) {
+//   size_t m = cases.size();
+//   if (m <= 1) {
+//     return {std::numeric_limits<double>::quiet_NaN(), 1.0,
+//             std::numeric_limits<double>::quiet_NaN(),
+//             std::numeric_limits<double>::quiet_NaN()};
+//   }
+//
+//   if (num_samples == 0) {
+//     num_samples = m;
+//   }
+//
+//   // === AUC via area under curve (trapezoidal rule) ===
+//   std::vector<double> x(m);
+//   for (size_t i = 0; i < m; ++i) {
+//     x[i] = static_cast<double>(i) / (m - 1);  // normalized x-axis [0,1]
+//   }
+//
+//   // Compute area AUC using trapezoidal integration
+//   double area_auc = 0.0;
+//   for (size_t i = 1; i < m; ++i) {
+//     area_auc += 0.5 * (cases[i] + cases[i - 1]) * (x[i] - x[i - 1]);
+//   }
+//
+//   // === DeLong p-value and CI ===
+//   std::vector<double> controls;
+//   // for (size_t i = 0; i < cases.size(); ++i) {
+//   //   controls.push_back(static_cast<double>(i) / num_samples);
+//   // }
+//   for (size_t i = 0; i < m; ++i) {
+//     controls.push_back(0.5 * static_cast<double>(i + 1) / num_samples);
+//   }
+//
+//   // DeLong placements
+//   DeLongPlacementsRes ret = CppDeLongPlacements(cases, controls, direction);
+//   double theta = ret.theta;
+//   std::vector<double> X = ret.X;
+//   std::vector<double> Y = ret.Y;
+//
+//   if (X.size() <= 1 || Y.size() <= 1) {
+//     return {area_auc, 1.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
+//   }
+//
+//   // Compute variances
+//   double SX = 0.0, SY = 0.0;
+//   for (size_t i = 0; i < m; ++i) {
+//     SX += (X[i] - theta) * (X[i] - theta);
+//     SY += (Y[i] - theta) * (Y[i] - theta);
+//   }
+//   SX /= (m - 1);
+//   SY /= (m - 1);  // controls.size() == cases.size()
+//
+//   // Compute the overall variance S
+//   double S = SX / m + SY / m;
+//
+//   // Compute the Z-score for the p-value
+//   double z = (theta - 0.5) / std::sqrt(S);
+//
+//   // Compute the two-tailed p-value (AUC ≠ 0.5)
+//   double p_value = 2 * R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
+//
+//   // // Compute the one-sided test (right-tailed) p-value (AUC > 0.5)
+//   // // double p_value = R::pnorm(z, 0.0, 1.0, true, false);
+//   // // Set theta to negative when sample size is small to mitigate sample size effect`
+//   // double p_value = R::pnorm(-std::abs(z), 0.0, 1.0, true, false);
+//
+//   // Confidence interval using DeLong variance
+//   double ci_lower = R::qnorm(level / 2, theta, std::sqrt(S), true, false);
+//   double ci_upper = R::qnorm(1 - level / 2, theta, std::sqrt(S), true, false);
+//   ci_lower = std::max(0.0, ci_lower);
+//   ci_upper = std::min(1.0, ci_upper);
+//
+//   return {area_auc, p_value, ci_upper, ci_lower};
+// }
 
 // Function to compute distance between two vectors:
 double CppDistance(const std::vector<double>& vec1,
@@ -1246,6 +1428,64 @@ std::vector<size_t> CppDistKNNIndice(
   }
 
   return neighbors;
+}
+
+/**
+ * Computes sorted neighbor indices for selected rows in a precomputed distance matrix,
+ * with neighbors restricted to a specified subset of indices (lib).
+ *
+ * Parameters:
+ *   dist_mat      - Precomputed n x n distance matrix (may include NaN).
+ *   lib           - Indices to compute neighbors for (and restrict neighbors to).
+ *   include_self  - Whether to include self (i == j) as a neighbor.
+ *
+ * Returns:
+ *   A vector of n vectors. For rows in lib, each subvector contains the indices of valid neighbors
+ *   (from lib, sorted by increasing distance). Other rows are filled with `invalid_index`.
+ */
+std::vector<std::vector<size_t>> CppDistSortedIndice(
+    const std::vector<std::vector<double>>& dist_mat,
+    const std::vector<size_t>& lib,
+    bool include_self = false)
+{
+  const size_t n = dist_mat.size();
+  const size_t invalid_index = std::numeric_limits<size_t>::max();
+
+  // Initialize all rows as invalid by default
+  std::vector<std::vector<size_t>> sorted_indices(n, std::vector<size_t>{invalid_index});
+
+  for (size_t i : lib) {
+    if (i >= n || dist_mat[i].size() != n) continue;
+
+    const auto& row = dist_mat[i];
+
+    if (std::isnan(row[i])) continue;
+
+    std::vector<std::pair<double, size_t>> valid_neighbors;
+
+    for (size_t j : lib) {
+      if (!include_self && i == j) continue;
+
+      double d = row[j];
+      if (!std::isnan(d)) {
+        valid_neighbors.emplace_back(d, j);
+      }
+    }
+
+    std::sort(valid_neighbors.begin(), valid_neighbors.end(),
+              [](const std::pair<double, size_t>& a, const std::pair<double, size_t>& b) {
+                return (a.first < b.first) || (a.first == b.first && a.second < b.second);
+              });
+
+    std::vector<size_t> indices;
+    for (const auto& pair : valid_neighbors) {
+      indices.push_back(pair.second);
+    }
+
+    sorted_indices[i] = indices;
+  }
+
+  return sorted_indices;
 }
 
 /*

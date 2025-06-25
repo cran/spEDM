@@ -1,30 +1,26 @@
-methods::setGeneric("embedded", function(data, ...) standardGeneric("embedded"))
-
-.embedded_sf_method = \(data,target,E = 3,tau = 1,nb = NULL,trend.rm = FALSE){
-  vec = .uni_lattice(data,target,trend.rm)
+.embedded_sf_method = \(data,target,E = 3,tau = 1,nb = NULL,detrend = FALSE){
+  vec = .uni_lattice(data,target,detrend)
   if (is.null(nb)) nb = .internal_lattice_nb(data)
   return(RcppGenLatticeEmbeddings(vec,nb,E,tau))
 }
 
-.embedded_spatraster_method = \(data,target,E = 3,tau = 1,trend.rm = FALSE){
-  mat = .uni_grid(data,target,trend.rm)
+.embedded_spatraster_method = \(data,target,E = 3,tau = 1,detrend = FALSE){
+  mat = .uni_grid(data,target,detrend)
   return(RcppGenGridEmbeddings(mat,E,tau))
 }
 
 #' embedding spatial cross sectional data
 #'
-#' @param data The observation data.
-#' @param target Name of target variable.
-#' @param E (optional) Dimensions of the embedding.
-#' @param tau (optional) Step of spatial lags.
-#' @param nb (optional) The neighbours list.
-#' @param trend.rm (optional) Whether to remove the linear trend.
+#' @param data observation data.
+#' @param target name of target variable.
+#' @param E (optional) embedding dimensions.
+#' @param tau (optional) step of spatial lags.
+#' @param nb (optional) neighbours list.
+#' @param detrend (optional) whether to remove the linear trend.
 #'
 #' @return A matrix
 #' @export
-#'
 #' @name embedded
-#' @rdname embedded
 #' @aliases embedded,sf-method
 #'
 #' @examples

@@ -9,24 +9,29 @@
 #include <limits>
 #include "CppStats.h"
 
-/*
- * Computes the 'S-Maps' prediction.
+/**
+ * @brief Perform S-Map prediction using locally weighted linear regression.
  *
- * Parameters:
- *   - vectors: Reconstructed state-space (each row is a separate vector/state).
- *   - target: Spatial cross sectional series to be used as the target (should align with vectors).
- *   - lib_indices: Vector of T/F values (which states to include when searching for neighbors).
- *   - pred_indices: Vector of T/F values (which states to predict from).
- *   - num_neighbors: Number of neighbors to use for S-Map.
- *   - theta: Weighting parameter for distances.
+ * This function performs prediction based on a reconstructed state-space (time-delay embedding).
+ * For each prediction index, it:
+ *   - Finds the nearest neighbors from the library indices.
+ *   - Computes distance-based weights using the S-map weighting parameter (theta).
+ *   - Constructs a local weighted linear regression model using the nearest neighbors.
+ *   - Predicts the target value using the derived local model.
  *
- * Returns: A vector<double> containing the predicted target values.
+ * @param vectors        A 2D matrix where each row is a reconstructed state vector (embedding).
+ * @param target         A vector of scalar values to predict (e.g., time series observations).
+ * @param lib_indices    Indices of the vectors used as the library (neighbor candidates).
+ * @param pred_indices   Indices of the vectors used for prediction.
+ * @param num_neighbors  Number of nearest neighbors to use in local regression.
+ * @param theta          Weighting parameter controlling exponential decay of distances.
+ * @return std::vector<double> Predicted values corresponding to pred_indices. Other indices contain NaN.
  */
 std::vector<double> SMapPrediction(
     const std::vector<std::vector<double>>& vectors,
     const std::vector<double>& target,
-    const std::vector<bool>& lib_indices,
-    const std::vector<bool>& pred_indices,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
     int num_neighbors,
     double theta
 );
@@ -36,9 +41,9 @@ std::vector<double> SMapPrediction(
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row is a separate vector/state).
- *   - target: Spatial cross sectional series to be used as the target (should align with vectors).
- *   - lib_indices: Vector of T/F values (which states to include when searching for neighbors).
- *   - pred_indices: Vector of T/F values (which states to predict from).
+ *   - target: Time series data vector to be predicted.
+ *   - lib_indices: Vector of integer indices specifying which states to use for finding neighbors.
+ *   - pred_indices: Vector of integer indices specifying which states to predict.
  *   - num_neighbors: Number of neighbors to use for S-Map.
  *   - theta: Weighting parameter for distances.
  *
@@ -47,30 +52,30 @@ std::vector<double> SMapPrediction(
 double SMap(
     const std::vector<std::vector<double>>& vectors,
     const std::vector<double>& target,
-    const std::vector<bool>& lib_indices,
-    const std::vector<bool>& pred_indices,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
     int num_neighbors,
     double theta
 );
 
 /*
- * Description: Computes the S-Map prediction and evaluates prediction performance.
+ * Computes the S-Map prediction and evaluates prediction performance.
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row is a separate vector/state).
- *   - target: Spatial cross sectional series to be used as the target (should align with vectors).
- *   - lib_indices: Vector of T/F values (which states to include when searching for neighbors).
- *   - pred_indices: Vector of T/F values (which states to predict from).
+ *   - target: Time series data vector to be predicted.
+ *   - lib_indices: Vector of integer indices specifying which states to use for finding neighbors.
+ *   - pred_indices: Vector of integer indices specifying which states to predict.
  *   - num_neighbors: Number of neighbors to use for S-Map.
  *   - theta: Weighting parameter for distances.
  *
- * Returns: A vector<double> containing {PearsonCor, MAE, RMSE}.
+ * Returns: A vector<double> containing {Pearson correlation, MAE, RMSE}.
  */
 std::vector<double> SMapBehavior(
     const std::vector<std::vector<double>>& vectors,
     const std::vector<double>& target,
-    const std::vector<bool>& lib_indices,
-    const std::vector<bool>& pred_indices,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
     int num_neighbors,
     double theta
 );

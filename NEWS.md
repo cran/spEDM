@@ -1,3 +1,33 @@
+# spEDM 1.7
+
+### new
+
+* Provide R-level API and vignette for spatial logistic map ([#609](https://github.com/stscl/spEDM/pull/609),[#612](https://github.com/stscl/spEDM/pull/612)).
+
+### enhancements
+
+* Replace logical vectors with integer index vectors for `lib` and `pred` in `simplex` and `s-mapping` forecasting sources (#632).
+
+* Prevent duplicate generic registrations and simplify method definitions (#627).
+
+* Unify parameter descriptions to lowercase (#570).
+
+* Introduce confidence interval ribbon support in plot method for `gccm` results (#550).
+
+### breaking changes
+
+* Refine randomization strategy in spatial causality test (#643).
+
+* Symbolization `C++` functions now compute medians from lib subset only (#599).
+
+* Users must now use `detrend` instead of `trend.rm` (#559).
+
+* Enable `column` parameter in `simplex()` and `smap()` and rename `columns` parameter to `column` in `multiview()` (#565).
+
+### bug fixes
+
+* Fix bug in plot method for `gccm` results where legend labels did not correctly match the corresponding line colors (#552).
+
 # spEDM 1.6
 
 ### new
@@ -10,7 +40,7 @@
 
 ### enhancements
 
-* Enable custom legend texts and colors in `gccm` S4 generic (#535).
+* Enable custom legend texts and colors in plot method for `gccm` results (#535).
 
 * Reduce computational load in vignettes (#476).
 

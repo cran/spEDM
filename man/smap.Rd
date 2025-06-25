@@ -8,6 +8,7 @@
 \usage{
 \S4method{smap}{sf}(
   data,
+  column,
   target,
   lib = NULL,
   pred = NULL,
@@ -18,11 +19,12 @@
     4, 6, 8),
   nb = NULL,
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 
 \S4method{smap}{SpatRaster}(
   data,
+  column,
   target,
   lib = NULL,
   pred = NULL,
@@ -32,37 +34,40 @@
   theta = c(0, 1e-04, 3e-04, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.5, 0.75, 1, 1.5, 2, 3,
     4, 6, 8),
   threads = detectThreads(),
-  trend.rm = TRUE
+  detrend = TRUE
 )
 }
 \arguments{
-\item{data}{The observation data.}
+\item{data}{observation data.}
 
-\item{target}{Name of target variable.}
+\item{column}{name of library variable.}
 
-\item{lib}{(optional) Libraries indices.}
+\item{target}{name of target variable.}
 
-\item{pred}{(optional) Predictions indices.}
+\item{lib}{(optional) libraries indices.}
 
-\item{E}{(optional) Dimensions of the embedding.}
+\item{pred}{(optional) predictions indices.}
 
-\item{tau}{(optional) Step of spatial lags.}
+\item{E}{(optional) embedding dimensions.}
 
-\item{k}{(optional) Number of nearest neighbors used in prediction.}
+\item{tau}{(optional) step of spatial lags.}
 
-\item{theta}{(optional) Weighting parameter for distances.}
+\item{k}{(optional) number of nearest neighbors used.}
 
-\item{nb}{(optional) The neighbours list.}
+\item{theta}{(optional) weighting parameter for distances.}
 
-\item{threads}{(optional) Number of threads.}
+\item{nb}{(optional) neighbours list.}
 
-\item{trend.rm}{(optional) Whether to remove the linear trend.}
+\item{threads}{(optional) number of threads to use.}
+
+\item{detrend}{(optional) whether to remove the linear trend.}
 }
 \value{
 A list
 \describe{
-\item{\code{xmap}}{self mapping prediction results}
+\item{\code{xmap}}{forecast performance}
 \item{\code{varname}}{name of target variable}
+\item{\code{method}}{method of cross mapping}
 }
 }
 \description{
@@ -71,7 +76,7 @@ smap forecast
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-smap(columbus,"inc")
+smap(columbus,"inc","crime",E = 5,k = 6)
 }
 }
 \references{

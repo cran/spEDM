@@ -12,7 +12,7 @@
 
 <meta name="author" content="Wenbo Lv" />
 
-<meta name="date" content="2025-05-16" />
+<meta name="date" content="2025-06-25" />
 
 <title>Spatial Causality Test (SCT)</title>
 
@@ -340,12 +340,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Spatial Causality Test (SCT)</h1>
 <h4 class="author">Wenbo Lv</h4>
-<h4 class="date">2025-05-16</h4>
+<h4 class="date">2025-06-25</h4>
 
 
 
-<div id="model-principles" class="section level2">
-<h2>Model principles</h2>
+<div id="methodological-background" class="section level2">
+<h2>Methodological Background</h2>
 <p>Let us begin by defining two spatial cross-sectional series <span class="math inline">\(\{x_s\}_{s \in S}\)</span> and <span class="math inline">\(\{y_s\}_{s \in S}\)</span>, where <span class="math inline">\(S\)</span> represents the study area.</p>
 <p>We use:</p>
 <p><span class="math display">\[
@@ -426,20 +426,20 @@ both entropies will be small. The statistical significance of <span class="math 
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="co"># house value and crime</span></span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;hoval&quot;</span>, <span class="st">&quot;crime&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## hoval -&gt; crime: statistic = 1.114, p value = 0.539</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">## crime -&gt; hoval: statistic = 1.555, p value = 0.005</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## hoval -&gt; crime: statistic = 1.114, p value = 0.574</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">## crime -&gt; hoval: statistic = 1.555, p value = 0</span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a></span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="co"># household income and crime</span></span>
 <span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;inc&quot;</span>, <span class="st">&quot;crime&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
 <span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## inc -&gt; crime: statistic = 0.739, p value = 0.965</span></span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="do">## crime -&gt; inc: statistic = 0.946, p value = 0.784</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## inc -&gt; crime: statistic = 0.739, p value = 0.975</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="do">## crime -&gt; inc: statistic = 0.946, p value = 0.762</span></span>
 <span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a></span>
 <span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="co"># household income and house value</span></span>
 <span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="fu">sc.test</span>(columbus, <span class="st">&quot;inc&quot;</span>, <span class="st">&quot;hoval&quot;</span>, <span class="at">k =</span> <span class="dv">15</span>)</span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
-<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="do">## inc -&gt; hoval: statistic = 1.211, p value = 0.301</span></span>
-<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## hoval -&gt; inc: statistic = 0.992, p value = 0.674</span></span></code></pre></div>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="do">## inc -&gt; hoval: statistic = 1.211, p value = 0.311</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## hoval -&gt; inc: statistic = 0.992, p value = 0.712</span></span></code></pre></div>
 </div>
 <div id="an-example-of-spatial-grid-data" class="section level3">
 <h3>An example of spatial grid data</h3>
@@ -451,7 +451,7 @@ both entropies will be small. The statistical significance of <span class="math 
 <span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>npp <span class="ot">=</span> terra<span class="sc">::</span><span class="fu">aggregate</span>(npp, <span class="at">fact =</span> <span class="dv">3</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>npp</span>
 <span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="do">## class       : SpatRaster </span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="do">## dimensions  : 135, 161, 5  (nrow, ncol, nlyr)</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="do">## size        : 135, 161, 5  (nrow, ncol, nlyr)</span></span>
 <span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="do">## resolution  : 30000, 30000  (x, y)</span></span>
 <span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="do">## extent      : -2625763, 2204237, 1867078, 5917078  (xmin, xmax, ymin, ymax)</span></span>
 <span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="do">## coord. ref. : CGCS2000_Albers </span></span>
@@ -464,20 +464,20 @@ both entropies will be small. The statistical significance of <span class="math 
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># precipitation and npp</span></span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;pre&quot;</span>,<span class="st">&quot;npp&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="do">## pre -&gt; npp: statistic = 0.224, p value = 0</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="do">## npp -&gt; pre: statistic = 0.15, p value = 0</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="do">## pre -&gt; npp: statistic = 0.227, p value = 0</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="do">## npp -&gt; pre: statistic = 0.16, p value = 0</span></span>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a></span>
 <span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="co"># temperature and npp</span></span>
 <span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;tem&quot;</span>,<span class="st">&quot;npp&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
 <span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="do">## tem -&gt; npp: statistic = 0.172, p value = 0</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="do">## npp -&gt; tem: statistic = 0.168, p value = 0</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="do">## tem -&gt; npp: statistic = 0.168, p value = 0</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="do">## npp -&gt; tem: statistic = 0.169, p value = 0</span></span>
 <span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a></span>
 <span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="co"># precipitation and temperature</span></span>
 <span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="fu">sc.test</span>(npp,<span class="st">&quot;pre&quot;</span>,<span class="st">&quot;tem&quot;</span>,<span class="at">k =</span> <span class="dv">30</span>)</span>
 <span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="do">## spatial causality test</span></span>
 <span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="do">## pre -&gt; tem: statistic = 0.19, p value = 0</span></span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="do">## tem -&gt; pre: statistic = 0.145, p value = 0</span></span></code></pre></div>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="do">## tem -&gt; pre: statistic = 0.147, p value = 0</span></span></code></pre></div>
 </div>
 </div>
 

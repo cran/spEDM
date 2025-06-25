@@ -1,7 +1,7 @@
 ---
 title: "Spatial Causality Test (SCT)"
 author: "Wenbo Lv"
-date: "2025-05-16"
+date: "2025-06-25"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{SCT}
@@ -11,7 +11,7 @@ vignette: >
 
 
 
-## Model principles
+## Methodological Background
 
 Let us begin by defining two spatial cross-sectional series $\{x_s\}_{s \in S}$ and $\{y_s\}_{s \in S}$, where $S$ represents the study area.
 
@@ -91,20 +91,20 @@ Detect spatial causality among the variables *inc*, *crime*, and *hoval* :
 # house value and crime
 sc.test(columbus, "hoval", "crime", k = 15)
 ## spatial causality test
-## hoval -> crime: statistic = 1.114, p value = 0.539
-## crime -> hoval: statistic = 1.555, p value = 0.005
+## hoval -> crime: statistic = 1.114, p value = 0.574
+## crime -> hoval: statistic = 1.555, p value = 0
 
 # household income and crime
 sc.test(columbus, "inc", "crime", k = 15)
 ## spatial causality test
-## inc -> crime: statistic = 0.739, p value = 0.965
-## crime -> inc: statistic = 0.946, p value = 0.784
+## inc -> crime: statistic = 0.739, p value = 0.975
+## crime -> inc: statistic = 0.946, p value = 0.762
 
 # household income and house value
 sc.test(columbus, "inc", "hoval", k = 15)
 ## spatial causality test
-## inc -> hoval: statistic = 1.211, p value = 0.301
-## hoval -> inc: statistic = 0.992, p value = 0.674
+## inc -> hoval: statistic = 1.211, p value = 0.311
+## hoval -> inc: statistic = 0.992, p value = 0.712
 ```
 
 ### An example of spatial grid data
@@ -120,7 +120,7 @@ npp = terra::rast(system.file("case/npp.tif", package = "spEDM"))
 npp = terra::aggregate(npp, fact = 3, na.rm = TRUE)
 npp
 ## class       : SpatRaster 
-## dimensions  : 135, 161, 5  (nrow, ncol, nlyr)
+## size        : 135, 161, 5  (nrow, ncol, nlyr)
 ## resolution  : 30000, 30000  (x, y)
 ## extent      : -2625763, 2204237, 1867078, 5917078  (xmin, xmax, ymin, ymax)
 ## coord. ref. : CGCS2000_Albers 
@@ -137,18 +137,18 @@ Detect spatial causality among the variables *pre*, *tem*, and *npp* :
 # precipitation and npp
 sc.test(npp,"pre","npp",k = 30)
 ## spatial causality test
-## pre -> npp: statistic = 0.224, p value = 0
-## npp -> pre: statistic = 0.15, p value = 0
+## pre -> npp: statistic = 0.227, p value = 0
+## npp -> pre: statistic = 0.16, p value = 0
 
 # temperature and npp
 sc.test(npp,"tem","npp",k = 30)
 ## spatial causality test
-## tem -> npp: statistic = 0.172, p value = 0
-## npp -> tem: statistic = 0.168, p value = 0
+## tem -> npp: statistic = 0.168, p value = 0
+## npp -> tem: statistic = 0.169, p value = 0
 
 # precipitation and temperature
 sc.test(npp,"pre","tem",k = 30)
 ## spatial causality test
 ## pre -> tem: statistic = 0.19, p value = 0
-## tem -> pre: statistic = 0.145, p value = 0
+## tem -> pre: statistic = 0.147, p value = 0
 ```

@@ -6,22 +6,22 @@
 \alias{embedded,SpatRaster-method}
 \title{embedding spatial cross sectional data}
 \usage{
-\S4method{embedded}{sf}(data, target, E = 3, tau = 1, nb = NULL, trend.rm = FALSE)
+\S4method{embedded}{sf}(data, target, E = 3, tau = 1, nb = NULL, detrend = FALSE)
 
-\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1, trend.rm = FALSE)
+\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1, detrend = FALSE)
 }
 \arguments{
-\item{data}{The observation data.}
+\item{data}{observation data.}
 
-\item{target}{Name of target variable.}
+\item{target}{name of target variable.}
 
-\item{E}{(optional) Dimensions of the embedding.}
+\item{E}{(optional) embedding dimensions.}
 
-\item{tau}{(optional) Step of spatial lags.}
+\item{tau}{(optional) step of spatial lags.}
 
-\item{nb}{(optional) The neighbours list.}
+\item{nb}{(optional) neighbours list.}
 
-\item{trend.rm}{(optional) Whether to remove the linear trend.}
+\item{detrend}{(optional) whether to remove the linear trend.}
 }
 \value{
 A matrix

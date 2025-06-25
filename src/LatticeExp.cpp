@@ -10,9 +10,12 @@
 #include "SCPCM4Lattice.h"
 #include "CrossMappingCardinality.h"
 #include "FalseNearestNeighbors.h"
+#include "SLM4Lattice.h"
 #include "SGC4Lattice.h"
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
 // #include <Rcpp.h>
+#include <RcppArmadillo.h>
+// [[Rcpp::depends(RcppArmadillo)]]
 
 // Function to convert Rcpp::List to std::vector<std::vector<int>> (the `nb` object)
 std::vector<std::vector<int>> nb2vec(const Rcpp::List& nb) {
@@ -44,7 +47,7 @@ std::vector<std::vector<int>> nb2vec(const Rcpp::List& nb) {
 }
 
 // Wrapper function to calculate accumulated lagged neighbor indices for spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppLaggedNeighbor4Lattice(const Rcpp::List& nb, int lagNum) {
   int n = nb.size();
 
@@ -74,8 +77,8 @@ Rcpp::List RcppLaggedNeighbor4Lattice(const Rcpp::List& nb, int lagNum) {
 }
 
 // Wrapper function to calculate lagged values for spatial lattice data
-// [[Rcpp::export]]
-Rcpp::List RcppLaggedVar4Lattice(const Rcpp::NumericVector& vec,
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppLaggedVal4Lattice(const Rcpp::NumericVector& vec,
                                  const Rcpp::List& nb, int lagNum) {
   int n = nb.size();
 
@@ -86,7 +89,7 @@ Rcpp::List RcppLaggedVar4Lattice(const Rcpp::NumericVector& vec,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Calculate lagged indices
-  std::vector<std::vector<double>> lagged_values = CppLaggedVar4Lattice(vec_std, nb_vec, lagNum);
+  std::vector<std::vector<double>> lagged_values = CppLaggedVal4Lattice(vec_std, nb_vec, lagNum);
 
   // Convert std::vector<std::vector<int>> to Rcpp::List
   Rcpp::List result(n);
@@ -98,7 +101,7 @@ Rcpp::List RcppLaggedVar4Lattice(const Rcpp::NumericVector& vec,
 }
 
 // Wrapper function to generate embeddings for spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppGenLatticeEmbeddings(const Rcpp::NumericVector& vec,
                                              const Rcpp::List& nb,
                                              int E,
@@ -126,7 +129,7 @@ Rcpp::NumericMatrix RcppGenLatticeEmbeddings(const Rcpp::NumericVector& vec,
 }
 
 // Wrapper function to generate neighbors for spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppGenLatticeNeighbors(const Rcpp::NumericVector& vec,
                                    const Rcpp::List& nb,
                                    const Rcpp::IntegerVector& lib,
@@ -137,16 +140,19 @@ Rcpp::List RcppGenLatticeNeighbors(const Rcpp::NumericVector& vec,
   // Convert Rcpp::List to std::vector<std::vector<int>>
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
-  // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
+  // Convert Rcpp IntegerVector lib to std::vector<int> lib_std
+  std::vector<int> lib_std;
 
-  // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
+  // Check that lib indices are within bounds & convert R based 1 index to C++ based 0 index
   int nsample = vec_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > nsample) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > nsample) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+
+    if (!std::isnan(vec_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
 
   // Generate neighbors
@@ -169,7 +175,7 @@ Rcpp::List RcppGenLatticeNeighbors(const Rcpp::NumericVector& vec,
 }
 
 // Wrapper function to implement a symbolic transformation of a univariate spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppGenLatticeSymbolization(const Rcpp::NumericVector& vec,
                                                 const Rcpp::List& nb,
                                                 const Rcpp::IntegerVector& lib,
@@ -182,22 +188,26 @@ Rcpp::NumericVector RcppGenLatticeSymbolization(const Rcpp::NumericVector& vec,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
 
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
   int n = vec_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > n) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > n) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(vec_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > n) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > n) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(vec_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   //  Generate symbolization map
@@ -209,8 +219,8 @@ Rcpp::NumericVector RcppGenLatticeSymbolization(const Rcpp::NumericVector& vec,
   return Rcpp::wrap(symbolmap);
 }
 
-// Wrapper function to implement a symbolic transformation of a univariate spatial lattice data
-// [[Rcpp::export]]
+// Wrapper function to partition spatial units in spatial lattice data
+// [[Rcpp::export(rng = false)]]
 Rcpp::IntegerVector RcppDivideLattice(const Rcpp::List& nb,int b) {
   // Convert Rcpp::List to std::vector<std::vector<int>>
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
@@ -222,8 +232,153 @@ Rcpp::IntegerVector RcppDivideLattice(const Rcpp::List& nb,int b) {
   return Rcpp::wrap(blocks);
 }
 
+// Wrapper function to perform univariate Spatial Logistic Map for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericMatrix RcppSLMUni4Lattice(
+    const Rcpp::NumericVector& vec,
+    const Rcpp::List& nb,
+    int k = 4,
+    int step = 20,
+    double alpha = 0.77,
+    double escape_threshold = 1e10
+) {
+  // Convert vec to std::vector<double>
+  std::vector<double> vec_std = Rcpp::as<std::vector<double>>(vec);
+
+  // Convert Rcpp::List to std::vector<std::vector<int>>
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Call the core function
+  std::vector<std::vector<double>> result = SLMUni4Lattice(vec_std, nb_vec, k, step, alpha, escape_threshold);
+
+  // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
+  int n_rows = static_cast<int>(result.size());
+  int n_cols = step + 1;
+  Rcpp::NumericMatrix out(n_rows, n_cols);
+
+  // Copy data into NumericMatrix
+  for (int i = 0; i < n_rows; ++i) {
+    for (int j = 0; j < n_cols; ++j) {
+      out(i, j) = result[i][j];
+    }
+  }
+
+  return out;
+}
+
+// Wrapper function to perform bivariate Spatial Logistic Map for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppSLMBi4Lattice(
+    const Rcpp::NumericVector& x,
+    const Rcpp::NumericVector& y,
+    const Rcpp::List& nb,
+    int k = 4,
+    int step = 20,
+    double alpha_x = 0.625,
+    double alpha_y = 0.77,
+    double beta_xy = 0.05,
+    double beta_yx = 0.4,
+    double escape_threshold = 1e10
+) {
+  // Convert x/y to std::vector<double>
+  std::vector<double> vec1 = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> vec2 = Rcpp::as<std::vector<double>>(y);
+
+  // Convert Rcpp::List to std::vector<std::vector<int>>
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Call the core function
+  std::vector<std::vector<std::vector<double>>> result = SLMBi4Lattice(
+    vec1, vec2, nb_vec, k, step, alpha_x, alpha_y, beta_xy, beta_yx, escape_threshold
+  );
+
+  // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
+  int n_rows = static_cast<int>(result[0].size());
+  int n_cols = step + 1;
+  Rcpp::NumericMatrix out_x(n_rows, n_cols);
+  Rcpp::NumericMatrix out_y(n_rows, n_cols);
+
+  // Copy data into NumericMatrix
+  for (int i = 0; i < n_rows; ++i) {
+    for (int j = 0; j < n_cols; ++j) {
+      out_x(i, j) = result[0][i][j];
+      out_y(i, j) = result[1][i][j];
+    }
+  }
+
+  // Wrap results into an Rcpp::List
+  Rcpp::List out = Rcpp::List::create(
+    Rcpp::Named("x") = out_x,
+    Rcpp::Named("y") = out_y
+  );
+
+  return out;
+}
+
+// Wrapper function to perform trivariate Spatial Logistic Map for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppSLMTri4Lattice(
+    const Rcpp::NumericVector& x,
+    const Rcpp::NumericVector& y,
+    const Rcpp::NumericVector& z,
+    const Rcpp::List& nb,
+    int k = 4,
+    int step = 20,
+    double alpha_x = 0.625,
+    double alpha_y = 0.77,
+    double alpha_z = 0.55,
+    double beta_xy = 0.05,
+    double beta_xz = 0.05,
+    double beta_yx = 0.4,
+    double beta_yz = 0.4,
+    double beta_zx = 0.65,
+    double beta_zy = 0.65,
+    double escape_threshold = 1e10
+) {
+  // Convert x/y to std::vector<double>
+  std::vector<double> vec1 = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> vec2 = Rcpp::as<std::vector<double>>(y);
+  std::vector<double> vec3 = Rcpp::as<std::vector<double>>(z);
+
+  // Convert Rcpp::List to std::vector<std::vector<int>>
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Call the core function
+  std::vector<std::vector<std::vector<double>>> result = SLMTri4Lattice(
+    vec1, vec2, vec3, nb_vec,
+    k, step, alpha_x, alpha_y, alpha_z,
+    beta_xy, beta_xz, beta_yx, beta_yz, beta_zx, beta_zy,
+    escape_threshold
+  );
+
+  // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
+  int n_rows = static_cast<int>(result[0].size());
+  int n_cols = step + 1;
+  Rcpp::NumericMatrix out_x(n_rows, n_cols);
+  Rcpp::NumericMatrix out_y(n_rows, n_cols);
+  Rcpp::NumericMatrix out_z(n_rows, n_cols);
+
+  // Copy data into NumericMatrix
+  for (int i = 0; i < n_rows; ++i) {
+    for (int j = 0; j < n_cols; ++j) {
+      out_x(i, j) = result[0][i][j];
+      out_y(i, j) = result[1][i][j];
+      out_z(i, j) = result[2][i][j];
+    }
+  }
+
+  // Wrap results into an Rcpp::List
+  Rcpp::List out = Rcpp::List::create(
+    Rcpp::Named("x") = out_x,
+    Rcpp::Named("y") = out_y,
+    Rcpp::Named("z") = out_z
+  );
+
+  return out;
+}
+
 // Wrapper function to perform FNN for spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppFNN4Lattice(
     const Rcpp::NumericVector& vec,
     const Rcpp::List& nb,
@@ -243,22 +398,26 @@ Rcpp::NumericVector RcppFNN4Lattice(
   // Convert Rcpp *Vector to std::vector<*>
   std::vector<double> rt_std = Rcpp::as<std::vector<double>>(rt);
   std::vector<double> eps_std = Rcpp::as<std::vector<double>>(eps);
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
 
   int validSampleNum = vec_std.size();
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > validSampleNum) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > validSampleNum) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(vec_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > validSampleNum) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > validSampleNum) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(vec_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   // Generate embeddings
@@ -287,7 +446,8 @@ Rcpp::NumericVector RcppFNN4Lattice(
  *   mean absolute error (MAE), and root mean squared error (RMSE).
  *
  * Parameters:
- *   - x: A NumericVector containing the time series data.
+ *   - source: A NumericVector containing the source spatial cross-sectional data to be embedded.
+ *   - target: A NumericVector containing the source spatial cross-sectional data to be predicted.
  *   - nb: A List containing neighborhood information for lattice data.
  *   - lib: An IntegerVector specifying the library indices (1-based in R, converted to 0-based in C++).
  *   - pred: An IntegerVector specifying the prediction indices (1-based in R, converted to 0-based in C++).
@@ -303,8 +463,9 @@ Rcpp::NumericVector RcppFNN4Lattice(
  *   - MAE: The mean absolute error between the predicted and actual values.
  *   - RMSE: The root mean squared error between the predicted and actual values.
  */
-// [[Rcpp::export]]
-Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& x,
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
+                                        const Rcpp::NumericVector& target,
                                         const Rcpp::List& nb,
                                         const Rcpp::IntegerVector& lib,
                                         const Rcpp::IntegerVector& pred,
@@ -316,35 +477,41 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& x,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp::NumericVector to std::vector<double>
-  std::vector<double> vec_std = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> source_std = Rcpp::as<std::vector<double>>(source);
+  std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
 
   // Convert Rcpp::IntegerVector to std::vector<int>
   std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
   std::vector<int> b_std = Rcpp::as<std::vector<int>>(b);
 
-  // Initialize lib_indices and pred_indices with all false
-  std::vector<bool> lib_indices(vec_std.size(), false);
-  std::vector<bool> pred_indices(vec_std.size(), false);
+  // Initialize lib_indices and pred_indices
+  std::vector<int> lib_indices;
+  std::vector<int> pred_indices;
 
-  int target_len = vec_std.size();
+  int target_len = target_std.size();
   // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
   size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_libsize; ++i) {
-    if (lib[i] < 0 || lib[i] > target_len) {
+    if (lib[i] < 1 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(source_std[lib[i] - 1]) && !std::isnan(target_std[lib[i] - 1])) {
+      lib_indices.push_back(lib[i] - 1); // Convert to 0-based index
+    }
   }
   size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_predsize; ++i) {
-    if (pred[i] < 0 || pred[i] > target_len) {
+    if (pred[i] < 1 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(source_std[pred[i] - 1]) && !std::isnan(target_std[pred[i] - 1])) {
+      pred_indices.push_back(pred[i] - 1); // Convert to 0-based index
+    }
   }
 
   std::vector<std::vector<double>> res_std = Simplex4Lattice(
-    vec_std,
+    source_std,
+    target_std,
     nb_vec,
     lib_indices,
     pred_indices,
@@ -373,7 +540,8 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& x,
 
 /**
  * Parameters:
- *   - x: A NumericVector containing the time series data.
+ *   - source: A NumericVector containing the source spatial cross-sectional data to be embedded.
+ *   - target: A NumericVector containing the source spatial cross-sectional data to be predicted.
  *   - nb: A List containing neighborhood information for lattice data.
  *   - lib: An IntegerVector specifying the library indices (1-based in R, converted to 0-based in C++).
  *   - pred: An IntegerVector specifying the prediction indices (1-based in R, converted to 0-based in C++).
@@ -392,8 +560,9 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& x,
  *
  * This function utilizes parallel processing for faster computation across different values of theta.
  */
-// [[Rcpp::export]]
-Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& x,
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& source,
+                                     const Rcpp::NumericVector& target,
                                      const Rcpp::List& nb,
                                      const Rcpp::IntegerVector& lib,
                                      const Rcpp::IntegerVector& pred,
@@ -406,32 +575,38 @@ Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& x,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp::NumericVector to std::vector<double>
-  std::vector<double> vec_std = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> source_std = Rcpp::as<std::vector<double>>(source);
+  std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
   std::vector<double> theta_std = Rcpp::as<std::vector<double>>(theta);
 
-  // Initialize lib_indices and pred_indices with all false
-  std::vector<bool> lib_indices(vec_std.size(), false);
-  std::vector<bool> pred_indices(vec_std.size(), false);
+  // Initialize lib_indices and pred_indices
+  std::vector<int> lib_indices;
+  std::vector<int> pred_indices;
 
-  int target_len = vec_std.size();
+  int target_len = target_std.size();
   // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
   size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_libsize; ++i) {
-    if (lib[i] < 0 || lib[i] > target_len) {
+    if (lib[i] < 1 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(source_std[lib[i] - 1]) && !std::isnan(target_std[lib[i] - 1])) {
+      lib_indices.push_back(lib[i] - 1); // Convert to 0-based index
+    }
   }
   size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_predsize; ++i) {
-    if (pred[i] < 0 || pred[i] > target_len) {
+    if (pred[i] < 1 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(source_std[pred[i] - 1]) && !std::isnan(target_std[pred[i] - 1])) {
+      pred_indices.push_back(pred[i] - 1); // Convert to 0-based index
+    }
   }
 
   std::vector<std::vector<double>> res_std = SMap4Lattice(
-    vec_std,
+    source_std,
+    target_std,
     nb_vec,
     lib_indices,
     pred_indices,
@@ -478,7 +653,7 @@ Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& x,
  * Returns:
  * - An Rcpp::NumericVector containing the prediction results based on the multiview embedding.
  */
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
                                           const Rcpp::NumericVector& y,
                                           const Rcpp::List& nb,
@@ -497,24 +672,28 @@ Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Initialize lib_indices and pred_indices with all false
-  std::vector<bool> lib_indices(target.size(), false);
-  std::vector<bool> pred_indices(target.size(), false);
+  std::vector<int> lib_indices;
+  std::vector<int> pred_indices;
 
   int target_len = target.size();
   // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
   size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_libsize; ++i) {
-    if (lib[i] < 0 || lib[i] > target_len) {
+    if (lib[i] < 1 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(target[lib[i] - 1])) {
+      lib_indices.push_back(lib[i] - 1); // Convert to 0-based index
+    }
   }
   size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
   for (size_t i = 0; i < n_predsize; ++i) {
-    if (pred[i] < 0 || pred[i] > target_len) {
+    if (pred[i] < 1 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    if (!std::isnan(target[pred[i] - 1])) {
+      pred_indices.push_back(pred[i] - 1); // Convert to 0-based index
+    }
   }
 
   int num_row = x.nrow();
@@ -592,9 +771,97 @@ Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
   return Rcpp::wrap(res);
 }
 
+// Wrapper function to compute intersection cardinality for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
+                                   const Rcpp::NumericVector& target,
+                                   const Rcpp::List& nb,
+                                   const Rcpp::IntegerVector& lib,
+                                   const Rcpp::IntegerVector& pred,
+                                   const Rcpp::IntegerVector& E,
+                                   const Rcpp::IntegerVector& b,
+                                   int tau,
+                                   int exclude = 0,
+                                   int threads = 8,
+                                   int parallel_level = 0) {
+  // Convert neighborhood list to std::vector<std::vector<int>>
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> source_std = Rcpp::as<std::vector<double>>(source);
+  std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
+
+  // Convert Rcpp::IntegerVector to std::vector<int>
+  std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
+
+  // Initialize lib_indices and pred_indices
+  std::vector<size_t> lib_indices;
+  std::vector<size_t> pred_indices;
+
+  int target_len = target_std.size();
+  // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
+  size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
+  for (size_t i = 0; i < n_libsize; ++i) {
+    if (lib[i] < 1 || lib[i] > target_len) {
+      Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
+    }
+    if (!std::isnan(source_std[lib[i] - 1]) && !std::isnan(target_std[lib[i] - 1])) {
+      lib_indices.push_back(static_cast<size_t>(lib[i] - 1)); // Convert to 0-based index
+    }
+  }
+  size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
+  for (size_t i = 0; i < n_predsize; ++i) {
+    if (pred[i] < 1 || pred[i] > target_len) {
+      Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
+    }
+    if (!std::isnan(source_std[pred[i] - 1]) && !std::isnan(target_std[pred[i] - 1])) {
+      pred_indices.push_back(static_cast<size_t>(pred[i] - 1)); // Convert to 0-based index
+    }
+  }
+
+  // Check the validity of the neignbor numbers
+  std::vector<int> b_std;
+  for (int i = 0; i < b.size(); ++i){
+    if (b[i] > static_cast<int>(lib_indices.size())) {
+      Rcpp::stop("Neighbor numbers count out of acceptable range at position %d (value: %d)", i + 1, b[i]);
+    }
+    b_std.push_back(b[i]);
+  }
+
+  std::vector<std::vector<double>> res_std = IC4Lattice(
+    source_std,
+    target_std,
+    nb_vec,
+    lib_indices,
+    pred_indices,
+    E_std,
+    b_std,
+    tau,
+    exclude,
+    threads,
+    parallel_level);
+
+  size_t n_rows = res_std.size();
+  size_t n_cols = res_std[0].size();
+
+  // Create an Rcpp::NumericMatrix with the same dimensions
+  Rcpp::NumericMatrix result(n_rows, n_cols);
+
+  // Fill the Rcpp::NumericMatrix with data from res_std
+  for (size_t i = 0; i < n_rows; ++i) {
+    for (size_t j = 0; j < n_cols; ++j) {
+      result(i, j) = res_std[i][j];
+    }
+  }
+
+  // Set column names for the result matrix
+  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "CausalScore", "Significance");
+  return result;
+}
+
 // Wrapper function to perform GCCM for spatial lattice data
 // predict y based on x ====> x xmap y ====> y causes x
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
                                      const Rcpp::NumericVector& y,
                                      const Rcpp::List& nb,
@@ -618,22 +885,26 @@ Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
 
   // Convert Rcpp::IntegerVector to std::vector<int>
   std::vector<int> libsizes_std = Rcpp::as<std::vector<int>>(libsizes);
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
 
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
   int n = y_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > n) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > n) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > n) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > n) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   // Perform GCCM Lattice
@@ -672,7 +943,7 @@ Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
 
 // Wrapper function to perform SCPCM for spatial lattice data
 // predict y based on x ====> x xmap y ====> y causes x (account for controls)
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
                                       const Rcpp::NumericVector& y,
                                       const Rcpp::NumericMatrix& z,
@@ -705,25 +976,29 @@ Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
 
   // Convert Rcpp::IntegerVector to std::vector<int>
   std::vector<int> libsizes_std = Rcpp::as<std::vector<int>>(libsizes);
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
   std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
   std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
   std::vector<int> b_std = Rcpp::as<std::vector<int>>(b);
 
-  // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
+  // Convert and check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
   int n = y_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > n) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > n) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > n) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > n) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   // Perform SCPCM For Lattice
@@ -768,18 +1043,20 @@ Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
 }
 
 // Wrapper function to perform GCMC for spatial lattice data
-// [[Rcpp::export]]
-Rcpp::NumericMatrix RcppGCMC4Lattice(
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppGCMC4Lattice(
     const Rcpp::NumericVector& x,
     const Rcpp::NumericVector& y,
     const Rcpp::List& nb,
+    const Rcpp::IntegerVector& libsizes,
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
     const Rcpp::IntegerVector& E,
     const Rcpp::IntegerVector& tau,
-    const Rcpp::IntegerVector& b,
-    const Rcpp::IntegerVector& max_r,
+    int b,
+    int r,
     int threads,
+    int parallel_level,
     bool progressbar){
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> x_std = Rcpp::as<std::vector<double>>(x);
@@ -789,39 +1066,36 @@ Rcpp::NumericMatrix RcppGCMC4Lattice(
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<size_t> libsizes_std = Rcpp::as<std::vector<size_t>>(libsizes);
   std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
   std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
-  std::vector<int> b_std = Rcpp::as<std::vector<int>>(b);
-  std::vector<int> maxr_std = Rcpp::as<std::vector<int>>(max_r);
 
-  // Remove values in b_std that are greater than validSampleNum or less than or equal to 3
   int validSampleNum = x_std.size();
-  b_std.erase(std::remove_if(b_std.begin(), b_std.end(),
-                             [validSampleNum](int x) { return x > validSampleNum || x <= 3; }),
-                             b_std.end());
-
-  if (b_std.empty()) {
-    Rcpp::stop("k cannot be less than or equal to 3 or greater than the number of non-NA values.");
-  }
-
-  // Remove duplicates for b_std
-  std::sort(b_std.begin(), b_std.end());
-  b_std.erase(std::unique(b_std.begin(), b_std.end()), b_std.end());
-
-  // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > validSampleNum) {
+  // Convert and check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
+  std::vector<size_t> lib_std;
+  std::vector<size_t> pred_std;
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > validSampleNum) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1])) {
+      lib_std.push_back(static_cast<size_t>(lib[i] - 1));
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > validSampleNum) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > validSampleNum) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1])) {
+      pred_std.push_back(static_cast<size_t>(pred[i] - 1));
+    }
+  }
+
+  // check b that are greater than validSampleNum or less than or equal to 3
+  if (b < 3 || b > validSampleNum) {
+    Rcpp::stop("k cannot be less than or equal to 3 or greater than the number of non-NA values.");
+  } else if (b + 1 > static_cast<int>(lib_std.size())){
+    Rcpp::stop("Please check `libsizes` or `lib`; no valid libraries available for running GCMC.");
   }
 
   // Generate embeddings
@@ -829,24 +1103,39 @@ Rcpp::NumericMatrix RcppGCMC4Lattice(
   std::vector<std::vector<double>> e2 = GenLatticeEmbeddings(y_std, nb_vec, E[1], tau_std[1]);
 
   // Perform GCMC for spatial lattice data
-  std::vector<std::vector<double>> cs1 = CrossMappingCardinality(e1,e2,lib_std,pred_std,b_std,maxr_std,threads,progressbar);
+  CMCRes res = CrossMappingCardinality(e1,e2,libsizes_std,lib_std,pred_std,
+                                       static_cast<size_t>(b),static_cast<size_t>(r),
+                                       threads,parallel_level,progressbar);
 
-  Rcpp::NumericMatrix resultMatrix(b_std.size(), 5);
-  for (size_t i = 0; i < b_std.size(); ++i) {
-    for (size_t j = 0; j < cs1[0].size(); ++j){
-      resultMatrix(i, j) = cs1[i][j];
-    }
+  // Convert mean_aucs to Rcpp::DataFrame
+  std::vector<double> libs, aucs;
+  for (const auto& cm : res.causal_strength) {
+    libs.push_back(cm[0]);
+    aucs.push_back(cm[1]);
   }
 
-  // Set column names for the result matrix
-  Rcpp::colnames(resultMatrix) = Rcpp::CharacterVector::create("neighbors",
-                 "x_xmap_y_mean","x_xmap_y_sig",
-                 "x_xmap_y_upper","x_xmap_y_lower");
-  return resultMatrix;
+  Rcpp::DataFrame cs_df = Rcpp::DataFrame::create(
+    Rcpp::Named("libsizes") = libs,
+    Rcpp::Named("x_xmap_y_mean") = aucs
+  );
+
+  // Wrap causal_strength with names
+  Rcpp::DataFrame xmap_df = Rcpp::DataFrame::create(
+    Rcpp::Named("neighbors") = res.cross_mapping[0],
+    Rcpp::Named("x_xmap_y_mean") = res.cross_mapping[1],
+    Rcpp::Named("x_xmap_y_sig") = res.cross_mapping[2],
+    Rcpp::Named("x_xmap_y_upper") = res.cross_mapping[3],
+    Rcpp::Named("x_xmap_y_lower")  = res.cross_mapping[4]
+  );
+
+  return Rcpp::List::create(
+    Rcpp::Named("xmap") = xmap_df,
+    Rcpp::Named("cs") = cs_df
+  );
 }
 
 // Wrapper function to perform SGC for spatial lattice data without bootstrapped significance
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppSGCSingle4Lattice(const Rcpp::NumericVector& x,
                                           const Rcpp::NumericVector& y,
                                           const Rcpp::List& nb,
@@ -864,22 +1153,26 @@ Rcpp::NumericVector RcppSGCSingle4Lattice(const Rcpp::NumericVector& x,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
 
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
   int n = y_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > n) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > n) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > n) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > n) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   // Perform SGC for spatial lattice data
@@ -906,7 +1199,7 @@ Rcpp::NumericVector RcppSGCSingle4Lattice(const Rcpp::NumericVector& x,
 }
 
 // Wrapper function to perform SGC for spatial lattice data
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppSGC4Lattice(const Rcpp::NumericVector& x,
                                     const Rcpp::NumericVector& y,
                                     const Rcpp::List& nb,
@@ -929,23 +1222,27 @@ Rcpp::NumericVector RcppSGC4Lattice(const Rcpp::NumericVector& x,
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  std::vector<int> lib_std;
+  std::vector<int> pred_std;
   std::vector<int> b_std = Rcpp::as<std::vector<int>>(block);
 
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
   int n = y_std.size();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > n) {
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > n) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1])) {
+      lib_std.push_back(lib[i] - 1);
+    }
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > n) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > n) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1])) {
+      pred_std.push_back(pred[i] - 1);
+    }
   }
 
   // Perform SGC for spatial lattice data

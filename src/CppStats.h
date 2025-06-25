@@ -59,7 +59,7 @@ std::vector<double> CppAbsDiff(const std::vector<double>& vec1,
 std::vector<double> CppSumNormalize(const std::vector<double>& vec,
                                     bool NA_rm = false);
 
-std::vector<double> CppArithmeticSeq(double from, double to, int length_out);
+std::vector<double> CppArithmeticSeq(double from, double to, size_t length_out);
 
 double CppVariance(const std::vector<double>& vec, bool NA_rm = false);
 
@@ -68,6 +68,14 @@ double CppCovariance(const std::vector<double>& vec1,
                      bool NA_rm = false);
 
 double PearsonCor(const std::vector<double>& y,
+                  const std::vector<double>& y_hat,
+                  bool NA_rm = false);
+
+double SpearmanCor(const std::vector<double>& y,
+                   const std::vector<double>& y_hat,
+                   bool NA_rm = false);
+
+double KendallCor(const std::vector<double>& y,
                   const std::vector<double>& y_hat,
                   bool NA_rm = false);
 
@@ -83,9 +91,9 @@ double PartialCorTrivar(const std::vector<double>& y,
                         bool NA_rm = false,
                         bool linear = false);
 
-double CppCorSignificance(double r, int n, int k = 0);
+double CppCorSignificance(double r, size_t n, size_t k = 0);
 
-std::vector<double> CppCorConfidence(double r, int n, int k = 0,
+std::vector<double> CppCorConfidence(double r, size_t n, size_t k = 0,
                                      double level = 0.05);
 
 std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
@@ -96,7 +104,7 @@ std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
 std::vector<double> CppCMCTest(const std::vector<double>& cases,
                                const std::string& direction,
                                double level = 0.05,
-                               int num_samples = 0);
+                               size_t num_samples = 0);
 
 std::vector<double> CppDeLongTest(const std::vector<double>& cases,
                                   const std::vector<double>& controls,
@@ -151,6 +159,11 @@ std::vector<size_t> CppDistKNNIndice(
     size_t target_idx,
     size_t k,
     const std::vector<int>& lib);
+
+std::vector<std::vector<size_t>> CppDistSortedIndice(
+    const std::vector<std::vector<double>>& dist_mat,
+    const std::vector<size_t>& lib,
+    bool include_self = false);
 
 std::vector<std::vector<std::vector<double>>> CppSVD(const std::vector<std::vector<double>>& X);
 

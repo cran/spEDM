@@ -22,13 +22,13 @@
  *
  * Returns: A Rcpp::NumericVector containing the predicted target values.
  */
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppSimplexForecast(
     const Rcpp::NumericMatrix& embedding,
     const Rcpp::NumericVector& target,
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
-    const int& num_neighbors){
+    const int& num_neighbors = 4){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> embedding_std(embedding.nrow(),
                                                  std::vector<double>(embedding.ncol()));
@@ -41,25 +41,23 @@ Rcpp::NumericVector RcppSimplexForecast(
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
 
-  // Initialize lib_indices and pred_indices with all false
-  std::vector<bool> lib_indices(target_std.size(), false);
-  std::vector<bool> pred_indices(target_std.size(), false);
+  // Initialize lib_indices and pred_indices
+  std::vector<int> lib_indices;
+  std::vector<int> pred_indices;
 
   int target_len = target_std.size();
-  // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
-  size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
-  for (size_t i = 0; i < n_libsize; ++i) {
+  // Convert lib and pred (1-based in R) to 0-based indices and check validity
+  for (int i = 0; i < lib.size(); ++i) {
     if (lib[i] < 0 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+    lib_indices.push_back(lib[i] - 1); // Convert to 0-based index
   }
-  size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
-  for (size_t i = 0; i < n_predsize; ++i) {
+  for (int i = 0; i < pred.size(); ++i) {
     if (pred[i] < 0 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    pred_indices.push_back(pred[i] - 1); // Convert to 0-based index
   }
 
   // Call the SimplexProjectionPrediction function
@@ -91,14 +89,14 @@ Rcpp::NumericVector RcppSimplexForecast(
  *
  * Returns: A Rcpp::NumericVector containing the predicted target values.
  */
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppSMapForecast(
     const Rcpp::NumericMatrix& embedding,
     const Rcpp::NumericVector& target,
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
-    const int& num_neighbors,
-    const double& theta){
+    const int& num_neighbors = 4,
+    const double& theta = 1.0){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> embedding_std(embedding.nrow(),
                                                  std::vector<double>(embedding.ncol()));
@@ -111,25 +109,23 @@ Rcpp::NumericVector RcppSMapForecast(
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
 
-  // Initialize lib_indices and pred_indices with all false
-  std::vector<bool> lib_indices(target_std.size(), false);
-  std::vector<bool> pred_indices(target_std.size(), false);
+  // Initialize lib_indices and pred_indices
+  std::vector<int> lib_indices;
+  std::vector<int> pred_indices;
 
   int target_len = target_std.size();
-  // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
-  size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
-  for (size_t i = 0; i < n_libsize; ++i) {
+  // Convert lib and pred (1-based in R) to 0-based indices and check validity
+  for (int i = 0; i < lib.size(); ++i) {
     if (lib[i] < 0 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_indices[lib[i] - 1] = true; // Convert to 0-based index
+    lib_indices.push_back(lib[i] - 1); // Convert to 0-based index
   }
-  size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
-  for (size_t i = 0; i < n_predsize; ++i) {
+  for (int i = 0; i < pred.size(); ++i) {
     if (pred[i] < 0 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_indices[pred[i] - 1] = true; // Convert to 0-based index
+    pred_indices.push_back(pred[i] - 1); // Convert to 0-based index
   }
 
   // Call the SMapPrediction function
@@ -149,10 +145,10 @@ Rcpp::NumericVector RcppSMapForecast(
 /*
  * Computes the Intersection Cardinality (IC) scores
  *
- * This function serves as an interface between R and C++ to compute the Intersection Cardinality (IC) score,
- * which quantifies the causal relationship between two variables by comparing the intersection
- * of their nearest neighbors in a state-space reconstruction. The function works by performing cross-mapping
- * and calculating the ratio of shared neighbors for each prediction index.
+ * This function serves as an interface between R and C++ to compute the Intersection Cardinality (IC) curve,
+ * which quantifies the causal relationship between two variables by comparing the intersection of their nearest
+ * neighbors in a state-space reconstruction. The function works by performing cross-mapping and calculating the
+ * ratio of shared neighbors for each prediction index.
  *
  * Parameters:
  *   embedding_x: A NumericMatrix representing the state-space reconstruction (embedded) of the potential cause variable.
@@ -162,21 +158,21 @@ Rcpp::NumericVector RcppSMapForecast(
  *   num_neighbors: An integer specifying the number of neighbors to use for cross mapping.
  *   n_excluded: An integer indicating the number of neighbors to exclude from the distance matrix.
  *   threads: The number of parallel threads to use for computation.
- *   progressbar: A boolean value specifying whether to display a progress bar during computation.
+ *   parallel_level: Whether to use multithreaded (0) or serial (1) mode
  *
  * Returns:
- *   A NumericVector containing the intersection cardinality scores.
+ *   A NumericVector containing the intersection cardinality curve.
  */
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppIntersectionCardinality(
     const Rcpp::NumericMatrix& embedding_x,
     const Rcpp::NumericMatrix& embedding_y,
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
-    const int& num_neighbors,
-    const int& n_excluded,
-    const int& threads,
-    const bool& progressbar){
+    const int& num_neighbors = 4,
+    const int& n_excluded = 0,
+    const int& threads = 8,
+    const int& parallel_level = 0){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> e1(embedding_x.nrow(),
                                       std::vector<double>(embedding_x.ncol()));
@@ -193,35 +189,39 @@ Rcpp::NumericVector RcppIntersectionCardinality(
     }
   }
 
-  // Convert Rcpp IntegerVector to std::vector<int>
-  std::vector<int> lib_std = Rcpp::as<std::vector<int>>(lib);
-  std::vector<int> pred_std = Rcpp::as<std::vector<int>>(pred);
+  // Initialize lib_indices and pred_indices
+  std::vector<size_t> lib_indices;
+  std::vector<size_t> pred_indices;
 
-  // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
-  int num_observation = embedding_y.nrow();
-  for (size_t i = 0; i < lib_std.size(); ++i) {
-    if (lib_std[i] < 0 || lib_std[i] > num_observation) {
+  int target_len = embedding_x.nrow();
+  // Convert lib and pred (1-based in R) to 0-based indices and check validity
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 0 || lib[i] > target_len) {
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
-    lib_std[i] -= 1;
+    lib_indices.push_back(static_cast<size_t>(lib[i] - 1)); // Convert to 0-based index
   }
-  for (size_t i = 0; i < pred_std.size(); ++i) {
-    if (pred_std[i] < 0 || pred_std[i] > num_observation) {
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 0 || pred[i] > target_len) {
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
-    pred_std[i] -= 1;
+    pred_indices.push_back(static_cast<size_t>(pred[i] - 1)); // Convert to 0-based index
+  }
+
+  if (lib_indices.size() < static_cast<size_t>(num_neighbors)){
+    Rcpp::stop("Library size must not exceed the number of nearest neighbors used for mapping.");
   }
 
   // Call the IntersectionCardinality function
   std::vector<double> pred_res = IntersectionCardinality(
     e1,
     e2,
-    lib_std,
-    pred_std,
-    num_neighbors,
-    n_excluded,
+    lib_indices,
+    pred_indices,
+    static_cast<size_t>(num_neighbors),
+    static_cast<size_t>(n_excluded),
     threads,
-    progressbar
+    parallel_level
   );
 
   // Convert the result back to Rcpp::NumericVector

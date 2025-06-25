@@ -122,7 +122,7 @@ std::vector<std::vector<int>> CppLaggedNeighbor4Lattice(const std::vector<std::v
  *   A 2D vector where each element contains the lagged values corresponding to the computed
  *   lagged neighbors for each spatial unit.
  */
-std::vector<std::vector<double>> CppLaggedVar4Lattice(const std::vector<double>& vec,
+std::vector<std::vector<double>> CppLaggedVal4Lattice(const std::vector<double>& vec,
                                                       const std::vector<std::vector<int>>& nb,
                                                       int lagNum) {
   int n = vec.size();
@@ -419,9 +419,6 @@ std::vector<std::vector<double>> GenLatticeEmbeddings(
  *
  * @return A vector of vectors, where each subvector contains the indices of the k nearest neighbors
  *         for each location, based on lattice structure and value similarity.
- *
- * @throw std::runtime_error If any location cannot find enough valid neighbors from `lib` to meet the k requirement.
- * @throw std::invalid_argument If `lib` contains invalid indices outside the range of `vec`.
  */
 std::vector<std::vector<int>> GenLatticeNeighbors(
     const std::vector<double>& vec,
@@ -512,15 +509,15 @@ std::vector<std::vector<int>> GenLatticeNeighbors(
  * indicators within a defined spatial neighborhood.
  *
  * The procedure follows three main steps:
- * 1. Compute the global median of the input series `vec`.
- * 2. For each location in `pred`, define a binary indicator (`tau_s`) which is 1 if the value
- *    at that location is greater than or equal to the median, and 0 otherwise.
+ * 1. Compute the median of the input series `vec` using only the indices specified in `lib`.
+ * 2. For each location in `vec`, define a binary indicator (`tau_s`) which is 1 if the value
+ *    at that location is greater than or equal to the `lib`-based median, and 0 otherwise.
  * 3. For each location in `pred`, compare its indicator with those of its k nearest neighbors.
  *    The final symbolic value is the count of neighbors that share the same indicator value.
  *
  * @param vec A vector of double values representing the spatial process.
  * @param nb A nested vector containing neighborhood information (e.g., lattice connectivity).
- * @param lib A vector of indices representing valid neighbors to consider for each location.
+ * @param lib A vector of indices representing valid neighbors to consider for computing the median and selecting neighbors.
  * @param pred A vector of indices specifying which elements to compute the symbolization for.
  * @param k The number of nearest neighbors to consider for each location.
  *
@@ -532,38 +529,42 @@ std::vector<double> GenLatticeSymbolization(
     const std::vector<int>& lib,
     const std::vector<int>& pred,
     size_t k) {
-
   // Initialize the result vector with the same size as pred
   std::vector<double> result(pred.size());
 
   // Generate neighbors for the elements in pred
   std::vector<std::vector<int>> neighbors = GenLatticeNeighbors(vec, nb, lib, k);
 
-  // The median of the series vec
-  double vec_me = CppMedian(vec, true);
-  // // Compute global median of the 'pred' series
-  // double vec_me = CppMedian(pred, true);
+  // Compute the median using only values at lib indices
+  std::vector<double> lib_vals(lib.size());
+  // No need to filter no-nan value
+  // for (int idx : lib) {
+  //   if (!std::isnan(vec[idx])) {
+  //     lib_vals.push_back(vec[idx]);
+  //   }
+  // }
+  for (size_t i = 0; i < lib.size(); ++i){
+    lib_vals[i] = vec[lib[i]];
+  }
+  double vec_me = CppMedian(lib_vals, true);
 
-  // The first indicator function
+  // Define tau_s for all positions in vec
   std::vector<double> tau_s(vec.size());
   for (size_t i = 0; i < vec.size(); ++i) {
     tau_s[i] = (vec[i] >= vec_me) ? 1.0 : 0.0;
   }
 
-  // The second indicator function and the symbolization map
+  // For each location in pred, compute fs
   for (size_t s = 0; s < pred.size(); ++s) {
     int currentIndex = pred[s];
-    size_t num_neighbors = neighbors[currentIndex].size();
-    std::vector<double> l_s(num_neighbors);
-    std::vector<int> local_neighbors = neighbors[currentIndex];
+    const std::vector<int>& local_neighbors = neighbors[currentIndex];
     double taus = tau_s[currentIndex];
 
-    for (size_t i = 0; i < num_neighbors; ++i) {
-      l_s[i] = (tau_s[local_neighbors[i]] == taus) ? 1.0 : 0.0;
+    // Count how many neighbors share the same binary indicator
+    double fs = 0.0;
+    for (size_t i = 0; i < local_neighbors.size(); ++i) {
+      if (tau_s[local_neighbors[i]] == taus) fs += 1.0;
     }
-
-    // Count the number of neighbors that share the same indicator value
-    double fs = std::accumulate(l_s.begin(), l_s.end(), 0.0);
     result[s] = fs;
   }
 

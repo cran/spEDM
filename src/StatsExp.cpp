@@ -10,17 +10,17 @@
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 int RcppFactorial(int n){
   return(CppFactorial(n));
 };
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppCombine(int n,int k){
   return(CppCombine(n,k));
 };
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppCombn(const Rcpp::RObject& vec, int m) {
   if (TYPEOF(vec) == REALSXP) {
     std::vector<double> input = Rcpp::as<std::vector<double>>(vec);
@@ -36,7 +36,7 @@ Rcpp::List RcppCombn(const Rcpp::RObject& vec, int m) {
   }
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppGenSubsets(const Rcpp::RObject& vec) {
   if (TYPEOF(vec) == REALSXP) {
     std::vector<double> input = Rcpp::as<std::vector<double>>(vec);
@@ -52,59 +52,59 @@ Rcpp::List RcppGenSubsets(const Rcpp::RObject& vec) {
   }
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppDigamma(double x){
   return(CppDigamma(x));
 };
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppLog(double x, double base = 10){
   return(CppLog(x, base));
 };
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppMedian(const Rcpp::NumericVector& vec,
                   bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppMedian(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppMean(const Rcpp::NumericVector& vec,
                 bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppMean(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppMin(const Rcpp::NumericVector& vec,
                bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppMin(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppMax(const Rcpp::NumericVector& vec,
                bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppMax(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppSum(const Rcpp::NumericVector& vec,
                bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppSum(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppVariance(const Rcpp::NumericVector& vec,
                     bool NA_rm = false) {
   std::vector<double> y = Rcpp::as<std::vector<double>>(vec);
   return CppVariance(y, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppCovariance(const Rcpp::NumericVector& vec1,
                       const Rcpp::NumericVector& vec2,
                       bool NA_rm = false) {
@@ -116,7 +116,7 @@ double RcppCovariance(const Rcpp::NumericVector& vec1,
   return CppCovariance(x1_vec, x2_vec, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppMAE(const Rcpp::NumericVector& vec1,
                const Rcpp::NumericVector& vec2,
                bool NA_rm = false) {
@@ -128,7 +128,7 @@ double RcppMAE(const Rcpp::NumericVector& vec1,
   return CppMAE(x1_vec, x2_vec, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppRMSE(const Rcpp::NumericVector& vec1,
                 const Rcpp::NumericVector& vec2,
                 bool NA_rm = false) {
@@ -140,7 +140,7 @@ double RcppRMSE(const Rcpp::NumericVector& vec1,
   return CppRMSE(x1_vec, x2_vec, NA_rm);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppCumSum(const Rcpp::NumericVector& vec) {
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> vec_std = Rcpp::as<std::vector<double>>(vec);
@@ -152,7 +152,7 @@ Rcpp::NumericVector RcppCumSum(const Rcpp::NumericVector& vec) {
   return Rcpp::wrap(result);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppAbsDiff(const Rcpp::NumericVector& vec1,
                                 const Rcpp::NumericVector& vec2) {
   // Convert Rcpp::NumericVector to std::vector<double>
@@ -166,7 +166,7 @@ Rcpp::NumericVector RcppAbsDiff(const Rcpp::NumericVector& vec1,
   return Rcpp::wrap(result);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppSumNormalize(const Rcpp::NumericVector& vec,
                                      bool NA_rm = false) {
   // Convert Rcpp::NumericVector to std::vector<double>
@@ -179,15 +179,15 @@ Rcpp::NumericVector RcppSumNormalize(const Rcpp::NumericVector& vec,
   return Rcpp::wrap(result);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppArithmeticSeq(double from, double to, int length_out) {
   // Call the CppArithmeticSeq function
-  std::vector<double> result = CppArithmeticSeq(from, to, length_out);
+  std::vector<double> result = CppArithmeticSeq(from, to, static_cast<size_t>(length_out));
   // Convert the result back to Rcpp::NumericVector
   return Rcpp::wrap(result);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppPearsonCor(const Rcpp::NumericVector& y,
                       const Rcpp::NumericVector& y_hat,
                       bool NA_rm = false) {
@@ -199,8 +199,32 @@ double RcppPearsonCor(const Rcpp::NumericVector& y,
   return PearsonCor(y_vec, y_hat_vec, NA_rm);
 }
 
+// [[Rcpp::export(rng = false)]]
+double RcppSpearmanCor(const Rcpp::NumericVector& y,
+                       const Rcpp::NumericVector& y_hat,
+                       bool NA_rm = false) {
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> y_vec = Rcpp::as<std::vector<double>>(y);
+  std::vector<double> y_hat_vec = Rcpp::as<std::vector<double>>(y_hat);
+
+  // Call the SpearmanCorfunction
+  return SpearmanCor(y_vec, y_hat_vec, NA_rm);
+}
+
+// [[Rcpp::export(rng = false)]]
+double RcppKendallCor(const Rcpp::NumericVector& y,
+                      const Rcpp::NumericVector& y_hat,
+                      bool NA_rm = false) {
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> y_vec = Rcpp::as<std::vector<double>>(y);
+  std::vector<double> y_hat_vec = Rcpp::as<std::vector<double>>(y_hat);
+
+  // Call the KendallCor function
+  return KendallCor(y_vec, y_hat_vec, NA_rm);
+}
+
 // Rcpp wrapper for PartialCor function
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppPartialCor(const Rcpp::NumericVector& y,
                       const Rcpp::NumericVector& y_hat,
                       const Rcpp::NumericMatrix& controls,
@@ -222,7 +246,7 @@ double RcppPartialCor(const Rcpp::NumericVector& y,
   return PartialCor(std_y, std_y_hat, std_controls, NA_rm, linear);
 }
 
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppPartialCorTrivar(const Rcpp::NumericVector& y,
                             const Rcpp::NumericVector& y_hat,
                             const Rcpp::NumericVector& control,
@@ -239,24 +263,27 @@ double RcppPartialCorTrivar(const Rcpp::NumericVector& y,
 }
 
 // Wrapper function to calculate the significance of a (partial) correlation coefficient
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppCorSignificance(double r, int n, int k = 0){
-  return CppCorSignificance(r, n, k);
+  return CppCorSignificance(r, static_cast<size_t>(n), static_cast<size_t>(k));
 }
 
 // Wrapper function to calculate the confidence interval for a (partial) correlation coefficient and return a NumericVector
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0,
                                       double level = 0.05) {
   // Calculate the confidence interval
-  std::vector<double> result = CppCorConfidence(r, n, k, level);
+  std::vector<double> result = CppCorConfidence(r,
+                                                static_cast<size_t>(n),
+                                                static_cast<size_t>(k),
+                                                level);
 
   // Convert std::vector<double> to Rcpp::NumericVector
   return Rcpp::wrap(result);
 }
 
 // Wrapper function to performs delong's test for ROC AUC comparison and return a NumericVector
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppDeLongAUCConfidence(const Rcpp::NumericVector& cases,
                                             const Rcpp::NumericVector& controls,
                                             const Rcpp::CharacterVector& direction,
@@ -274,7 +301,7 @@ Rcpp::NumericVector RcppDeLongAUCConfidence(const Rcpp::NumericVector& cases,
 }
 
 // Wrapper function to performs delong's test for CMC causal score and return a NumericVector
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppCMCTest(const Rcpp::NumericVector& cases,
                                 const Rcpp::CharacterVector& direction,
                                 double level = 0.05,
@@ -284,14 +311,14 @@ Rcpp::NumericVector RcppCMCTest(const Rcpp::NumericVector& cases,
   std::string cpp_direction = Rcpp::as<std::string>(direction[0]);
 
   // Call the CppCMCTest function
-  std::vector<double> result = CppCMCTest(cpp_cases, cpp_direction, level, num_samples);
+  std::vector<double> result = CppCMCTest(cpp_cases, cpp_direction, level, static_cast<size_t>(num_samples));
 
   // Convert std::vector<double> to Rcpp::NumericVector
   return Rcpp::wrap(result);
 }
 
 // Wrapper function to compute distance between two vectors
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 double RcppDistance(const Rcpp::NumericVector& vec1,
                     const Rcpp::NumericVector& vec2,
                     bool L1norm = false,
@@ -305,7 +332,7 @@ double RcppDistance(const Rcpp::NumericVector& vec1,
 }
 
 // Wrapper function to compute the k-th nearest distance for a vector.
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppKNearestDistance(const Rcpp::NumericVector& vec1,
                                          int k,
                                          bool L1norm = false,
@@ -321,7 +348,7 @@ Rcpp::NumericVector RcppKNearestDistance(const Rcpp::NumericVector& vec1,
 }
 
 // Wrapper function to compute the distance matrix of a given matrix 'mat'
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppMatDistance(const Rcpp::NumericMatrix& mat,
                                     bool L1norm = false,
                                     bool NA_rm = false) {
@@ -353,7 +380,7 @@ Rcpp::NumericMatrix RcppMatDistance(const Rcpp::NumericMatrix& mat,
 }
 
 // Wrapper function to compute the number of neighbors for each point within a given radius.
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::IntegerVector RcppNeighborsNum(
     const Rcpp::NumericVector& vec,
     const Rcpp::NumericVector& radius,
@@ -372,7 +399,7 @@ Rcpp::IntegerVector RcppNeighborsNum(
 }
 
 // Wrapper function to find k-nearest neighbors of a given index in the embedding space
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
                                   int target_idx,
                                   int k,
@@ -422,7 +449,7 @@ Rcpp::IntegerVector RcppKNNIndice(const Rcpp::NumericMatrix& embedding_space,
 }
 
 // Wrapper function to find k-nearest neighbors of a given index using a precomputed distance matrix
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::IntegerVector RcppDistKNNIndice(const Rcpp::NumericMatrix& dist_mat,
                                       int target_idx,
                                       int k,
@@ -471,8 +498,52 @@ Rcpp::IntegerVector RcppDistKNNIndice(const Rcpp::NumericMatrix& dist_mat,
   return result;
 }
 
+// Wrapper function to generate sorted neighbor indices
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppDistSortedIndice(const Rcpp::NumericMatrix& dist_mat,
+                                const Rcpp::IntegerVector& lib,
+                                bool include_self = false) {
+  // Get number of rows and columns
+  const int n = dist_mat.nrow();
+  const int m = dist_mat.ncol();
+
+  // Convert Rcpp data structure to std::vector<>
+  std::vector<std::vector<double>> dist_vec(n, std::vector<double>(m));
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      dist_vec[i][j] = dist_mat(i, j);
+    }
+  }
+
+  std::vector<size_t> lib_std(lib.size());
+  for (int i = 0; i < lib.size(); ++i) {
+    lib_std[i] = static_cast<size_t>(i);
+  }
+
+  // Call the existing C++ function to compute sorted neighbor indices
+  std::vector<std::vector<size_t>> result = CppDistSortedIndice(dist_vec, lib_std, include_self);
+
+  // Convert the result to an R list of integer vectors
+  Rcpp::List out(n);
+  for (int i = 0; i < n; ++i) {
+    const auto& row = result[i];
+    Rcpp::IntegerVector indices(row.size());
+    for (size_t j = 0; j < row.size(); ++j) {
+      if (row[j] == std::numeric_limits<size_t>::max()) {
+        indices[j] = NA_INTEGER;
+      } else {
+        indices[j] = static_cast<int>(row[j]);
+      }
+    }
+    out[i] = indices;
+  }
+
+  // Return the list where each element contains sorted neighbor indices for that row
+  return out;
+}
+
 // Wrapper function to perform Linear Trend Removal and return a NumericVector
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppLinearTrendRM(const Rcpp::NumericVector& vec,
                                       const Rcpp::NumericVector& xcoord,
                                       const Rcpp::NumericVector& ycoord,
@@ -490,7 +561,7 @@ Rcpp::NumericVector RcppLinearTrendRM(const Rcpp::NumericVector& vec,
 }
 
 // Rcpp wrapper function for CppSVD
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppSVD(const Rcpp::NumericMatrix& X) {
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   size_t m = X.nrow();
@@ -539,7 +610,7 @@ Rcpp::List RcppSVD(const Rcpp::NumericMatrix& X) {
 }
 
 // Rcpp wrapper function for CppDeLongPlacements
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::List RcppDeLongPlacements(const Rcpp::NumericVector& cases,
                                 const Rcpp::NumericVector& controls,
                                 const Rcpp::CharacterVector& direction) {
@@ -560,7 +631,7 @@ Rcpp::List RcppDeLongPlacements(const Rcpp::NumericVector& cases,
 }
 
 // Rcpp wrapper function for SpatialBlockBootstrap
-// [[Rcpp::export]]
+// [[Rcpp::export(rng = false)]]
 Rcpp::IntegerVector RcppSpatialBlockBootstrap(
     const Rcpp::IntegerVector& block,
     unsigned int seed = 42){

@@ -51,7 +51,7 @@ std::vector<std::vector<int>> CppLaggedNeighbor4Lattice(const std::vector<std::v
  *   A 2D vector where each element contains the lagged values corresponding to the computed
  *   lagged neighbors for each spatial unit.
  */
-std::vector<std::vector<double>> CppLaggedVar4Lattice(const std::vector<double>& vec,
+std::vector<std::vector<double>> CppLaggedVal4Lattice(const std::vector<double>& vec,
                                                       const std::vector<std::vector<int>>& nb,
                                                       int lagNum);
 
@@ -98,9 +98,6 @@ std::vector<std::vector<double>> GenLatticeEmbeddings(
  *
  * @return A vector of vectors, where each subvector contains the indices of the k nearest neighbors
  *         for each location, based on lattice structure and value similarity.
- *
- * @throw std::runtime_error If any location cannot find enough valid neighbors from `lib` to meet the k requirement.
- * @throw std::invalid_argument If `lib` contains invalid indices outside the range of `vec`.
  */
 std::vector<std::vector<int>> GenLatticeNeighbors(
     const std::vector<double>& vec,
@@ -118,15 +115,15 @@ std::vector<std::vector<int>> GenLatticeNeighbors(
  * indicators within a defined spatial neighborhood.
  *
  * The procedure follows three main steps:
- * 1. Compute the global median of the input series `vec`.
- * 2. For each location in `pred`, define a binary indicator (`tau_s`) which is 1 if the value
- *    at that location is greater than or equal to the median, and 0 otherwise.
+ * 1. Compute the median of the input series `vec` using only the indices specified in `lib`.
+ * 2. For each location in `vec`, define a binary indicator (`tau_s`) which is 1 if the value
+ *    at that location is greater than or equal to the `lib`-based median, and 0 otherwise.
  * 3. For each location in `pred`, compare its indicator with those of its k nearest neighbors.
  *    The final symbolic value is the count of neighbors that share the same indicator value.
  *
  * @param vec A vector of double values representing the spatial process.
  * @param nb A nested vector containing neighborhood information (e.g., lattice connectivity).
- * @param lib A vector of indices representing valid neighbors to consider for each location.
+ * @param lib A vector of indices representing valid neighbors to consider for computing the median and selecting neighbors.
  * @param pred A vector of indices specifying which elements to compute the symbolization for.
  * @param k The number of nearest neighbors to consider for each location.
  *

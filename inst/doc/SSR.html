@@ -12,7 +12,7 @@
 
 <meta name="author" content="Wenbo Lv" />
 
-<meta name="date" content="2025-05-16" />
+<meta name="date" content="2025-06-25" />
 
 <title>State Space Reconstruction (SSR)</title>
 
@@ -340,12 +340,12 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">State Space Reconstruction (SSR)</h1>
 <h4 class="author">Wenbo Lv</h4>
-<h4 class="date">2025-05-16</h4>
+<h4 class="date">2025-06-25</h4>
 
 
 
-<div id="spatial-state-space-reconstruction-s-ssr" class="section level2">
-<h2>Spatial State Space Reconstruction (S-SSR)</h2>
+<div id="methodological-background" class="section level2">
+<h2>Methodological Background</h2>
 <p>Takens theory proves that for a dynamical system <span class="math inline">\(\phi\)</span>, if its trajectory converges to an
 attractor manifold <span class="math inline">\(M\)</span>—a bounded and
 invariant set of states—then there exists a smooth mapping between the
@@ -423,7 +423,7 @@ density data:</p>
 <span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a><span class="do">## # ℹ 2,796 more rows</span></span></code></pre></div>
 <p>Embedding the variable <code>popd</code> from county-level population
 density:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">embedded</span>(popd_sf,<span class="st">&quot;popd&quot;</span>,<span class="at">E =</span> <span class="dv">9</span>,<span class="at">tau =</span> <span class="dv">0</span>,<span class="at">trend.rm =</span> <span class="cn">FALSE</span>)</span>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>v <span class="ot">=</span> <span class="fu">embedded</span>(popd_sf,<span class="st">&quot;popd&quot;</span>,<span class="at">E =</span> <span class="dv">9</span>,<span class="at">tau =</span> <span class="dv">0</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>v[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">5</span>,<span class="dv">6</span>)]</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">##           [,1]      [,2]     [,3]</span></span>
 <span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## [1,]  440.7237  962.7204 1664.756</span></span>
@@ -449,7 +449,7 @@ shadow manifolds for <code>popd</code>.</div>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>cu <span class="ot">=</span> terra<span class="sc">::</span><span class="fu">rast</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/cu.tif&quot;</span>, <span class="at">package=</span><span class="st">&quot;spEDM&quot;</span>))</span>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>cu</span>
 <span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="do">## class       : SpatRaster </span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="do">## dimensions  : 131, 125, 3  (nrow, ncol, nlyr)</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="do">## size        : 131, 125, 3  (nrow, ncol, nlyr)</span></span>
 <span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="do">## resolution  : 5000, 5000  (x, y)</span></span>
 <span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="do">## extent      : 360000, 985000, 1555000, 2210000  (xmin, xmax, ymin, ymax)</span></span>
 <span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="do">## coord. ref. : North_American_1983_Albers </span></span>
@@ -458,7 +458,7 @@ shadow manifolds for <code>popd</code>.</div>
 <span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="do">## min values  :   1.201607,    0.000,   0 </span></span>
 <span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="do">## max values  : 319.599274,    0.615,  63</span></span></code></pre></div>
 <p>Embedding the variable <code>cu</code> from soil pollution data:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>r <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">embedded</span>(cu,<span class="st">&quot;cu&quot;</span>,<span class="at">E =</span> <span class="dv">9</span>,<span class="at">tau =</span> <span class="dv">0</span>,<span class="at">trend.rm =</span> <span class="cn">FALSE</span>)</span>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>r <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">embedded</span>(cu,<span class="st">&quot;cu&quot;</span>,<span class="at">E =</span> <span class="dv">9</span>,<span class="at">tau =</span> <span class="dv">0</span>)</span>
 <span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>r[<span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>,<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">5</span>,<span class="dv">9</span>)]</span>
 <span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="do">##          [,1]     [,2]     [,3]</span></span>
 <span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="do">## [1,] 14.80663 13.84810 15.40681</span></span>
@@ -474,30 +474,6 @@ shadow manifolds for <code>popd</code>.</div>
 <div class="figcaption"><strong>Figure 2</strong>. The reconstructed
 shadow manifolds for <code>cu</code>.</div>
 </div>
-</div>
-<div id="determining-optimal-embedding-dimension-using-false-nearest-neighbours" class="section level3">
-<h3>Determining Optimal Embedding Dimension Using False Nearest
-Neighbours</h3>
-<p>The false nearest neighbours (FNN) method helps identify the
-appropriate embedding dimension for reconstructing the state space of a
-time series or spatial cross-sectional. A low embedding dimension that
-minimizes false neighbours is considered optimal.</p>
-<p>Below are two examples applying the <code>fnn()</code> function. In
-both cases, <code>eps</code> is set to one-tenth of the standard
-deviation of the variable of interest, providing a relative threshold
-for identifying false neighbours.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">fnn</span>(popd_sf,<span class="st">&quot;popd&quot;</span>,</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>    <span class="at">eps =</span> stats<span class="sc">::</span><span class="fu">sd</span>(popd_sf<span class="sc">$</span>popd) <span class="sc">/</span> <span class="dv">10</span>)</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">## 0.9707769 0.6404134 0.4885959 0.4012830 0.3346401 0.3296507 0.3260870 0.3150392 </span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">##       E:9 </span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="do">## 0.3150392</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="fu">fnn</span>(cu,<span class="st">&quot;cu&quot;</span>,</span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>    <span class="at">eps =</span> stats<span class="sc">::</span><span class="fu">sd</span>(terra<span class="sc">::</span><span class="fu">values</span>(cu[[<span class="st">&quot;cu&quot;</span>]]),<span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">/</span> <span class="dv">10</span>)</span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="do">## 0.98577099 0.56042748 0.13215267 0.08103817 0.07731298 0.07517557 0.06998473 </span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="do">##        E:8        E:9 </span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="do">## 0.06632061 0.05673282</span></span></code></pre></div>
 </div>
 </div>
 

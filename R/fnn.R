@@ -1,8 +1,6 @@
-methods::setGeneric("fnn", function(data, ...) standardGeneric("fnn"))
-
 .fnn_sf_method = \(data, target, lib = NULL, pred = NULL, E = 1:10, tau = 1, nb = NULL,
-                   rt = 10, eps = 2, threads = detectThreads(), trend.rm = TRUE){
-  vec = .uni_lattice(data,target,trend.rm)
+                   rt = 10, eps = 2, threads = detectThreads(), detrend = TRUE){
+  vec = .uni_lattice(data,target,detrend)
   rt = .check_inputelementnum(rt,max(E))
   eps = .check_inputelementnum(eps,max(E))
   if (is.null(lib)) lib = which(!is.na(vec))
@@ -12,8 +10,8 @@ methods::setGeneric("fnn", function(data, ...) standardGeneric("fnn"))
 }
 
 .fnn_spatraster_method = \(data, target, lib = NULL, pred = NULL, E = 1:10, tau = 1,
-                           rt = 10, eps = 2, threads = detectThreads(), trend.rm = TRUE){
-  mat = .uni_grid(data,target,trend.rm)
+                           rt = 10, eps = 2, threads = detectThreads(), detrend = TRUE){
+  mat = .uni_grid(data,target,detrend)
   rt = .check_inputelementnum(rt,max(E))
   eps = .check_inputelementnum(eps,max(E))
   if (is.null(lib)) lib = which(!is.na(mat), arr.ind = TRUE)
@@ -24,17 +22,15 @@ methods::setGeneric("fnn", function(data, ...) standardGeneric("fnn"))
 #' false nearest neighbours
 #'
 #' @inheritParams embedded
-#' @param lib (optional) Libraries indices.
-#' @param pred (optional) Predictions indices.
+#' @param lib (optional) libraries indices.
+#' @param pred (optional) predictions indices.
 #' @param rt (optional) escape factor.
 #' @param eps (optional) neighborhood diameter.
-#' @param threads (optional) Number of threads.
+#' @param threads (optional) number of threads to use.
 #'
 #' @return A vector
 #' @export
-#'
 #' @name fnn
-#' @rdname fnn
 #' @aliases fnn,sf-method
 #' @references
 #' Kennel M. B., Brown R. and Abarbanel H. D. I., Determining embedding dimension for phase-space reconstruction using a geometrical construction, Phys. Rev. A, Volume 45, 3403 (1992).
@@ -48,4 +44,3 @@ methods::setMethod("fnn", "sf", .fnn_sf_method)
 
 #' @rdname fnn
 methods::setMethod("fnn", "SpatRaster", .fnn_spatraster_method)
-

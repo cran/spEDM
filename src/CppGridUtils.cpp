@@ -2,6 +2,9 @@
 #include <stdexcept>
 #include <vector>
 #include <cmath>
+#include <queue>
+#include <unordered_set>
+#include <set>
 #include <limits>
 #include <numeric>
 #include <algorithm>
@@ -107,7 +110,7 @@ std::vector<std::vector<double>> GridVec2Mat(const std::vector<double>& Vec,
  * Note:
  *   The return value for each element is the lagged value of the neighbors, not the index of the neighbor.
  */
-std::vector<std::vector<double>> CppLaggedVar4Grid(
+std::vector<std::vector<double>> CppLaggedVal4Grid(
     const std::vector<std::vector<double>>& mat,
     int lagNum
 ) {
@@ -211,7 +214,7 @@ std::vector<std::vector<double>> GenGridEmbeddings(
     // Fill the remaining columns (2 to E) with the averaged lagged variables
     for (int lagNum = 1; lagNum < E; ++lagNum) {
       // Calculate the lagged variables for the current lagNum
-      std::vector<std::vector<double>> lagged_vars = CppLaggedVar4Grid(mat, lagNum);
+      std::vector<std::vector<double>> lagged_vars = CppLaggedVal4Grid(mat, lagNum);
 
       // Check if all elements in lagged_vars are NaN
       bool allNaN = true;
@@ -255,7 +258,7 @@ std::vector<std::vector<double>> GenGridEmbeddings(
       int lagNum = i * tau;  // Calculate the actual lag step
 
       // Calculate the lagged variables for the current lagNum
-      std::vector<std::vector<double>> lagged_vars = CppLaggedVar4Grid(mat, lagNum);
+      std::vector<std::vector<double>> lagged_vars = CppLaggedVal4Grid(mat, lagNum);
 
       // Check if all elements in lagged_vars are NaN
       bool allNaN = true;
@@ -334,34 +337,133 @@ std::vector<std::vector<double>> GenGridEmbeddings(
 }
 
 /**
+ * @brief Generate k nearest neighbors for all cells in a grid,
+ *        choosing only from cells listed in lib and using Queen adjacency.
+ *
+ * This function identifies, for each cell in a 2D grid (represented by `mat`), its k nearest neighbors
+ * among a set of valid cells specified by `lib`. Neighbor relationships are determined based on
+ * Queen contiguity (8 directions: N, NE, E, SE, S, SW, W, NW), recursively expanding outward if fewer
+ * than k valid neighbors are found in immediate adjacency. The "distance" between cells is calculated
+ * as the absolute difference in cell values. When more than k valid candidates are available, the k
+ * closest cells (in value) are selected.
+ *
+ * The output is a vector of size mat.size() × k, where each entry corresponds to the linear index
+ * (row-major) of one neighbor per cell, and the output is grouped per row cell.
+ *
+ * @param mat 2D matrix of values (with possible NaNs).
+ * @param lib List of valid cells (flattened indices) to choose neighbors from.
+ * @param k   Number of neighbors to find for each cell.
+ * @return    A list of neighbors for each cell in mat, in row-major order.
+ */
+std::vector<std::vector<int>> GenGridNeighbors(
+    const std::vector<std::vector<double>>& mat,
+    const std::vector<int>& lib,
+    size_t k)
+{
+  size_t nrow = mat.size();
+  if (nrow == 0) return {};
+  size_t ncol = mat[0].size();
+  size_t total_cells = nrow * ncol;
+
+  // Fast lookup for lib
+  std::unordered_set<int> lib_set(lib.begin(), lib.end());
+
+  // Queen directions (8 neighbors)
+  const std::vector<std::pair<int, int>> directions = {
+    {-1, -1}, {-1, 0}, {-1, 1},
+    { 0, -1},          { 0, 1},
+    { 1, -1}, { 1, 0}, { 1, 1}
+  };
+
+  std::vector<std::vector<int>> result(total_cells);  // One entry per cell
+
+  for (size_t idx = 0; idx < total_cells; ++idx) {
+    int row = idx / ncol;
+    int col = idx % ncol;
+
+    double center_val = mat[row][col];
+
+    std::unordered_set<int> visited;
+    visited.insert(static_cast<int>(idx));
+
+    std::set<int> neighbor_candidates;
+
+    std::queue<std::pair<int, int>> frontier;
+    frontier.push({row, col});
+
+    while (!frontier.empty() && neighbor_candidates.size() < k) {
+      auto [r, c] = frontier.front(); frontier.pop();
+
+      for (const auto& [dr, dc] : directions) {
+        int nr = r + dr;
+        int nc = c + dc;
+        if (nr < 0 || nr >= static_cast<int>(nrow) ||
+            nc < 0 || nc >= static_cast<int>(ncol)) continue;
+
+        int flat_nb = nr * ncol + nc;
+        if (visited.count(flat_nb)) continue;
+        visited.insert(flat_nb);
+
+        // Only consider neighbors that are in lib and not NaN
+        if (lib_set.count(flat_nb) && !std::isnan(mat[nr][nc])) {
+          neighbor_candidates.insert(flat_nb);
+        }
+
+        // Always expand the search
+        frontier.push({nr, nc});
+      }
+    }
+
+    // If more than k, pick those closest in value
+    std::vector<std::pair<double, int>> dists;
+    for (int nb_idx : neighbor_candidates) {
+      int nr = nb_idx / ncol;
+      int nc = nb_idx % ncol;
+      double dist = std::abs(mat[nr][nc] - center_val);
+      dists.emplace_back(dist, nb_idx);
+    }
+
+    std::sort(dists.begin(), dists.end());
+
+    std::vector<int> neighbors;
+    for (size_t i = 0; i < std::min(k, dists.size()); ++i) {
+      neighbors.push_back(dists[i].second);
+    }
+
+    result[idx] = std::move(neighbors);
+  }
+
+  return result;
+}
+
+/**
  * @brief Perform grid-based symbolization on a 2D numeric matrix using local neighborhood statistics.
  *
- * This function calculates a symbolic representation (`fs`) for each non-NaN grid cell based on its
- * k most similar neighbors in terms of value difference. The process expands radially (Queen's case)
- * around each cell until at least k valid neighbors are collected. The final symbol for each cell
- * reflects its local homogeneity pattern relative to the global median.
+ * This function computes a symbolic representation (`fs`) for each non-NaN grid cell in `pred` based on its
+ * k most similar neighbors selected from the `lib` set. Each symbol reflects local spatial consistency with
+ * respect to a global threshold derived from known values.
  *
- * The steps include:
- * 1. Flatten the matrix to compute the global median `s_me` using all valid values.
- * 2. For each grid cell:
- *    - Find up to k nearest neighbors by increasing the neighborhood lag until k valid neighbors are found.
- *    - Sort neighbors by absolute difference in value from the center cell.
- *    - Select the top k values and compute a first indicator vector (`tau_s`) by comparing to global median.
- *    - Compute a second indicator vector (`l_s`) by comparing `tau_s[i]` to the center cell’s own indicator (`taus`).
- *    - Sum `l_s` to get a symbolic value `fs` representing the symbolic spatial consistency.
+ * The updated process includes:
+ * 1. Compute the global threshold (`s_me`) as the median of all valid (non-NaN) values from `lib` locations only.
+ * 2. For each prediction location in `pred`:
+ *    - Identify neighbors from `lib` by radially expanding the neighborhood (Queen's case) until at least `k` valid neighbors are found.
+ *    - Rank neighbors by absolute difference from the center cell's value.
+ *    - Select the top `k` neighbors and assign each a binary symbol (`tau_s`) based on comparison to the global median (`s_me`).
+ *    - Compare each `tau_s` to the center cell's own binary symbol (`taus`), and count how many are consistent.
+ *    - Store this count as the final symbolic value `fs` for the cell.
  *
  * @param mat A 2D grid (matrix) of values to be symbolized. `NaN` values are treated as missing.
- * @param lib Valid library locations as (row,col) pairs
- * @param pred Prediction locations to process as (row,col) pairs
- * @param k The number of neighbors to consider for the symbolization of each cell.
+ * @param lib A set of valid reference (library) cell locations as (row, col) pairs. Used for both thresholding and neighbor selection.
+ * @param pred A set of prediction cell locations as (row, col) pairs where symbols will be computed.
+ * @param k The number of nearest neighbors (by value similarity) to use in symbolization.
  *
- * @return A flattened 1D vector representing the symbolic values of for prediction locations (row-major order).
- *         Cells with no valid value or insufficient neighbors remain as `NaN`.
+ * @return A 1D vector of symbolic values corresponding to the prediction locations, in row-major order.
+ *         Entries remain `NaN` if the center cell is invalid or lacks enough valid neighbors.
  *
- * Note:
- * - Uses Queen's neighborhood definition for expanding neighborhoods (8 directions per layer).
- * - Grid edges and missing values are handled robustly during expansion.
- * - Useful for symbolic dynamics, pattern analysis, or spatial entropy estimation.
+ * Notes:
+ * - Uses Queen’s case (8-directional) neighborhood expansion for neighbor search.
+ * - Median is computed only from valid values in the `lib` set (not the whole matrix).
+ * - Particularly useful in spatial symbolic analysis, spatial entropy estimation, or causal lattice models.
  */
 std::vector<double> GenGridSymbolization(
     const std::vector<std::vector<double>>& mat,
@@ -392,17 +494,20 @@ std::vector<double> GenGridSymbolization(
   //   }
   // }
 
-  // Compute global median from all non-NaN values
   std::vector<double> valid_values;
-  for (const auto& row : mat) {
-    for (double val : row) {
-      if (!std::isnan(val)) valid_values.push_back(val);
-    }
-  }
-  // for (const auto& [i,j] : pred) {
-  //   double val = mat[i][j];
-  //   if (!std::isnan(val)) valid_values.push_back(val);
+
+  // // Compute global median from all non-NaN values
+  // for (const auto& row : mat) {
+  //   for (double val : row) {
+  //     if (!std::isnan(val)) valid_values.push_back(val);
+  //   }
   // }
+
+  // Compute the median using only values at lib indices
+  for (const auto& [i,j] : lib) {
+    double val = mat[i][j];
+    if (!std::isnan(val)) valid_values.push_back(val);
+  }
   const double s_me = CppMedian(valid_values, true);
 
   // Prepare result vector
