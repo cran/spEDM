@@ -7,104 +7,134 @@
 #include "CppStats.h"
 
 /*
- * Computes predictions using the simplex projection method based on state-space reconstruction.
+ * Perform simplex projection prediction using state-space reconstruction.
+ *
+ * Given reconstructed state-space vectors and corresponding target values,
+ * this function predicts target values at specified prediction indices by
+ * weighting nearest neighbors from a given library set.
+ *
+ * Distance calculations exclude NaN components to ensure numerical stability.
+ * Supports two distance metrics and optional averaging of distance by the
+ * number of valid vector components.
+ *
+ * Supported distance metrics:
+ *   dist_metric = 1: L1 (Manhattan) distance
+ *   dist_metric = 2: L2 (Euclidean) distance
  *
  * Parameters:
- *   - vectors: Reconstructed state-space (each row represents a separate vector/state).
- *   - target: Spatial cross sectional series used as the target (should align with vectors).
- *   - lib_indices: Vector of indices indicating which states to include when searching for neighbors.
- *   - pred_indices: Vector of indices indicating which states to predict from.
- *   - num_neighbors: Number of neighbors to use for simplex projection.
+ *   vectors        - 2D vector of reconstructed state-space vectors; vectors[i] corresponds to spatial unit i.
+ *   target         - Target values for each spatial unit.
+ *   lib_indices    - Indices specifying states used as the library (neighbors).
+ *   pred_indices   - Indices specifying states to predict.
+ *   num_neighbors  - Number of nearest neighbors considered for prediction. Default is 4.
+ *   dist_metric    - Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ *   dist_average   - Whether to average distance by the number of valid vector components. Default is true.
  *
  * Returns:
- *   A vector<double> containing predicted target values (target_pred).
+ *   A vector<double> of predicted target values aligned with input target size.
+ *   Entries are NaN if prediction is not possible for that index.
  */
 std::vector<double> SimplexProjectionPrediction(
     const std::vector<std::vector<double>>& vectors,
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors
+    int num_neighbors = 4,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   size_t N = target.size();
   std::vector<double> pred(N, std::numeric_limits<double>::quiet_NaN());
 
-  // no neighbor to use, return all nan
-  if (num_neighbors <= 0){
-    return pred;
+  if (num_neighbors <= 0) {
+    return pred;  // no neighbors to use, return all NaNs
   }
 
-  // Make predictions
   for (size_t pi = 0; pi < pred_indices.size(); ++pi) {
     int p = pred_indices[pi];
 
-    // Create lib set excluding the current prediction index p
-    std::vector<int> libs;
-    for (int idx : lib_indices) {
-      if (idx != p) {
-        libs.push_back(idx);
+    // // Skip if target at prediction index is NaN
+    // if (std::isnan(target[p])) {
+    //   continue;
+    // }
+
+    // Compute distances only for valid vector pairs (exclude NaNs)
+    std::vector<double> distances;
+    std::vector<int> valid_libs;  // keep track of libs corresponding to valid distances
+    for (int i : lib_indices) {
+      if (i == p) continue; // Skip self-matching
+
+      double sum_sq = 0.0;
+      double count = 0.0;
+      for (size_t j = 0; j < vectors[p].size(); ++j) {
+        if (!std::isnan(vectors[i][j]) && !std::isnan(vectors[p][j])) {
+          double diff = vectors[i][j] - vectors[p][j];
+          // sum_sq += (dist_metric == 1) ? std::abs(diff) : diff * diff;
+          if (dist_metric == 1) {
+            sum_sq += std::abs(diff); // L1
+          } else {
+            sum_sq += diff * diff;    // L2
+          }
+          count += 1.0;
+        }
+      }
+      if (count > 0) {
+        if (dist_metric == 1) {  // L1
+          distances.push_back(sum_sq / (dist_average ? count : 1.0));
+        } else {                 // L2
+          distances.push_back(std::sqrt(sum_sq / (dist_average ? count : 1.0)));
+        }
+        valid_libs.push_back(i);
       }
     }
 
-    // Handle the case where libs is empty
-    if (libs.empty()) {
-      pred[p] = std::numeric_limits<double>::quiet_NaN();
+    // If no valid distances found, prediction is NaN
+    if (distances.empty()) {
       continue;
     }
 
-    // Adjust num_neighbors if it exceeds libs.size()
-    size_t k = std::min(static_cast<size_t>(num_neighbors), libs.size());
+    // Adjust number of neighbors to available valid libs
+    size_t k = std::min(static_cast<size_t>(num_neighbors), distances.size());
 
-    // Compute distances
-    std::vector<double> distances;
-    for (int i : libs) {
-      double sum_sq = 0.0;
-      double sum_na = 0.0;
-      for (size_t j = 0; j < vectors[p].size(); ++j) {
-        if (!std::isnan(vectors[i][j]) && !std::isnan(vectors[p][j])) {
-          sum_sq += std::pow(vectors[i][j] - vectors[p][j], 2);
-          sum_na += 1.0;
-        }
-      }
-
-      if (sum_na > 0) {
-        distances.push_back(std::sqrt(sum_sq / sum_na));
-      } else {
-        distances.push_back(std::numeric_limits<double>::quiet_NaN());
-      }
-    }
-
-    // Find nearest neighbors
-    std::vector<size_t> neighbors(libs.size());
+    // Prepare indices for sorting
+    std::vector<size_t> neighbors(distances.size());
     std::iota(neighbors.begin(), neighbors.end(), 0);
-    std::partial_sort(neighbors.begin(), neighbors.begin() + k, neighbors.end(),
-                      [&](size_t a, size_t b) {
-                        return (distances[a] < distances[b]) ||
-                          (distances[a] == distances[b] && a < b);
-                      });
+
+    // Partial sort to find k nearest neighbors by distance
+    std::partial_sort(
+      neighbors.begin(), neighbors.begin() + k, neighbors.end(),
+      [&](size_t a, size_t b) {
+        return (distances[a] < distances[b]) ||
+          (distances[a] == distances[b] && a < b);
+      });
 
     double min_distance = distances[neighbors[0]];
 
-    // Compute weights
+    // Compute weights for neighbors
     std::vector<double> weights(k);
-    if (min_distance == 0) { // Perfect match
+    if (min_distance == 0.0) {  // Perfect match found
       std::fill(weights.begin(), weights.end(), 0.000001);
       for (size_t i = 0; i < k; ++i) {
-        if (distances[neighbors[i]] == 0) weights[i] = 1.0;
+        if (distances[neighbors[i]] == 0.0) {
+          weights[i] = 1.0;
+        }
       }
     } else {
       for (size_t i = 0; i < k; ++i) {
         weights[i] = std::exp(-distances[neighbors[i]] / min_distance);
-        if (weights[i] < 0.000001) weights[i] = 0.000001;
+        if (weights[i] < 0.000001) {
+          weights[i] = 0.000001;
+        }
       }
     }
 
     double total_weight = std::accumulate(weights.begin(), weights.end(), 0.0);
 
-    // Make prediction
+    // Calculate weighted prediction, ignoring any NaN targets
+    // (No NaNs here, as NaN values in the corresponding components of lib and pred are excluded in advance.)
     double prediction = 0.0;
     for (size_t i = 0; i < k; ++i) {
-      prediction += weights[i] * target[libs[neighbors[i]]];
+      prediction += weights[i] * target[valid_libs[neighbors[i]]];
     }
 
     pred[p] = prediction / total_weight;
@@ -121,7 +151,9 @@ std::vector<double> SimplexProjectionPrediction(
  *   - target: Spatial cross sectional series used as the target (should align with vectors).
  *   - lib_indices: Vector of indices indicating which states to include when searching for neighbors.
  *   - pred_indices: Vector of indices indicating which states to use for prediction.
- *   - num_neighbors: Number of neighbors to use for simplex projection.
+ *   - num_neighbors: Number of neighbors to use for simplex projection. Default is 4.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *
  * Returns:
  *   A double representing the Pearson correlation coefficient (rho) between the predicted and actual target values.
@@ -131,11 +163,13 @@ double SimplexProjection(
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors
+    int num_neighbors = 4,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   double rho = std::numeric_limits<double>::quiet_NaN();
 
-  std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors);
+  std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, dist_metric, dist_average);
 
   if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
     rho = PearsonCor(target_pred, target, true);
@@ -151,7 +185,9 @@ double SimplexProjection(
  *   - target: Spatial cross sectional series to be used as the target (should align with vectors).
  *   - lib_indices: Vector of indices indicating which states to include when searching for neighbors.
  *   - pred_indices: Vector of indices indicating which states to predict from.
- *   - num_neighbors: Number of neighbors to use for simplex projection.
+ *   - num_neighbors: Number of neighbors to use for simplex projection. Default is 4.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *
  * Returns:
  *   A vector<double> containing:
@@ -164,13 +200,15 @@ std::vector<double> SimplexBehavior(
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors
+    int num_neighbors = 4,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   double pearson = std::numeric_limits<double>::quiet_NaN();
   double mae = std::numeric_limits<double>::quiet_NaN();
   double rmse = std::numeric_limits<double>::quiet_NaN();
 
-  std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors);
+  std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, dist_metric, dist_average);
 
   if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
     pearson = PearsonCor(target_pred, target, true);

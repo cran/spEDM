@@ -19,6 +19,8 @@
  *   - lib: Integer vector of indices (which states to include when searching for neighbors, 1-based indexing).
  *   - pred: Integer vector of indices (which states to predict from, 1-based indexing).
  *   - num_neighbors: Number of neighbors to be used for simplex projection.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). 
+ *   - dist_average: Whether to average distance by the number of valid vector components.
  *
  * Returns: A Rcpp::NumericVector containing the predicted target values.
  */
@@ -28,7 +30,10 @@ Rcpp::NumericVector RcppSimplexForecast(
     const Rcpp::NumericVector& target,
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
-    const int& num_neighbors = 4){
+    const int& num_neighbors = 4,
+    const int& dist_metric = 2,
+    const bool& dist_average = true
+  ){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> embedding_std(embedding.nrow(),
                                                  std::vector<double>(embedding.ncol()));
@@ -66,7 +71,9 @@ Rcpp::NumericVector RcppSimplexForecast(
     target_std,
     lib_indices,
     pred_indices,
-    num_neighbors
+    num_neighbors,
+    dist_metric,
+    dist_average
   );
 
   // Convert the result back to Rcpp::NumericVector
@@ -86,6 +93,8 @@ Rcpp::NumericVector RcppSimplexForecast(
  *   - pred: Integer vector of indices (which states to predict from, 1-based indexing).
  *   - num_neighbors: Number of neighbors to be used for S-Mapping.
  *   - theta: Weighting parameter for distances.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). 
+ *   - dist_average: Whether to average distance by the number of valid vector components.
  *
  * Returns: A Rcpp::NumericVector containing the predicted target values.
  */
@@ -96,7 +105,9 @@ Rcpp::NumericVector RcppSMapForecast(
     const Rcpp::IntegerVector& lib,
     const Rcpp::IntegerVector& pred,
     const int& num_neighbors = 4,
-    const double& theta = 1.0){
+    const double& theta = 1.0,
+    const int& dist_metric = 2,
+    const bool& dist_average = true){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
   std::vector<std::vector<double>> embedding_std(embedding.nrow(),
                                                  std::vector<double>(embedding.ncol()));
@@ -135,7 +146,9 @@ Rcpp::NumericVector RcppSMapForecast(
     lib_indices,
     pred_indices,
     num_neighbors,
-    theta
+    theta,
+    dist_metric,
+    dist_average
   );
 
   // Convert the result back to Rcpp::NumericVector
@@ -143,7 +156,7 @@ Rcpp::NumericVector RcppSMapForecast(
 }
 
 /*
- * Computes the Intersection Cardinality (IC) scores
+ * Computes the Intersection Cardinality (IC) curve
  *
  * This function serves as an interface between R and C++ to compute the Intersection Cardinality (IC) curve,
  * which quantifies the causal relationship between two variables by comparing the intersection of their nearest
@@ -157,6 +170,7 @@ Rcpp::NumericVector RcppSMapForecast(
  *   pred: An IntegerVector containing the prediction indices. These are 1-based indices in R, and will be converted to 0-based indices in C++.
  *   num_neighbors: An integer specifying the number of neighbors to use for cross mapping.
  *   n_excluded: An integer indicating the number of neighbors to exclude from the distance matrix.
+ *   dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  *   threads: The number of parallel threads to use for computation.
  *   parallel_level: Whether to use multithreaded (0) or serial (1) mode
  *
@@ -171,6 +185,7 @@ Rcpp::NumericVector RcppIntersectionCardinality(
     const Rcpp::IntegerVector& pred,
     const int& num_neighbors = 4,
     const int& n_excluded = 0,
+    const int& dist_metric = 2,
     const int& threads = 8,
     const int& parallel_level = 0){
   // Convert Rcpp NumericMatrix to std::vector<std::vector<double>>
@@ -220,6 +235,7 @@ Rcpp::NumericVector RcppIntersectionCardinality(
     pred_indices,
     static_cast<size_t>(num_neighbors),
     static_cast<size_t>(n_excluded),
+    dist_metric,
     threads,
     parallel_level
   );

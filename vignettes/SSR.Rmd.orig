@@ -1,7 +1,9 @@
 ---
-title: "State Space Reconstruction (SSR)"
+title: "State Space Reconstruction"
 author: "Wenbo Lv"
-date: "`r Sys.Date()`"
+date: |
+  | Last update: 2025-08-31
+  | Last run: `r Sys.Date()`
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{SSR}
@@ -42,7 +44,7 @@ library(spEDM)
 
 popd_nb = spdep::read.gal(system.file("case/popd_nb.gal",package = "spEDM"))
 popd = readr::read_csv(system.file("case/popd.csv",package = "spEDM"))
-popd_sf = sf::st_as_sf(popd, coords = c("x","y"), crs = 4326)
+popd_sf = sf::st_as_sf(popd, coords = c("lon","lat"), crs = 4326)
 popd_sf
 ```
 

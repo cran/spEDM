@@ -27,6 +27,8 @@
  *   - theta: Distance weighting parameter for local neighbors in the manifold (used in s-mapping).
  *   - threads: The number of threads to use for parallel processing.
  *   - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
+ *   - dist_average: Whether to average distance by the number of valid vector components.
  *
  * Returns:
  *   A vector of pairs, where each pair consists of:
@@ -43,7 +45,9 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
     bool simplex,
     double theta,
     size_t threads,
-    int parallel_level
+    int parallel_level,
+    int dist_metric,
+    bool dist_average
 ) {
   int max_lib_size = lib_indices.size();
 
@@ -54,9 +58,9 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
     // Run cross map and store results
     double rho = std::numeric_limits<double>::quiet_NaN();
     if (simplex) {
-      rho = SimplexProjection(x_vectors, y, lib_indices, pred_indices, b);
+      rho = SimplexProjection(x_vectors, y, lib_indices, pred_indices, b, dist_metric, dist_average);
     } else {
-      rho = SMap(x_vectors, y, lib_indices, pred_indices, b, theta);
+      rho = SMap(x_vectors, y, lib_indices, pred_indices, b, theta, dist_metric, dist_average);
     }
     x_xmap_y.emplace_back(lib_size, rho);
     return x_xmap_y;
@@ -90,9 +94,9 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
       // Run cross map and store results
       double rho = std::numeric_limits<double>::quiet_NaN();
       if (simplex) {
-        rho = SimplexProjection(x_vectors, y, valid_lib_indices[i], pred_indices, b);
+        rho = SimplexProjection(x_vectors, y, valid_lib_indices[i], pred_indices, b, dist_metric, dist_average);
       } else {
-        rho = SMap(x_vectors, y, valid_lib_indices[i], pred_indices, b, theta);
+        rho = SMap(x_vectors, y, valid_lib_indices[i], pred_indices, b, theta, dist_metric, dist_average);
       }
 
       std::pair<int, double> result(lib_size, rho); // Store the product of row and column library sizes
@@ -123,9 +127,9 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
       // Run cross map and store results
       double rho = std::numeric_limits<double>::quiet_NaN();
       if (simplex) {
-        rho = SimplexProjection(x_vectors, y, local_lib_indices, pred_indices, b);
+        rho = SimplexProjection(x_vectors, y, local_lib_indices, pred_indices, b, dist_metric, dist_average);
       } else {
-        rho = SMap(x_vectors, y, local_lib_indices, pred_indices, b, theta);
+        rho = SMap(x_vectors, y, local_lib_indices, pred_indices, b, theta, dist_metric, dist_average);
       }
       x_xmap_y.emplace_back(lib_size, rho);
     }
@@ -151,6 +155,10 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
  * - theta: Distance weighting parameter used for weighting neighbors in the S-mapping prediction.
  * - threads: Number of threads to use for parallel computation.
  * - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
+ * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
+ * - dist_average: Whether to average distance by the number of valid vector components.
+ * - single_sig: Whether to estimate significance and confidence intervals using a single rho value.
  * - progressbar: Boolean flag to indicate whether to display a progress bar during computation.
  *
  * Returns:
@@ -175,6 +183,10 @@ std::vector<std::vector<double>> GCCM4Lattice(
     double theta,
     int threads,
     int parallel_level,
+    int style,
+    int dist_metric,
+    bool dist_average,
+    bool single_sig,
     bool progressbar
 ) {
   // If b is not provided correctly, default it to E + 2
@@ -187,7 +199,7 @@ std::vector<std::vector<double>> GCCM4Lattice(
   threads_sizet = std::min(static_cast<size_t>(std::thread::hardware_concurrency()), threads_sizet);
 
   // Generate embeddings
-  std::vector<std::vector<double>> x_vectors = GenLatticeEmbeddings(x, nb_vec, E, tau);
+  std::vector<std::vector<double>> x_vectors = GenLatticeEmbeddings(x, nb_vec, E, tau, style);
 
   size_t n = pred.size();
 
@@ -224,7 +236,9 @@ std::vector<std::vector<double>> GCCM4Lattice(
           simplex,
           theta,
           threads_sizet,
-          parallel_level);
+          parallel_level,
+          dist_metric,
+          dist_average);
         bar++;
       }
     } else {
@@ -239,7 +253,9 @@ std::vector<std::vector<double>> GCCM4Lattice(
           simplex,
           theta,
           threads_sizet,
-          parallel_level);
+          parallel_level,
+          dist_metric,
+          dist_average);
       }
     }
   } else {
@@ -258,7 +274,9 @@ std::vector<std::vector<double>> GCCM4Lattice(
           simplex,
           theta,
           threads_sizet,
-          parallel_level);
+          parallel_level,
+          dist_metric,
+          dist_average);
         bar++;
       }, threads_sizet);
     } else {
@@ -274,7 +292,9 @@ std::vector<std::vector<double>> GCCM4Lattice(
           simplex,
           theta,
           threads_sizet,
-          parallel_level);
+          parallel_level,
+          dist_metric,
+          dist_average);
       }, threads_sizet);
     }
   }
@@ -294,20 +314,44 @@ std::vector<std::vector<double>> GCCM4Lattice(
   }
 
   std::vector<std::vector<double>> final_results;
-  for (const auto& group : grouped_results) {
-    double mean_value = CppMean(group.second, true);
-    final_results.push_back({static_cast<double>(group.first), mean_value});
-  }
+  if (single_sig) {
+    // Calculate significance and confidence intervals using the mean of rho vector only.
+    for (const auto& group : grouped_results) {
+      double mean_value = CppMean(group.second, true);
+      final_results.push_back({static_cast<double>(group.first), mean_value});
+    }
 
-  // Calculate significance and confidence interval for each result
-  for (size_t i = 0; i < final_results.size(); ++i) {
-    double rho = final_results[i][1];
-    double significance = CppCorSignificance(rho, n);
-    std::vector<double> confidence_interval = CppCorConfidence(rho, n);
+    // Calculate significance and confidence interval for each result
+    for (size_t i = 0; i < final_results.size(); ++i) {
+      double rho = final_results[i][1];
+      double significance = CppCorSignificance(rho, n);
+      std::vector<double> confidence_interval = CppCorConfidence(rho, n);
 
-    final_results[i].push_back(significance);
-    final_results[i].push_back(confidence_interval[0]);
-    final_results[i].push_back(confidence_interval[1]);
+      final_results[i].push_back(significance);
+      final_results[i].push_back(confidence_interval[0]);
+      final_results[i].push_back(confidence_interval[1]);
+    }
+  } else {
+    // Compute significance and confidence intervals directly from grouped correlation vectors
+    for (const auto& group : grouped_results) {
+      // Calculate the mean correlation coefficient from the group
+      double mean_value = CppMean(group.second, true);
+
+      // Compute significance (p-value) using the vector of correlations directly
+      double significance = CppMeanCorSignificance(group.second, n);
+
+      // Compute confidence interval using the vector of correlations directly
+      std::vector<double> confidence_interval = CppMeanCorConfidence(group.second, n);
+
+      // Store results: group ID, mean correlation, p-value, lower CI, upper CI
+      final_results.push_back({
+        static_cast<double>(group.first),
+        mean_value,
+        significance,
+        confidence_interval[0],
+        confidence_interval[1]
+      });
+    }
   }
 
   return final_results;

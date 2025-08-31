@@ -1,3 +1,30 @@
+# spEDM 1.8
+
+### new
+
+* Provide new mechanisms for variable interaction in the spatial logistic map (#772).
+
+* Introduce configurable distance metrics for cross mapping (#761).
+
+* Enable alternative styles of spatial cross-sectional embedding 
+(#755).
+
+### enhancements
+
+* Safeguard transient removal logic in spatial logistic map to prevent index errors (#744).
+
+* Adjust the default `E` range in the `simplex` generic to `2:10` to support more robust reconstruction of state spaces (#739).
+
+* Introduce multithreading in distance-related computations where applicable to improve runtime efficiency (#718).
+
+* Display p-value annotation for maximum library size in cross mapping visualization legend (#710).
+
+### breaking changes
+
+* Prevent unreliable predictions and potentially alter results when NaNs are present in cross mapping (#747).
+
+* Rename coordinate columns in population density case csv to `lon` and `lat` (#741).
+
 # spEDM 1.7
 
 ### new

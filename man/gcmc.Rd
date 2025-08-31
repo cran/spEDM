@@ -16,6 +16,8 @@
   k = pmin(E^2),
   lib = NULL,
   pred = NULL,
+  style = 1,
+  dist.metric = "L2",
   nb = NULL,
   threads = detectThreads(),
   parallel.level = "low",
@@ -34,6 +36,8 @@
   k = pmin(E^2),
   lib = NULL,
   pred = NULL,
+  style = 1,
+  dist.metric = "L2",
   threads = detectThreads(),
   parallel.level = "low",
   bidirectional = TRUE,
@@ -59,6 +63,10 @@
 \item{lib}{(optional) libraries indices.}
 
 \item{pred}{(optional) predictions indices.}
+
+\item{style}{(optional) embedding style (\code{0} includes current state, \code{1} excludes it).}
+
+\item{dist.metric}{(optional) distance metric (\code{L1}: Manhattan, \code{L2}: Euclidean).}
 
 \item{nb}{(optional) neighbours list.}
 
@@ -87,7 +95,7 @@ geographical cross mapping cardinality
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
 \donttest{
-g = gcmc(columbus,"hoval","crime",E = 2,k = 25)
+g = gcmc(columbus,"hoval","crime",E = 7,k = 18)
 g
 }
 }

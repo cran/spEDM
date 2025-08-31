@@ -1,7 +1,9 @@
 ---
-title: "Geographical Convergent Cross Mapping (GCCM)"
+title: "Geographical Convergent Cross Mapping"
 author: "Wenbo Lv"
-date: "2025-06-25"
+date: |
+  | Last update: 2025-08-31
+  | Last run: 2025-08-31
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{GCCM}
@@ -17,14 +19,14 @@ Let $Y = \{y_i\}$ and $X = \{x_i\}$ be the two spatial cross sectional variable,
 
 $$
 M_{x} = \begin{bmatrix}
-S_{(1)}(x_1) & S_{(1 + \tau)}(x_1) & \cdots & S_{(1+(E-1)\tau)}(x_1) \\
-S_{(1)}(x_2) & S_{(1 + \tau)}(x_2) & \cdots & S_{(1+(E-1)\tau)}(x_2) \\
+S_{(\tau)}(x_1) & S_{(2\tau)}(x_1) & \cdots & S_{(E\tau)}(x_1) \\
+S_{(\tau)}(x_2) & S_{(2\tau)}(x_2) & \cdots & S_{(E\tau)}(x_2) \\
 \vdots & \vdots & \ddots & \vdots \\
-S_{(1)}(x_n) & S_{(1 + \tau)}(x_n) & \cdots & S_{(1+(E-1)\tau)}(x_n)
+S_{(\tau)}(x_n) & S_{(2\tau)}(x_n) & \cdots & S_{(E\tau)}(x_n)
 \end{bmatrix}
 $$
 
-Here, $S_{(j)}(x_i)$ denotes the $j$ th-order spatial lag value of spatial unit $i$, $\tau $ is the step size for the spatial lag order, and $E$ is the embedding dimension and $M_{x}$ corresponds to the shadow manifolds of $X$.
+Here, $S_{(j)}(x_i)$ denotes the $j$ th-order spatial lag value of spatial unit $i$, $\tau$ is the step size for the spatial lag order, and $E$ is the embedding dimension and $M_{x}$ corresponds to the shadow manifolds of $X$.
 
 With the reconstructed shadow manifolds $M_{x}$, the state of Y can be predicted with the state of X through
 
@@ -92,13 +94,13 @@ popd_nb = spdep::read.gal(system.file("case/popd_nb.gal",package = "spEDM"))
 ## neighbour object has 4 sub-graphs
 popd = readr::read_csv(system.file("case/popd.csv",package = "spEDM"))
 ## Rows: 2806 Columns: 7
-## ── Column specification ────────────────────────────────────────────────────────────────────────────
+## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: ","
-## dbl (7): x, y, popd, elev, tem, pre, slope
+## dbl (7): lon, lat, popd, elev, tem, pre, slope
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-popd_sf = sf::st_as_sf(popd, coords = c("x","y"), crs = 4326)
+popd_sf = sf::st_as_sf(popd, coords = c("lon","lat"), crs = 4326)
 popd_sf
 ## Simple feature collection with 2806 features and 5 fields
 ## Geometry type: POINT
@@ -125,9 +127,9 @@ Determining optimal embedding dimension:
 
 
 ``` r
-simplex(popd_sf, "pre", "pre", E = 1:10, k = 6)
+simplex(popd_sf, "pre", "pre", E = 2:10, k = 6)
 ## The suggested E and k for variable pre is 3 and 6
-simplex(popd_sf, "popd", "popd", E = 1:10, k = 6)
+simplex(popd_sf, "popd", "popd", E = 2:10, k = 6)
 ## The suggested E and k for variable popd is 9 and 6
 ```
 
@@ -146,7 +148,7 @@ pd_res = gccm(data = popd_sf,
               progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
-## Time difference of 2.906415 mins
+## Time difference of 1.863025 mins
 pd_res
 ##    libsizes pre->popd  popd->pre
 ## 1       100 0.1140592 0.03269659
@@ -170,7 +172,7 @@ Visualize the result:
 
 ``` r
 plot(pd_res, xlimits = c(0, 2800), draw_ci = TRUE) +
-  ggplot2::theme(legend.justification = c(0.85,1))
+  ggplot2::theme(legend.justification = c(0.65,1))
 ```
 
 ![**Figure 1**. The cross-mapping prediction outputs between population density and county-level precipitation.](../man/figures/gccm/fig1-1.png)
@@ -223,9 +225,9 @@ Determining optimal embedding dimension:
 
 
 ``` r
-simplex(npp, "pre", "pre", E = 1:10, k = 8, lib = nnaindice, pred = predindice)
+simplex(npp, "pre", "pre", E = 2:10, k = 8, lib = nnaindice, pred = predindice)
 ## The suggested E and k for variable pre is 2 and 8
-simplex(npp, "npp", "npp", E = 1:10, k = 8, lib = nnaindice, pred = predindice)
+simplex(npp, "npp", "npp", E = 2:10, k = 8, lib = nnaindice, pred = predindice)
 ## The suggested E and k for variable npp is 10 and 8
 ```
 
@@ -245,16 +247,16 @@ npp_res = gccm(data = npp,
                progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
-## Time difference of 1.497058 mins
+## Time difference of 0.9523582 mins
 npp_res
 ##   libsizes  pre->npp  npp->pre
-## 1       10 0.1282926 0.1095679
-## 2       30 0.2600400 0.2314889
-## 3       50 0.3773544 0.2953962
-## 4       70 0.4968743 0.3400436
-## 5       90 0.5976269 0.3387017
-## 6      110 0.7363194 0.3422293
-## 7      130 0.8387112 0.3656638
+## 1       10 0.1282926 0.1111690
+## 2       30 0.2600225 0.2346917
+## 3       50 0.3773586 0.2998472
+## 4       70 0.4968706 0.3411285
+## 5       90 0.5975915 0.3393013
+## 6      110 0.7362461 0.3434810
+## 7      130 0.8385761 0.3633303
 ```
 
 Visualize the result:

@@ -3,6 +3,7 @@
 #include <string>
 #include "CppStats.h"
 #include "CppCombn.h"
+#include "CppDistances.h"
 #include "DeLongPlacements.h"
 #include "SpatialBlockBootstrap.h"
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
@@ -229,7 +230,8 @@ double RcppPartialCor(const Rcpp::NumericVector& y,
                       const Rcpp::NumericVector& y_hat,
                       const Rcpp::NumericMatrix& controls,
                       bool NA_rm = false,
-                      bool linear = false) {
+                      bool linear = false,
+                      double pinv_tol = 1e-10) {
 
   // Convert Rcpp NumericVector to std::vector
   std::vector<double> std_y = Rcpp::as<std::vector<double>>(y);
@@ -251,15 +253,15 @@ double RcppPartialCorTrivar(const Rcpp::NumericVector& y,
                             const Rcpp::NumericVector& y_hat,
                             const Rcpp::NumericVector& control,
                             bool NA_rm = false,
-                            bool linear = false) {
-
+                            bool linear = false,
+                            double pinv_tol = 1e-10) {
   // Convert Rcpp NumericVector to std::vector
   std::vector<double> std_y = Rcpp::as<std::vector<double>>(y);
   std::vector<double> std_y_hat = Rcpp::as<std::vector<double>>(y_hat);
   std::vector<double> std_control = Rcpp::as<std::vector<double>>(control);
 
   // Call the PartialCorTrivar function
-  return PartialCorTrivar(std_y, std_y_hat, std_control, NA_rm, linear);
+  return PartialCorTrivar(std_y, std_y_hat, std_control, NA_rm, linear, pinv_tol);
 }
 
 // Wrapper function to calculate the significance of a (partial) correlation coefficient
@@ -268,7 +270,7 @@ double RcppCorSignificance(double r, int n, int k = 0){
   return CppCorSignificance(r, static_cast<size_t>(n), static_cast<size_t>(k));
 }
 
-// Wrapper function to calculate the confidence interval for a (partial) correlation coefficient and return a NumericVector
+// Wrapper function to calculate the confidence interval for a (partial) correlation coefficient
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0,
                                       double level = 0.05) {
@@ -277,6 +279,31 @@ Rcpp::NumericVector RcppCorConfidence(double r, int n, int k = 0,
                                                 static_cast<size_t>(n),
                                                 static_cast<size_t>(k),
                                                 level);
+
+  // Convert std::vector<double> to Rcpp::NumericVector
+  return Rcpp::wrap(result);
+}
+
+// Wrapper function to calculate the significance of a vector of (partial) correlation coefficients
+// [[Rcpp::export(rng = false)]]
+double RcppMeanCorSignificance(const Rcpp::NumericVector& r, int n, int k = 0){
+  // Convert Rcpp inputs to standard C++ types
+  std::vector<double> r_std = Rcpp::as<std::vector<double>>(r);
+  return CppMeanCorSignificance(r_std, static_cast<size_t>(n), static_cast<size_t>(k));
+}
+
+// Wrapper function to calculate the confidence interval for a vector of (partial) correlation coefficients
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericVector RcppMeanCorConfidence(const Rcpp::NumericVector& r,
+                                          int n, int k = 0,
+                                          double level = 0.05) {
+  // Convert Rcpp inputs to standard C++ types
+  std::vector<double> r_std = Rcpp::as<std::vector<double>>(r);
+  // Calculate the confidence interval
+  std::vector<double> result = CppMeanCorConfidence(r_std,
+                                                    static_cast<size_t>(n),
+                                                    static_cast<size_t>(k),
+                                                    level);
 
   // Convert std::vector<double> to Rcpp::NumericVector
   return Rcpp::wrap(result);
@@ -502,7 +529,7 @@ Rcpp::IntegerVector RcppDistKNNIndice(const Rcpp::NumericMatrix& dist_mat,
 // [[Rcpp::export(rng = false)]]
 Rcpp::List RcppDistSortedIndice(const Rcpp::NumericMatrix& dist_mat,
                                 const Rcpp::IntegerVector& lib,
-                                bool include_self = false) {
+                                int k, bool include_self = false) {
   // Get number of rows and columns
   const int n = dist_mat.nrow();
   const int m = dist_mat.ncol();
@@ -521,7 +548,51 @@ Rcpp::List RcppDistSortedIndice(const Rcpp::NumericMatrix& dist_mat,
   }
 
   // Call the existing C++ function to compute sorted neighbor indices
-  std::vector<std::vector<size_t>> result = CppDistSortedIndice(dist_vec, lib_std, include_self);
+  std::vector<std::vector<size_t>> result = CppDistSortedIndice(dist_vec, lib_std, static_cast<size_t>(k), include_self);
+
+  // Convert the result to an R list of integer vectors
+  Rcpp::List out(n);
+  for (int i = 0; i < n; ++i) {
+    const auto& row = result[i];
+    Rcpp::IntegerVector indices(row.size());
+    for (size_t j = 0; j < row.size(); ++j) {
+      if (row[j] == std::numeric_limits<size_t>::max()) {
+        indices[j] = NA_INTEGER;
+      } else {
+        indices[j] = static_cast<int>(row[j]);
+      }
+    }
+    out[i] = indices;
+  }
+
+  // Return the list where each element contains sorted neighbor indices for that row
+  return out;
+}
+
+// Wrapper function to generate k-nearest neighbors within the embedding space.
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppMatKNNeighbors(const Rcpp::NumericMatrix& embeddings,
+                              const Rcpp::IntegerVector& lib,
+                              int k, int threads = 8, bool L1norm = false) {
+  // Get number of rows and columns
+  const int n = embeddings.nrow();
+  const int m = embeddings.ncol();
+
+  // Convert Rcpp data structure to std::vector<>
+  std::vector<std::vector<double>> emb(n, std::vector<double>(m));
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      emb[i][j] = embeddings(i, j);
+    }
+  }
+
+  std::vector<size_t> lib_std(lib.size());
+  for (int i = 0; i < lib.size(); ++i) {
+    lib_std[i] = static_cast<size_t>(i);
+  }
+
+  // Call the existing C++ function to compute sorted neighbor indices
+  std::vector<std::vector<size_t>> result = CppMatKNNeighbors(emb, lib_std, static_cast<size_t>(k), static_cast<size_t>(threads), L1norm);
 
   // Convert the result to an R list of integer vectors
   Rcpp::List out(n);

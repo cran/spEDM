@@ -12,9 +12,8 @@
 
 <meta name="author" content="Wenbo Lv" />
 
-<meta name="date" content="2025-06-25" />
 
-<title>State Space Reconstruction (SSR)</title>
+<title>State Space Reconstruction</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -338,9 +337,10 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">State Space Reconstruction (SSR)</h1>
+<h1 class="title toc-ignore">State Space Reconstruction</h1>
 <h4 class="author">Wenbo Lv</h4>
-<h4 class="date">2025-06-25</h4>
+<h4 class="date"><div class="line-block">Last update: 2025-08-31<br />
+Last run: 2025-08-31</div></h4>
 
 
 
@@ -396,11 +396,11 @@ density data:</p>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## Rows: 2806 Columns: 7</span></span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">## ── Column specification ────────────────────────────────────────────────────────────────────────────</span></span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">## Delimiter: &quot;,&quot;</span></span>
-<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## dbl (7): x, y, popd, elev, tem, pre, slope</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## dbl (7): lon, lat, popd, elev, tem, pre, slope</span></span>
 <span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">## </span></span>
 <span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">## ℹ Use `spec()` to retrieve the full column specification for this data.</span></span>
 <span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</span></span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>popd_sf <span class="ot">=</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>(popd, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">&quot;x&quot;</span>,<span class="st">&quot;y&quot;</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a>popd_sf <span class="ot">=</span> sf<span class="sc">::</span><span class="fu">st_as_sf</span>(popd, <span class="at">coords =</span> <span class="fu">c</span>(<span class="st">&quot;lon&quot;</span>,<span class="st">&quot;lat&quot;</span>), <span class="at">crs =</span> <span class="dv">4326</span>)</span>
 <span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>popd_sf</span>
 <span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="do">## Simple feature collection with 2806 features and 5 fields</span></span>
 <span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="do">## Geometry type: POINT</span></span>

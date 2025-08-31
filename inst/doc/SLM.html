@@ -12,9 +12,8 @@
 
 <meta name="author" content="Wenbo Lv" />
 
-<meta name="date" content="2025-06-25" />
 
-<title>Spatial Logistic Map (SLM)</title>
+<title>Spatial Logistic Map</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -338,9 +337,10 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 
-<h1 class="title toc-ignore">Spatial Logistic Map (SLM)</h1>
+<h1 class="title toc-ignore">Spatial Logistic Map</h1>
 <h4 class="author">Wenbo Lv</h4>
-<h4 class="date">2025-06-25</h4>
+<h4 class="date"><div class="line-block">Last update: 2025-08-31<br />
+Last run: 2025-08-31</div></h4>
 
 
 
@@ -391,19 +391,41 @@ value and the average state of its neighbors.</p>
 <p>Importantly, when extended to multivariate spatial settings, such as
 <strong>bivariate or trivariate spatial logistic maps</strong>, each
 spatial variable evolves not only through its own neighbors but also
-through inter-variable interactions at the same spatial location. For
-example, in a bivariate spatial logistic map:</p>
+through inter-variable interactions. For example, in a <strong>bivariate
+spatial logistic map</strong>, the update rules may be written as:</p>
+<ul>
+<li><strong>Local cross-variable interaction (default
+form):</strong></li>
+</ul>
 <p><span class="math display">\[
 x_{i}^{(t+1)} = 1 - \alpha_1 x_i^{(t)} \left( \frac{1}{k} \sum_{j \in
 \mathcal{N}(i)} x_j^{(t)} - \beta_{21} y_i^{(t)} \right), \\
 y_{i}^{(t+1)} = 1 - \alpha_2 y_i^{(t)} \left( \frac{1}{k} \sum_{j \in
-\mathcal{N}(i)} y_j^{(t)} - \beta_{12} x_i^{(t)} \right),
+\mathcal{N}(i)} y_j^{(t)} - \beta_{12} x_i^{(t)} \right).
 \]</span></p>
-<p>with similar expressions for the trivariate case. These models
-capture <strong>local spatial coupling</strong> and <strong>in-place
-cross-variable inhibition</strong>, producing spatiotemporal patterns
-such as waves, kinks, frozen random states, and spatiotemporal
-chaos.</p>
+<p>Here, the inhibitory (or facilitative) influence between variables is
+restricted to the same spatial location.</p>
+<ul>
+<li><strong>Neighbor-averaged cross-variable interaction (extended
+form):</strong></li>
+</ul>
+<p><span class="math display">\[
+x_{i}^{(t+1)} = 1 - \alpha_1 x_i^{(t)} \left( \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} x_j^{(t)} - \beta_{21} \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} y_j^{(t)} \right), \\
+y_{i}^{(t+1)} = 1 - \alpha_2 y_i^{(t)} \left( \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} y_j^{(t)} - \beta_{12} \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} x_j^{(t)} \right).
+\]</span></p>
+<p>In this alternative form, the inter-variable interactions are
+mediated through the <strong>neighbor-averaged states</strong>, allowing
+each variable to be influenced by the spatial context of the other.</p>
+<p>Both formulations capture the combination of <strong>local spatial
+coupling</strong> and <strong>cross-variable inhibition</strong>, but
+they differ in whether the cross-variable effects are purely local or
+spatially contextualized. These distinctions lead to different
+spatiotemporal outcomes, including waves, kinks, frozen random states,
+and spatiotemporal chaos.</p>
 <p>By performing statistical aggregation over the long-run time series
 values at each spatial unit, one can generate spatial cross-sectional
 data that reflect different causal scenarios.</p>
@@ -457,16 +479,15 @@ species density distributions for three species (a, b, and c).</div>
 <p>We assume an underlying causal interaction structure among species,
 where species <em>a</em> influences <em>b</em>, and <em>b</em> in turn
 influences <em>c</em> (i.e., <em>a</em> → <em>b</em> → <em>c</em>). The
-intrinsic growth rates for species <em>a</em>, <em>b</em>, and
-<em>c</em> are set to 0.28, 0.25, and 0.22 respectively. The effect of
-species <em>a</em> on <em>b</em> is set to 0.625, and the effect of
-species <em>b</em> on <em>c</em> is set to 0.77. All other interspecific
-influence parameters are set to zero. This setup provides a controlled
-environment to test spatial causality detection methods under known
-dynamic interactions.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>simv <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">slm</span>(species,<span class="at">x =</span> <span class="st">&quot;a&quot;</span>, <span class="at">y =</span> <span class="st">&quot;b&quot;</span>, <span class="at">z =</span> <span class="st">&quot;c&quot;</span>, <span class="at">k =</span> <span class="dv">4</span>, <span class="at">step =</span> <span class="dv">15</span>, <span class="at">transient =</span> <span class="dv">1</span>,</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>                  <span class="at">alpha_x =</span> <span class="fl">0.28</span>, <span class="at">alpha_y =</span> <span class="fl">0.25</span>, <span class="at">alpha_z =</span> <span class="fl">0.22</span>,</span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>                  <span class="at">beta_xy =</span> <span class="fl">0.625</span>, <span class="at">beta_xz =</span> <span class="dv">0</span>, <span class="at">beta_yx =</span> <span class="dv">0</span>, <span class="at">beta_yz =</span> <span class="fl">0.77</span>, <span class="at">beta_zx =</span> <span class="dv">0</span>, <span class="at">beta_zy =</span> <span class="dv">0</span>)</span>
+intrinsic growth rates of species a, b, and c are uniformly assigned a
+value of 0.2. Species a exerts an effect of 1 on species b, and species
+b exerts an effect of 1 on species c. All other interspecific influence
+parameters are set to 0. This setup provides a controlled environment to
+test spatial causality detection methods under known dynamic
+interactions.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>simv <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">slm</span>(species, <span class="at">x =</span> <span class="st">&quot;a&quot;</span>, <span class="at">y =</span> <span class="st">&quot;b&quot;</span>, <span class="at">z =</span> <span class="st">&quot;c&quot;</span>, <span class="at">k =</span> <span class="dv">4</span>, <span class="at">step =</span> <span class="dv">15</span>, <span class="at">transient =</span> <span class="dv">1</span>, <span class="at">interact =</span> <span class="st">&quot;local&quot;</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>                  <span class="at">alpha_x =</span> <span class="fl">0.2</span>, <span class="at">alpha_y =</span> <span class="fl">0.2</span>, <span class="at">alpha_z =</span> <span class="fl">0.2</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>                  <span class="at">beta_xy =</span> <span class="dv">1</span>, <span class="at">beta_xz =</span> <span class="dv">0</span>, <span class="at">beta_yx =</span> <span class="dv">0</span>, <span class="at">beta_yz =</span> <span class="dv">1</span>, <span class="at">beta_zx =</span> <span class="dv">0</span>, <span class="at">beta_zy =</span> <span class="dv">0</span>)</span>
 <span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>species_evolution <span class="ot">=</span> species</span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species_evolution[[<span class="st">&quot;a&quot;</span>]]) <span class="ot">=</span> simv<span class="sc">$</span>x</span>
@@ -480,8 +501,8 @@ dynamic interactions.</p>
 <span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="do">## coord. ref. :  </span></span>
 <span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## source(s)   : memory</span></span>
 <span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="do">## names       :         a,         b,         c </span></span>
-<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## min values  : 0.8149217, 0.9079235, 0.9432498 </span></span>
-<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="do">## max values  : 0.8223571, 0.9157017, 0.9546753</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">## min values  : 0.8553408, 0.9733337, 0.9886246 </span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="do">## max values  : 0.8611597, 0.9803933, 1.0008822</span></span>
 <span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a></span>
 <span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(species_evolution, <span class="at">nc =</span> <span class="dv">3</span>,</span>
 <span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>            <span class="at">mar =</span> <span class="fu">rep</span>(<span class="fl">0.1</span>,<span class="dv">4</span>),</span>
@@ -489,10 +510,39 @@ dynamic interactions.</p>
 <span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>            <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
 <span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>            <span class="at">legend =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
 <div class="float">
-<img role="img" aria-label="Figure 2. Species distributions following spatiotemporal interaction and evolution after 20 simulation steps with 4-neighbor interactions." src="data:image/png;base64,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" alt="Figure 2. Species distributions following spatiotemporal interaction and evolution after 20 simulation steps with 4-neighbor interactions." />
+<img role="img" aria-label="Figure 2. Species distributions following spatiotemporal interaction and evolution after 20 simulation steps with 4-neighbor interactions." src="data:image/png;base64,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" alt="Figure 2. Species distributions following spatiotemporal interaction and evolution after 20 simulation steps with 4-neighbor interactions." />
 <div class="figcaption"><strong>Figure 2</strong>. Species distributions
 following spatiotemporal interaction and evolution after 20 simulation
 steps with 4-neighbor interactions.</div>
+</div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>simv <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">slm</span>(species, <span class="at">x =</span> <span class="st">&quot;a&quot;</span>, <span class="at">y =</span> <span class="st">&quot;b&quot;</span>, <span class="at">z =</span> <span class="st">&quot;c&quot;</span>, <span class="at">k =</span> <span class="dv">4</span>, <span class="at">step =</span> <span class="dv">15</span>, <span class="at">transient =</span> <span class="dv">1</span>, <span class="at">interact =</span> <span class="st">&quot;neighbors&quot;</span>,</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>                  <span class="at">alpha_x =</span> <span class="fl">0.2</span>, <span class="at">alpha_y =</span> <span class="fl">0.2</span>, <span class="at">alpha_z =</span> <span class="fl">0.2</span>, <span class="at">beta_xy =</span> <span class="dv">1</span>, <span class="at">beta_xz =</span> <span class="dv">0</span>, <span class="at">beta_yx =</span> <span class="dv">0</span>, <span class="at">beta_yz =</span> <span class="dv">1</span>, <span class="at">beta_zx =</span> <span class="dv">0</span>, <span class="at">beta_zy =</span> <span class="dv">0</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>species_evolution <span class="ot">=</span> species</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species_evolution[[<span class="st">&quot;a&quot;</span>]]) <span class="ot">=</span> simv<span class="sc">$</span>x</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species_evolution[[<span class="st">&quot;b&quot;</span>]]) <span class="ot">=</span> simv<span class="sc">$</span>y</span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species_evolution[[<span class="st">&quot;c&quot;</span>]]) <span class="ot">=</span> simv<span class="sc">$</span>z</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>species_evolution</span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="do">## class       : SpatRaster </span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="do">## size        : 20, 20, 3  (nrow, ncol, nlyr)</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="do">## resolution  : 1, 1  (x, y)</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="do">## extent      : 0, 20, 0, 20  (xmin, xmax, ymin, ymax)</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="do">## coord. ref. :  </span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="do">## source(s)   : memory</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="do">## names       :         a,         b,         c </span></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="do">## min values  : 0.8553408, 0.9718102, 0.9887262 </span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="do">## max values  : 0.8611597, 0.9803232, 0.9986816</span></span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">plot</span>(species_evolution, <span class="at">nc =</span> <span class="dv">3</span>,</span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>            <span class="at">mar =</span> <span class="fu">rep</span>(<span class="fl">0.1</span>,<span class="dv">4</span>),</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>            <span class="at">oma =</span> <span class="fu">rep</span>(<span class="fl">0.1</span>,<span class="dv">4</span>),</span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>            <span class="at">axes =</span> <span class="cn">FALSE</span>,</span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>            <span class="at">legend =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="Figure 3. Species distributions after 20 simulation steps with 4-neighbor interactions and neighbor-averaged cross-variable dynamics." src="data:image/png;base64,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" alt="Figure 3. Species distributions after 20 simulation steps with 4-neighbor interactions and neighbor-averaged cross-variable dynamics." />
+<div class="figcaption"><strong>Figure 3</strong>. Species distributions
+after 20 simulation steps with 4-neighbor interactions and
+neighbor-averaged cross-variable dynamics.</div>
 </div>
 </div>
 

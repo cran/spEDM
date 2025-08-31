@@ -6,30 +6,35 @@
 #include "CppStats.h"
 
 /**
- * @brief Perform S-Map prediction using locally weighted linear regression.
+ * @brief Perform S-Mapping prediction using locally weighted linear regression.
  *
- * This function performs prediction based on a reconstructed state-space (time-delay embedding).
+ * This function performs prediction based on a reconstructed state-space (spatial-lag embedding).
  * For each prediction index, it:
- *   - Finds the nearest neighbors from the library indices.
- *   - Computes distance-based weights using the S-map weighting parameter (theta).
- *   - Constructs a local weighted linear regression model using the nearest neighbors.
+ *   - Finds the nearest neighbors from the library indices, excluding the current prediction index.
+ *   - Computes distance-based weights using the S-mapping weighting parameter (theta).
+ *   - Constructs a locally weighted linear regression model using the valid neighbors.
  *   - Predicts the target value using the derived local model.
  *
  * @param vectors        A 2D matrix where each row is a reconstructed state vector (embedding).
- * @param target         A vector of scalar values to predict (e.g., time series observations).
+ * @param target         A vector of scalar values to predict (e.g., spatial cross sections observations).
  * @param lib_indices    Indices of the vectors used as the library (neighbor candidates).
  * @param pred_indices   Indices of the vectors used for prediction.
- * @param num_neighbors  Number of nearest neighbors to use in local regression.
- * @param theta          Weighting parameter controlling exponential decay of distances.
- * @return std::vector<double> Predicted values corresponding to pred_indices. Other indices contain NaN.
+ * @param num_neighbors  Number of nearest neighbors to use in local regression. Default is 4.
+ * @param theta          Weighting parameter controlling exponential decay of distances. Default is 1.0.
+ * @param dist_metric    Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ * @param dist_average   Whether to average distance by the number of valid vector components. Default is true.
+ * @return std::vector<double> Predicted values aligned with the input target vector.
+ *         Entries at non-prediction indices or with insufficient valid neighbors are NaN.
  */
 std::vector<double> SMapPrediction(
     const std::vector<std::vector<double>>& vectors,
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors,
-    double theta
+    int num_neighbors = 4,
+    double theta = 1.0,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   size_t N = target.size();
   std::vector<double> pred(N, std::numeric_limits<double>::quiet_NaN());
@@ -39,59 +44,61 @@ std::vector<double> SMapPrediction(
   }
 
   for (int pred_i : pred_indices) {
-    // Filter out the current prediction index from the library
-    std::vector<size_t> libs;
-    for (int lib_i : lib_indices) {
-      if (lib_i != pred_i) {
-        libs.push_back(static_cast<size_t>(lib_i));
-      }
-    }
+    // // Skip if target at prediction index is NaN
+    // if (std::isnan(target[pred_i])) {
+    //   continue;
+    // }
 
-    if (libs.empty()) {
-      continue;
-    }
-
-    size_t actual_neighbors = std::min(static_cast<size_t>(num_neighbors), libs.size());
-
-    // Compute Euclidean distances (ignoring NaNs)
+    // Compute distances only for valid vector pairs with valid target values
     std::vector<double> distances;
-    for (size_t i : libs) {
+    std::vector<int> valid_libs;
+
+    for (int i : lib_indices) {
+      // // Only use neighbors with valid target
+      // if (std::isnan(target[i])) continue;
+
+      if (i == pred_i) continue; // Skip self-matching
+
       double sum_sq = 0.0;
-      double valid_dim = 0.0;
+      double count = 0.0;
       for (size_t j = 0; j < vectors[pred_i].size(); ++j) {
         double vi = vectors[i][j];
         double vj = vectors[pred_i][j];
         if (!std::isnan(vi) && !std::isnan(vj)) {
-          sum_sq += (vi - vj) * (vi - vj);
-          valid_dim += 1.0;
+          double diff = vi - vj; 
+          // sum_sq += (dist_metric == 1) ? std::abs(diff) : diff * diff;
+          if (dist_metric == 1) {
+            sum_sq += std::abs(diff); // L1
+          } else {
+            sum_sq += diff * diff;    // L2
+          }
+          count += 1.0;
         }
       }
-      distances.push_back((valid_dim > 0) ? std::sqrt(sum_sq / valid_dim)
-                            : std::numeric_limits<double>::quiet_NaN());
-    }
 
-    // Compute mean distance (ignoring NaNs)
-    double sum_dist = 0.0;
-    int count_dist = 0;
-    for (double d : distances) {
-      if (!std::isnan(d)) {
-        sum_dist += d;
-        ++count_dist;
+      if (count > 0) {
+        if (dist_metric == 1) {  // L1
+          distances.push_back(sum_sq / (dist_average ? count : 1.0));       
+        } else {                 // L2
+          distances.push_back(std::sqrt(sum_sq / (dist_average ? count : 1.0))); 
+        }
+        valid_libs.push_back(i);
       }
     }
 
-    if (count_dist == 0) {
-      continue; // no valid distances
+    if (distances.empty()) {
+      continue; // no usable neighbors
     }
 
-    double mean_distance = sum_dist / count_dist;
+    size_t actual_neighbors = std::min(static_cast<size_t>(num_neighbors), distances.size());
+
+    // Compute mean distance
+    double mean_distance = std::accumulate(distances.begin(), distances.end(), 0.0) / distances.size();
 
     // Compute weights using exponential kernel
     std::vector<double> weights(distances.size(), 0.0);
     for (size_t i = 0; i < distances.size(); ++i) {
-      if (!std::isnan(distances[i])) {
-        weights[i] = std::exp(-theta * distances[i] / mean_distance);
-      }
+      weights[i] = std::exp(-theta * distances[i] / mean_distance);
     }
 
     // Select top-k neighbors using partial sort
@@ -107,28 +114,28 @@ std::vector<double> SMapPrediction(
       }
     );
 
-    // Construct weighted linear system Ax = b
+    // Construct weighted linear system A * coeff = b
     size_t dim = vectors[pred_i].size();
     std::vector<std::vector<double>> A(actual_neighbors, std::vector<double>(dim + 1, 0.0));
     std::vector<double> b(actual_neighbors, 0.0);
 
     for (size_t i = 0; i < actual_neighbors; ++i) {
-      size_t idx = libs[neighbor_indices[i]];
+      int idx = valid_libs[neighbor_indices[i]];
       double w = weights[neighbor_indices[i]];
       for (size_t j = 0; j < dim; ++j) {
         A[i][j] = vectors[idx][j] * w;
       }
-      A[i][dim] = w; // bias term
+      A[i][dim] = w;  // bias term
       b[i] = target[idx] * w;
     }
 
-    // Solve via SVD
+    // Solve the system using SVD
     std::vector<std::vector<std::vector<double>>> svd_result = CppSVD(A);
     std::vector<std::vector<double>> U = svd_result[0];
     std::vector<double> S = svd_result[1][0];
     std::vector<std::vector<double>> V = svd_result[2];
 
-    // Compute pseudo-inverse of singular values with tolerance
+    // Invert singular values with tolerance
     double max_s = *std::max_element(S.begin(), S.end());
     std::vector<double> S_inv(S.size(), 0.0);
     for (size_t i = 0; i < S.size(); ++i) {
@@ -137,7 +144,7 @@ std::vector<double> SMapPrediction(
       }
     }
 
-    // Compute coefficients: V * S_inv * U^T * b
+    // Compute regression coefficients: V * S_inv * U^T * b
     std::vector<double> coeff(dim + 1, 0.0);
     for (size_t k = 0; k < V.size(); ++k) {
       double temp = 0.0;
@@ -149,12 +156,12 @@ std::vector<double> SMapPrediction(
       coeff[k] = temp;
     }
 
-    // Compute final prediction: dot(coeff, input) + bias
+    // Compute prediction: dot(coeff, input) + bias
     double prediction = 0.0;
     for (size_t i = 0; i < dim; ++i) {
       prediction += coeff[i] * vectors[pred_i][i];
     }
-    prediction += coeff[dim]; // bias
+    prediction += coeff[dim];
 
     pred[pred_i] = prediction;
   }
@@ -163,15 +170,17 @@ std::vector<double> SMapPrediction(
 }
 
 /*
- * Computes the Rho value using the 'S-Maps' prediction method.
+ * Computes the Rho value using the 'S-Mapping' prediction method.
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row is a separate vector/state).
  *   - target: Time series data vector to be predicted.
  *   - lib_indices: Vector of integer indices specifying which states to use for finding neighbors.
  *   - pred_indices: Vector of integer indices specifying which states to predict.
- *   - num_neighbors: Number of neighbors to use for S-Map.
- *   - theta: Weighting parameter for distances.
+ *   - num_neighbors: Number of neighbors to use for S-Map. Default is 4.
+ *   - theta: Weighting parameter for distances. Default is 1.0.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *
  * Returns: The Pearson correlation coefficient (Rho) between predicted and actual values.
  */
@@ -180,13 +189,15 @@ double SMap(
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors,
-    double theta
+    int num_neighbors = 4,
+    double theta = 1.0,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   double rho = std::numeric_limits<double>::quiet_NaN();
 
   // Call SMapPrediction to get the prediction results
-  std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, theta);
+  std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, theta, dist_metric, dist_average);
 
   if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
     rho = PearsonCor(target_pred, target, true);
@@ -194,17 +205,18 @@ double SMap(
   return rho;
 }
 
-
 /*
- * Computes the S-Map prediction and evaluates prediction performance.
+ * Computes the S-Mapping prediction and evaluates prediction performance.
  *
  * Parameters:
  *   - vectors: Reconstructed state-space (each row is a separate vector/state).
  *   - target: Time series data vector to be predicted.
  *   - lib_indices: Vector of integer indices specifying which states to use for finding neighbors.
  *   - pred_indices: Vector of integer indices specifying which states to predict.
- *   - num_neighbors: Number of neighbors to use for S-Map.
- *   - theta: Weighting parameter for distances.
+ *   - num_neighbors: Number of neighbors to use for S-Map. Default is 4.
+ *   - theta: Weighting parameter for distances. Default is 1.0.
+ *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
+ *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *
  * Returns: A vector<double> containing {Pearson correlation, MAE, RMSE}.
  */
@@ -213,8 +225,10 @@ std::vector<double> SMapBehavior(
     const std::vector<double>& target,
     const std::vector<int>& lib_indices,
     const std::vector<int>& pred_indices,
-    int num_neighbors,
-    double theta
+    int num_neighbors = 4,
+    double theta = 1.0,
+    int dist_metric = 2,
+    bool dist_average = true
 ) {
   // Initialize PearsonCor, MAE, and RMSE
   double pearson = std::numeric_limits<double>::quiet_NaN();
@@ -222,7 +236,7 @@ std::vector<double> SMapBehavior(
   double rmse = std::numeric_limits<double>::quiet_NaN();
 
   // Call SMapPrediction to get the prediction results
-  std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, theta);
+  std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors, theta, dist_metric, dist_average);
 
   if (checkOneDimVectorNotNanNum(target_pred) >= 3) {
     // Compute PearsonCor, MAE, and RMSE
