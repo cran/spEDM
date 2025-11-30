@@ -1,5 +1,5 @@
-.gccm_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, tau = 1, k = E+2, theta = 1, algorithm = "simplex", lib = NULL, pred = NULL, style = 1, dist.metric = "L2",
-                    dist.average = TRUE, nb = NULL, threads = detectThreads(), parallel.level = "low", bidirectional = TRUE, detrend = TRUE, progressbar = TRUE){
+.gccm_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, k = E+2, tau = 1, style = 1, stack = FALSE, lib = NULL, pred = NULL, dist.metric = "L2", dist.average = TRUE,
+                    theta = 1, algorithm = "simplex", threads = detectThreads(), detrend = TRUE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, nb = NULL){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
   tau = .check_inputelementnum(tau,2)
@@ -25,27 +25,28 @@
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
   x_xmap_y = NULL
   if (bidirectional){
-    x_xmap_y = RcppGCCM4Lattice(cause,effect,nb,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,
-                                pl, style, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
+    x_xmap_y = RcppGCCM4Lattice(cause,effect,nb,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,pl,
+                                style, stack, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
   }
-  y_xmap_x = RcppGCCM4Lattice(effect,cause,nb,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,
-                              pl, style, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
+  y_xmap_x = RcppGCCM4Lattice(effect,cause,nb,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,pl,
+                              style, stack, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
 
   return(.bind_xmapdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
 
-.gccm_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, tau = 1, k = E+2, theta = 1, algorithm = "simplex", lib = NULL, pred = NULL, style = 1, dist.metric = "L2",
-                            dist.average = TRUE, threads = detectThreads(), parallel.level = "low", bidirectional = TRUE, detrend = TRUE, progressbar = TRUE){
+.gccm_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, k = E+2, tau = 1, style = 1, stack = FALSE, lib = NULL, pred = NULL, dist.metric = "L2", dist.average = TRUE, theta = 1, algorithm = "simplex",
+                            threads = detectThreads(), detrend = TRUE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, grid.coord = TRUE, embed.direction = 0, win.ratio = 0){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
   tau = .check_inputelementnum(tau,2)
   k = .check_inputelementnum(k,2)
+  win.ratio = .check_inputelementnum(win.ratio,2)
   pl = .check_parallellevel(parallel.level)
   .varname = .internal_varname()
   data = data[[varname]]
   names(data) = .varname
 
-  dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
+  dtf = .internal_grid2df(data,grid.coord)
   if (detrend){
     dtf = .internal_detrend(dtf,.varname)
   }
@@ -59,11 +60,11 @@
   simplex = ifelse(algorithm == "simplex", TRUE, FALSE)
   x_xmap_y = NULL
   if (bidirectional){
-    x_xmap_y = RcppGCCM4Grid(causemat,effectmat,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,
-                             pl, style, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
+    x_xmap_y = RcppGCCM4Grid(causemat,effectmat,libsizes,lib,pred,E[1],tau[1],k[1],simplex,theta,threads,pl,style,stack,
+                             .check_distmetric(dist.metric),dist.average,TRUE,embed.direction,win.ratio,progressbar)
   }
-  y_xmap_x = RcppGCCM4Grid(effectmat,causemat,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,
-                           pl, style, .check_distmetric(dist.metric), dist.average, TRUE, progressbar)
+  y_xmap_x = RcppGCCM4Grid(effectmat,causemat,libsizes,lib,pred,E[2],tau[2],k[2],simplex,theta,threads,pl,style,stack,
+                           .check_distmetric(dist.metric),dist.average,TRUE,embed.direction,win.ratio,progressbar)
 
   return(.bind_xmapdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
@@ -71,14 +72,15 @@
 #' geographical convergent cross mapping
 #'
 #' @inheritParams gcmc
+#' @param stack (optional) whether to stack embeddings.
+#' @param dist.average (optional) whether to average distance.
 #' @param theta (optional) weighting parameter for distances, useful when `algorithm` is `smap`.
 #' @param algorithm (optional) prediction algorithm.
-#' @param dist.average (optional) whether to average distance.
 #'
 #' @return A list
 #' \describe{
 #' \item{\code{xmap}}{cross mapping results}
-#' \item{\code{varname}}{names of causal and effect variable}
+#' \item{\code{varname}}{names of causal and effect variables}
 #' \item{\code{bidirectional}}{whether to examine bidirectional causality}
 #' }
 #' @export
@@ -88,13 +90,15 @@
 #' Gao, B., Yang, J., Chen, Z. et al. Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nat Commun 14, 5875 (2023).
 #'
 #' @examples
-#' columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+#' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 #' \donttest{
 #' g = gccm(columbus,"hoval","crime",libsizes = seq(5,45,5),E = 6)
 #' g
-#' plot(g, ylimits = c(0,0.85))
+#' plot(g,ylimits = c(0,0.85))
 #' }
 methods::setMethod("gccm", "sf", .gccm_sf_method)
 
 #' @rdname gccm
+#' @param embed.direction (optional) direction selector for embeddings (`0` returns all directions, `1-8` correspond to NW, N, NE, W, E, SW, S, SE).
+#' @param win.ratio (optional) ratio of sliding window scale to speed up state-space predictions.
 methods::setMethod("gccm", "SpatRaster", .gccm_spatraster_method)

@@ -1,6 +1,7 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include <iterator>
 #include <algorithm>
 #include "CppStats.h"
 #include "CppLatticeUtils.h"
@@ -9,6 +10,7 @@
 #include "GCCM4Lattice.h"
 #include "SCPCM4Lattice.h"
 #include "CrossMappingCardinality.h"
+#include "PatternCausality.h"
 #include "FalseNearestNeighbors.h"
 #include "SLM4Lattice.h"
 #include "SGC4Lattice.h"
@@ -124,6 +126,42 @@ Rcpp::NumericMatrix RcppGenLatticeEmbeddings(const Rcpp::NumericVector& vec,
     for (int j = 0; j < cols; ++j) {
       result(i, j) = embeddings[i][j];
     }
+  }
+
+  return result;
+}
+
+// Wrapper function to generate composite lattice embeddings.
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppGenLatticeEmbeddingsCom(const Rcpp::NumericVector& vec,
+                                       const Rcpp::List& nb,
+                                       int E = 3,
+                                       int tau = 1,
+                                       int style = 1) {
+  // Convert R inputs to std::vector equivalents
+  std::vector<double> vec_std = Rcpp::as<std::vector<double>>(vec);
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Call the core C++ embedding function
+  std::vector<std::vector<std::vector<double>>> embeddings =
+    GenLatticeEmbeddingsCom(vec_std, nb_vec, E, tau, style);
+
+  // Convert the 3D std::vector into an Rcpp::List of NumericMatrix
+  Rcpp::List result;
+
+  for (const auto& layer : embeddings) {
+    if (layer.empty()) continue; // Skip empty layers (if all NaN subsets were removed)
+    int rows = layer.size();
+    int cols = layer[0].size();
+    Rcpp::NumericMatrix mat(rows, cols);
+
+    for (int i = 0; i < rows; ++i) {
+      for (int j = 0; j < cols; ++j) {
+        mat(i, j) = layer[i][j];
+      }
+    }
+
+    result.push_back(mat);
   }
 
   return result;
@@ -392,6 +430,7 @@ Rcpp::NumericVector RcppFNN4Lattice(
     const Rcpp::IntegerVector& E,
     int tau = 1,
     int style = 1,
+    int stack = 0,
     int dist_metric = 2,
     int threads = 8,
     int parallel_level = 0){
@@ -404,8 +443,8 @@ Rcpp::NumericVector RcppFNN4Lattice(
   // Convert Rcpp *Vector to std::vector<*>
   std::vector<double> rt_std = Rcpp::as<std::vector<double>>(rt);
   std::vector<double> eps_std = Rcpp::as<std::vector<double>>(eps);
-  std::vector<int> lib_std;
-  std::vector<int> pred_std;
+  std::vector<size_t> lib_std;
+  std::vector<size_t> pred_std;
 
   int validSampleNum = vec_std.size();
   // Check that lib and pred indices are within bounds & convert R based 1 index to C++ based 0 index
@@ -414,7 +453,7 @@ Rcpp::NumericVector RcppFNN4Lattice(
       Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
     }
     if (!std::isnan(vec_std[lib[i] - 1])) {
-      lib_std.push_back(lib[i] - 1);
+      lib_std.push_back(static_cast<size_t>(lib[i] - 1));
     }
   }
   for (int i = 0; i < pred.size(); ++i) {
@@ -422,20 +461,25 @@ Rcpp::NumericVector RcppFNN4Lattice(
       Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
     }
     if (!std::isnan(vec_std[pred[i] - 1])) {
-      pred_std.push_back(pred[i] - 1);
+      pred_std.push_back(static_cast<size_t>(pred[i] - 1));
     }
   }
-
-  // Generate embeddings
-  std::vector<double> E_std = Rcpp::as<std::vector<double>>(E);
-  int max_E = CppMax(E_std, true);
-  std::vector<std::vector<double>> embeddings = GenLatticeEmbeddings(vec_std, nb_vec, max_E, tau, style);
 
   // Use L1 norm (Manhattan distance) if dist_metric == 1, else use L2 norm
   bool L1norm = (dist_metric == 1);
 
-  // Perform FNN for spatial lattice data
-  std::vector<double> fnn = CppFNN(embeddings,lib_std,pred_std,rt_std,eps_std,L1norm,threads,parallel_level);
+  // Generate embeddings and perform FNN for spatial lattice data
+  std::vector<double> E_std = Rcpp::as<std::vector<double>>(E);
+  int max_E = CppMax(E_std, true);
+
+  std::vector<double> fnn;
+  if (stack == 0){
+    std::vector<std::vector<double>> embeddings = GenLatticeEmbeddings(vec_std, nb_vec, max_E, tau, style);
+    fnn = CppFNN(embeddings,lib_std,pred_std,rt_std,eps_std,L1norm,threads,parallel_level);
+  } else {
+    std::vector<std::vector<std::vector<double>>> embeddings = GenLatticeEmbeddingsCom(vec_std, nb_vec, max_E, tau, style);
+    fnn = CppFNN(embeddings,lib_std,pred_std,rt_std,eps_std,L1norm,threads,parallel_level);
+  }
 
   // Convert the result back to Rcpp::NumericVector and set names as "E:1", "E:2", ..., "E:n"
   Rcpp::NumericVector result = Rcpp::wrap(fnn);
@@ -464,6 +508,7 @@ Rcpp::NumericVector RcppFNN4Lattice(
  *   - b: An IntegerVector specifying the numbers of neighbors to use for simplex projection.
  *   - tau: An integer specifying the step of spatial lags for prediction. Default is 1.
  *   - style: Embedding style selector (0: includes current state, 1: excludes it).  Default is 1 (excludes current state).
+ *   - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
  *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *   - threads: Number of threads used from the global pool. Default is 8.
@@ -484,8 +529,9 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
                                         const Rcpp::IntegerVector& pred,
                                         const Rcpp::IntegerVector& E,
                                         const Rcpp::IntegerVector& b,
-                                        int tau = 1,
+                                        const Rcpp::IntegerVector& tau,
                                         int style = 1,
+                                        int stack = 0,
                                         int dist_metric = 2,
                                         bool dist_average = true,
                                         int threads = 8) {
@@ -499,6 +545,7 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
   // Convert Rcpp::IntegerVector to std::vector<int>
   std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
   std::vector<int> b_std = Rcpp::as<std::vector<int>>(b);
+  std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
 
   // Initialize lib_indices and pred_indices
   std::vector<int> lib_indices;
@@ -525,19 +572,36 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
     }
   }
 
-  std::vector<std::vector<double>> res_std = Simplex4Lattice(
-    source_std,
-    target_std,
-    nb_vec,
-    lib_indices,
-    pred_indices,
-    E_std,
-    b_std,
-    tau,
-    style,
-    dist_metric,
-    dist_average,
-    threads);
+  std::vector<std::vector<double>> res_std;
+  if (stack == 0){
+    res_std = Simplex4Lattice(
+      source_std,
+      target_std,
+      nb_vec,
+      lib_indices,
+      pred_indices,
+      E_std,
+      b_std,
+      tau_std,
+      style,
+      dist_metric,
+      dist_average,
+      threads);
+  } else {
+    res_std = Simplex4LatticeCom(
+      source_std,
+      target_std,
+      nb_vec,
+      lib_indices,
+      pred_indices,
+      E_std,
+      b_std,
+      tau_std,
+      style,
+      dist_metric,
+      dist_average,
+      threads);
+  }
 
   size_t n_rows = res_std.size();
   size_t n_cols = res_std[0].size();
@@ -553,7 +617,7 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
   }
 
   // Set column names for the result matrix
-  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "rho", "mae", "rmse");
+  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "tau", "rho", "mae", "rmse");
   return result;
 }
 
@@ -569,6 +633,7 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
  *   - tau: The spatial lag step for constructing lagged state-space vectors. Default is 1.
  *   - b: Number of nearest neighbors to use for prediction. Default is 4.
  *   - style: Embedding style selector (0: includes current state, 1: excludes it). Default is 1 (excludes current state).
+ *   - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  *   - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean). Default is 2 (Euclidean).
  *   - dist_average: Whether to average distance by the number of valid vector components. Default is true.
  *   - threads: Number of threads used from the global pool. Default is 8.
@@ -593,6 +658,7 @@ Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& source,
                                      int tau = 1,
                                      int b = 5,
                                      int style = 1,
+                                     int stack = 0,
                                      int dist_metric = 2,
                                      bool dist_average = true,
                                      int threads = 8) {
@@ -629,20 +695,38 @@ Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& source,
     }
   }
 
-  std::vector<std::vector<double>> res_std = SMap4Lattice(
-    source_std,
-    target_std,
-    nb_vec,
-    lib_indices,
-    pred_indices,
-    theta_std,
-    E,
-    tau,
-    b,
-    style,
-    dist_metric,
-    dist_average,
-    threads);
+  std::vector<std::vector<double>> res_std;
+  if (stack == 0){
+    res_std = SMap4Lattice(
+      source_std,
+      target_std,
+      nb_vec,
+      lib_indices,
+      pred_indices,
+      theta_std,
+      E,
+      tau,
+      b,
+      style,
+      dist_metric,
+      dist_average,
+      threads);
+  } else {
+    res_std = SMap4LatticeCom(
+      source_std,
+      target_std,
+      nb_vec,
+      lib_indices,
+      pred_indices,
+      theta_std,
+      E,
+      tau,
+      b,
+      style,
+      dist_metric,
+      dist_average,
+      threads);
+  }
 
   size_t n_rows = res_std.size();
   size_t n_cols = res_std[0].size();
@@ -677,6 +761,7 @@ Rcpp::NumericMatrix RcppSMap4Lattice(const Rcpp::NumericVector& source,
  * - top: An integer specifying the number of top embeddings to consider; if <= 0, uses sqrt(m) heuristic.
  * - nvar: An integer specifying the number of `nvar`-dimensional variable combinations.
  * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * - dist_average: Whether to average distance by the number of valid vector components.
  * - threads: An integer indicating the number of threads for parallel processing.
@@ -696,6 +781,7 @@ Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
                                           int top = 5,
                                           int nvar = 3,
                                           int style = 1,
+                                          int stack = 0,
                                           int dist_metric = 2,
                                           int dist_average = true,
                                           int threads = 8){
@@ -742,69 +828,104 @@ Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
     k = top;
   }
 
-  // Combine all the lags in the embeddings
-  std::vector<std::vector<double>> vec_std(num_row,std::vector<double>(E*num_var,std::numeric_limits<double>::quiet_NaN()));
-  for (int n = 0; n < num_var; ++n) {
-    // Initialize a std::vector to store the column values
-    std::vector<double> univec(num_row);
+  if (stack == 0) { // ---- CASE 1: standard 2D embedding (stack == 0) ----
+    std::vector<std::vector<double>> vec_std;
+    vec_std.reserve(num_row);  // preallocate number of rows
+    // Initialize rows with empty vectors
+    for (int i = 0; i < num_row; ++i)
+      vec_std.emplace_back();  // create num_row empty rows
+    // vec_std.resize(num_row); or using resize
 
-    // Copy the nth column from the matrix to the vector
-    for (int i = 0; i < num_row; ++i) {
-      univec[i] = x(i, n);  // Access element at (i, n)
-    }
+    for (int n = 0; n < num_var; ++n) {
+      // Extract nth column
+      std::vector<double> univec(num_row);
+      for (int i = 0; i < num_row; ++i)
+        univec[i] = x(i, n);
 
-    // Generate the embedding:
-    std::vector<std::vector<double>> vectors = GenLatticeEmbeddings(univec,nb_vec,E,tau,style);
+      // Generate embeddings for this variable
+      std::vector<std::vector<double>> embedding = GenLatticeEmbeddings(univec, nb_vec, E, tau, style);
 
-    for (size_t row = 0; row < vectors.size(); ++row) {  // Loop through each row
-      for (size_t col = 0; col < vectors[0].size(); ++col) {  // Loop through each column
-        vec_std[row][n * E + col] = vectors[row][col];  // Copy elements
+      // Append columns from embedding into existing rows (column-wise stacking)
+      for (int row = 0; row < num_row; ++row) {
+        vec_std[row].insert(vec_std[row].end(),
+                            std::make_move_iterator(embedding[row].begin()),
+                            std::make_move_iterator(embedding[row].end()));
       }
     }
-  }
 
-  // Calculate validColumns (indices of columns that are not entirely NaN)
-  std::vector<size_t> validColumns; // To store indices of valid columns
+    // // Filter invalid (NaN) columns
+    // std::vector<size_t> validColumns;
+    // for (size_t col = 0; col < vec_std[0].size(); ++col) {
+    //   bool isAllNaN = true;
+    //   for (size_t row = 0; row < vec_std.size(); ++row) {
+    //     if (!std::isnan(vec_std[row][col])) { isAllNaN = false; break; }
+    //   }
+    //   if (!isAllNaN) validColumns.push_back(col);
+    // }
+    //
+    // if (validColumns.size() != vec_std[0].size()) {
+    //   std::vector<std::vector<double>> filteredEmbeddings;
+    //   filteredEmbeddings.reserve(vec_std.size());
+    //   for (const auto& row : vec_std) {
+    //     std::vector<double> filteredRow;
+    //     for (size_t col : validColumns) filteredRow.push_back(row[col]);
+    //     filteredEmbeddings.push_back(std::move(filteredRow));
+    //   }
+    //   vec_std.swap(filteredEmbeddings);
+    // }
 
-  // Iterate over each column to check if it contains any non-NaN values
-  for (size_t col = 0; col < vec_std[0].size(); ++col) {
-    bool isAllNaN = true;
-    for (size_t row = 0; row < vec_std.size(); ++row) {
-      if (!std::isnan(vec_std[row][col])) {
-        isAllNaN = false;
-        break;
+    // Perform multi-view embedding (2D version)
+    std::vector<double> res = MultiViewEmbedding(
+      vec_std, target, lib_indices, pred_indices,
+      b, k, dist_metric, dist_average, threads);
+
+    return Rcpp::wrap(res);
+  } else {  // ---- CASE 2: stacked 3D embedding (stack != 0) ----
+    // stacked_vec will store embeddings stacked along the column dimension.
+    // Structure: stacked_vec[embedding_dimension][row][col]
+    std::vector<std::vector<std::vector<double>>> stacked_vec;
+
+    // Initialize stacked_vec based on the first variable's shape
+    {
+      std::vector<double> univec(num_row);
+      for (int i = 0; i < num_row; ++i) univec[i] = x(i, 0);
+
+      auto embedding = GenLatticeEmbeddingsCom(univec, nb_vec, E, tau, style);
+
+      // Initialize stacked_vec with correct shape
+      stacked_vec = std::move(embedding);
+    }
+
+    // Start from variable index 1 since index 0 is initialized
+    for (int n = 1; n < num_var; ++n) {
+      // Extract variable column
+      std::vector<double> univec(num_row);
+      for (int i = 0; i < num_row; ++i) univec[i] = x(i, n);
+
+      // Get embedding for this variable
+      auto embedding = GenLatticeEmbeddingsCom(univec, nb_vec, E, tau, style);
+
+      // Append each embedding block column-wise
+      for (size_t j = 0; j < stacked_vec.size(); ++j) {
+        // Each stacked_vec[j] and embedding[j] must share same row count
+        for (size_t r = 0; r < stacked_vec[j].size(); ++r) {
+          // Append columns from embedding[j][r] to stacked_vec[j][r]
+          stacked_vec[j][r].insert(
+              stacked_vec[j][r].end(),
+              std::make_move_iterator(embedding[j][r].begin()),
+              std::make_move_iterator(embedding[j][r].end())
+          );
+        }
       }
     }
-    if (!isAllNaN) {
-      validColumns.push_back(col); // Store the index of valid columns
-    }
+
+    // Perform multi-view embedding (3D version)
+    std::vector<double> res = MultiViewEmbedding(
+      stacked_vec, target, lib_indices, pred_indices,
+      b, k, dist_metric, dist_average, threads);
+
+    return Rcpp::wrap(res);
   }
-
-  if (validColumns.size() != vec_std[0].size()) {
-    std::vector<std::vector<double>> filteredEmbeddings;
-    for (size_t row = 0; row < vec_std.size(); ++row) {
-      std::vector<double> filteredRow;
-      for (size_t col : validColumns) {
-        filteredRow.push_back(vec_std[row][col]);
-      }
-      filteredEmbeddings.push_back(filteredRow);
-    }
-    vec_std = filteredEmbeddings;
-  }
-
-  std::vector<double> res = MultiViewEmbedding(
-    vec_std,
-    target,
-    lib_indices,
-    pred_indices,
-    b,
-    k,
-    dist_metric,
-    dist_average,
-    threads);
-
-  // Convert the result back to Rcpp::NumericVector
-  return Rcpp::wrap(res);
 }
 
 // Wrapper function to compute intersection cardinality for spatial lattice data
@@ -816,7 +937,7 @@ Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
                                    const Rcpp::IntegerVector& pred,
                                    const Rcpp::IntegerVector& E,
                                    const Rcpp::IntegerVector& b,
-                                   int tau = 1,
+                                   const Rcpp::IntegerVector& tau,
                                    int exclude = 0,
                                    int style = 1,
                                    int dist_metric = 2,
@@ -831,6 +952,7 @@ Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
 
   // Convert Rcpp::IntegerVector to std::vector<int>
   std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
+  std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
 
   // Initialize lib_indices and pred_indices
   std::vector<size_t> lib_indices;
@@ -874,7 +996,7 @@ Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
     pred_indices,
     E_std,
     b_std,
-    tau,
+    tau_std,
     exclude,
     style,
     dist_metric,
@@ -895,7 +1017,104 @@ Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
   }
 
   // Set column names for the result matrix
-  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "CausalScore", "Significance");
+  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "tau", "CausalScore", "Significance");
+  return result;
+}
+
+// Wrapper function to compute pattern causality for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::NumericMatrix RcppPC4Lattice(const Rcpp::NumericVector& source,
+                                   const Rcpp::NumericVector& target,
+                                   const Rcpp::List& nb,
+                                   const Rcpp::IntegerVector& lib,
+                                   const Rcpp::IntegerVector& pred,
+                                   const Rcpp::IntegerVector& E,
+                                   const Rcpp::IntegerVector& b,
+                                   const Rcpp::IntegerVector& tau,
+                                   int style = 1,
+                                   int zero_tolerance = 0,
+                                   int dist_metric = 2,
+                                   bool relative = true,
+                                   bool weighted = true,
+                                   int threads = 8,
+                                   int parallel_level = 0) {
+  // Convert neighborhood list to std::vector<std::vector<int>>
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+
+  // Convert Rcpp::NumericVector to std::vector<double>
+  std::vector<double> source_std = Rcpp::as<std::vector<double>>(source);
+  std::vector<double> target_std = Rcpp::as<std::vector<double>>(target);
+
+  // Initialize lib_indices and pred_indices
+  std::vector<size_t> lib_indices;
+  std::vector<size_t> pred_indices;
+
+  int target_len = target_std.size();
+  // Convert lib and pred (1-based in R) to 0-based indices and set corresponding positions to true
+  size_t n_libsize = lib.size();   // convert R R_xlen_t to C++ size_t
+  for (size_t i = 0; i < n_libsize; ++i) {
+    if (lib[i] < 1 || lib[i] > target_len) {
+      Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
+    }
+    if (!std::isnan(source_std[lib[i] - 1]) && !std::isnan(target_std[lib[i] - 1])) {
+      lib_indices.push_back(static_cast<size_t>(lib[i] - 1)); // Convert to 0-based index
+    }
+  }
+  size_t n_predsize = pred.size();   // convert R R_xlen_t to C++ size_t
+  for (size_t i = 0; i < n_predsize; ++i) {
+    if (pred[i] < 1 || pred[i] > target_len) {
+      Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
+    }
+    if (!std::isnan(source_std[pred[i] - 1]) && !std::isnan(target_std[pred[i] - 1])) {
+      pred_indices.push_back(static_cast<size_t>(pred[i] - 1)); // Convert to 0-based index
+    }
+  }
+
+  // Convert Rcpp::IntegerVector to std::vector<int>
+  std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
+  std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
+
+  // Check the validity of the neignbor numbers
+  std::vector<int> b_std;
+  for (int i = 0; i < b.size(); ++i){
+    if (b[i] > static_cast<int>(lib_indices.size())) {
+      Rcpp::stop("Neighbor numbers count out of acceptable range at position %d (value: %d)", i + 1, b[i]);
+    }
+    b_std.push_back(b[i]);
+  }
+
+  std::vector<std::vector<double>> res_std = PC4Lattice(
+    source_std,
+    target_std,
+    nb_vec,
+    lib_indices,
+    pred_indices,
+    E_std,
+    b_std,
+    tau_std,
+    style,
+    zero_tolerance,
+    dist_metric,
+    relative,
+    weighted,
+    threads,
+    parallel_level);
+
+  size_t n_rows = res_std.size();
+  size_t n_cols = res_std[0].size();
+
+  // Create an Rcpp::NumericMatrix with the same dimensions
+  Rcpp::NumericMatrix result(n_rows, n_cols);
+
+  // Fill the Rcpp::NumericMatrix with data from res_std
+  for (size_t i = 0; i < n_rows; ++i) {
+    for (size_t j = 0; j < n_cols; ++j) {
+      result(i, j) = res_std[i][j];
+    }
+  }
+
+  // Set column names for the result matrix
+  Rcpp::colnames(result) = Rcpp::CharacterVector::create("E", "k", "tau", "positive", "negative", "dark");
   return result;
 }
 
@@ -916,6 +1135,7 @@ Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
                                      int threads = 8,
                                      int parallel_level = 0,
                                      int style = 1,
+                                     int stack = 0,
                                      int dist_metric = 2,
                                      bool dist_average = true,
                                      bool single_sig = true,
@@ -967,6 +1187,7 @@ Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
     threads,
     parallel_level,
     style,
+    stack,
     dist_metric,
     dist_average,
     single_sig,
@@ -985,7 +1206,7 @@ Rcpp::NumericMatrix RcppGCCM4Lattice(const Rcpp::NumericVector& x,
   // Set column names for the result matrix
   Rcpp::colnames(resultMatrix) = Rcpp::CharacterVector::create("libsizes",
                  "x_xmap_y_mean","x_xmap_y_sig",
-                 "x_xmap_y_upper","x_xmap_y_lower");
+                 "x_xmap_y_lower","x_xmap_y_upper");
   return resultMatrix;
 }
 
@@ -1008,6 +1229,7 @@ Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
                                       int parallel_level = 0,
                                       bool cumulate = false,
                                       int style = 1,
+                                      int stack = 0,
                                       int dist_metric = 2,
                                       bool dist_average = true,
                                       bool single_sig = true,
@@ -1071,6 +1293,7 @@ Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
     parallel_level,
     cumulate,
     style,
+    stack,
     dist_metric,
     dist_average,
     single_sig,
@@ -1093,8 +1316,8 @@ Rcpp::NumericMatrix RcppSCPCM4Lattice(const Rcpp::NumericVector& x,
   // Set column names for the result matrix
   Rcpp::colnames(resultMatrix) = Rcpp::CharacterVector::create(
     "libsizes","T_mean","D_mean",
-    "T_sig","T_upper","T_lower",
-    "D_sig","D_upper","D_lower");
+    "T_sig","T_lower","T_upper",
+    "D_sig","D_lower","D_upper");
   return resultMatrix;
 }
 
@@ -1182,14 +1405,310 @@ Rcpp::List RcppGCMC4Lattice(
     Rcpp::Named("neighbors") = res.cross_mapping[0],
     Rcpp::Named("x_xmap_y_mean") = res.cross_mapping[1],
     Rcpp::Named("x_xmap_y_sig") = res.cross_mapping[2],
-    Rcpp::Named("x_xmap_y_upper") = res.cross_mapping[3],
-    Rcpp::Named("x_xmap_y_lower")  = res.cross_mapping[4]
+    Rcpp::Named("x_xmap_y_lower") = res.cross_mapping[3],
+    Rcpp::Named("x_xmap_y_upper")  = res.cross_mapping[4]
   );
 
   return Rcpp::List::create(
     Rcpp::Named("xmap") = xmap_df,
     Rcpp::Named("cs") = cs_df
   );
+}
+
+// Wrapper function to perform Geographical Pattern Causality (GPC) for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::List RcppGPC4Lattice(
+    const Rcpp::NumericVector& x,
+    const Rcpp::NumericVector& y,
+    const Rcpp::List& nb,
+    const Rcpp::IntegerVector& lib,
+    const Rcpp::IntegerVector& pred,
+    int E = 3,
+    int tau = 0,
+    int style = 1,
+    int b = 0,
+    int zero_tolerance = 0,
+    int dist_metric = 2,
+    bool relative = true,
+    bool weighted = true,
+    int threads = 8) {
+
+  // --- Input Conversion and Validation --------------------------------------
+
+  std::vector<double> x_std = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> y_std = Rcpp::as<std::vector<double>>(y);
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+  int validSampleNum = x_std.size();
+
+  // Convert library indices (R 1-based → C++ 0-based)
+  std::vector<size_t> lib_std;
+  lib_std.reserve(lib.size());
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > validSampleNum)
+      Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1]))
+      lib_std.push_back(static_cast<size_t>(lib[i] - 1));
+  }
+
+  // Convert prediction indices (R 1-based → C++ 0-based)
+  std::vector<size_t> pred_std;
+  pred_std.reserve(pred.size());
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > validSampleNum)
+      Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1]))
+      pred_std.push_back(static_cast<size_t>(pred[i] - 1));
+  }
+
+  // Check neighbor and embedding parameters
+  if (b < 2 || b > validSampleNum)
+    Rcpp::stop("k cannot be less than or equal to 2 or greater than the number of non-NA values.");
+  else if (b + 1 > static_cast<int>(lib_std.size()))
+    Rcpp::stop("Please check `libsizes` or `lib`; no valid libraries available for running GPCM.");
+
+  // --- Embedding Construction ------------------------------------------------
+
+  std::vector<std::vector<double>> Mx = GenLatticeEmbeddings(x_std, nb_vec, E, tau, style);
+  std::vector<std::vector<double>> My = GenLatticeEmbeddings(y_std, nb_vec, E, tau, style);
+
+  // --- Perform Geographical Pattern Causality (GPC) -------------------------
+
+  PatternCausalityRes res = PatternCausality(
+    Mx, My, lib_std, pred_std, b, zero_tolerance,
+    dist_metric, relative, weighted, threads);
+
+  // --- Convert result.matrice to Rcpp::NumericMatrix ------------------------
+
+  size_t nrow = res.matrice.size();
+  size_t ncol = nrow > 0 ? res.matrice[0].size() : 0;
+  Rcpp::NumericMatrix matrice_mat(nrow, ncol);
+  for (size_t i = 0; i < nrow; ++i) {
+    for (size_t j = 0; j < ncol; ++j) {
+      matrice_mat(i, j) = res.matrice[i][j];
+    }
+  }
+
+  // Assign row and column names if available
+  if (!res.PatternStrings.empty() && res.PatternStrings.size() == nrow && res.PatternStrings.size() == ncol) {
+    Rcpp::CharacterVector diffpatternnames(res.PatternStrings.begin(), res.PatternStrings.end());
+    Rcpp::rownames(matrice_mat) = diffpatternnames;
+    Rcpp::colnames(matrice_mat) = diffpatternnames;
+  }
+
+  // --- Create DataFrame for per-sample causality ----------------------------
+
+  size_t n_samples = res.NoCausality.size();
+  Rcpp::LogicalVector real_loop(n_samples, false);
+  Rcpp::CharacterVector pattern_labels(n_samples, "no");
+
+  for (size_t rl = 0; rl < res.RealLoop.size(); ++rl) {
+    size_t idx = res.RealLoop[rl];
+    if (idx < n_samples) {
+      // Record validated samples
+      real_loop[idx] = true;
+      // Map pattern_types (0–3) → descriptive string labels
+      switch (res.PatternTypes[rl]) {
+        case 0: pattern_labels[idx]  = "no"; break;
+        case 1: pattern_labels[idx]  = "positive"; break;
+        case 2: pattern_labels[idx]  = "negative"; break;
+        case 3: pattern_labels[idx]  = "dark"; break;
+        default: pattern_labels[idx] = "unknown"; break;
+      }
+    } 
+  }
+
+  Rcpp::DataFrame causality_df = Rcpp::DataFrame::create(
+    Rcpp::Named("no") = Rcpp::NumericVector(res.NoCausality.begin(), res.NoCausality.end()),
+    Rcpp::Named("positive") = Rcpp::NumericVector(res.PositiveCausality.begin(), res.PositiveCausality.end()),
+    Rcpp::Named("negative") = Rcpp::NumericVector(res.NegativeCausality.begin(), res.NegativeCausality.end()),
+    Rcpp::Named("dark") = Rcpp::NumericVector(res.DarkCausality.begin(), res.DarkCausality.end()),
+    Rcpp::Named("type") = pattern_labels,
+    Rcpp::Named("valid") = real_loop
+  );
+
+  // --- Create summary DataFrame for causal strengths ------------------------
+
+  Rcpp::CharacterVector causal_type = Rcpp::CharacterVector::create("positive", "negative", "dark");
+  Rcpp::NumericVector causal_strength = Rcpp::NumericVector::create(res.TotalPos, res.TotalNeg, res.TotalDark);
+
+  Rcpp::DataFrame summary_df = Rcpp::DataFrame::create(
+    Rcpp::Named("type") = causal_type,
+    Rcpp::Named("strength") = causal_strength
+  );
+
+  // --- Return structured results --------------------------------------------
+
+  return Rcpp::List::create(
+    Rcpp::Named("causality") = causality_df,
+    Rcpp::Named("summary") = summary_df,
+    Rcpp::Named("pattern") = matrice_mat
+  );
+}
+
+// Wrapper function to perform Robust Geographical Pattern Causality for spatial lattice data
+// [[Rcpp::export(rng = false)]]
+Rcpp::DataFrame RcppGPCRobust4Lattice(
+    const Rcpp::NumericVector& x,
+    const Rcpp::NumericVector& y,
+    const Rcpp::List& nb,
+    const Rcpp::IntegerVector& libsizes,
+    const Rcpp::IntegerVector& lib,
+    const Rcpp::IntegerVector& pred,
+    int E = 3,
+    int tau = 0,
+    int style = 1,
+    int b = 0,
+    int boot = 99,
+    bool random = true,
+    unsigned int seed = 42,
+    int zero_tolerance = 0,
+    int dist_metric = 2,
+    bool relative = true,
+    bool weighted = true,
+    int threads = 8,
+    int parallel_level = 0,
+    bool progressbar = false) {
+
+  // --- Input Conversion and Validation --------------------------------------
+
+  std::vector<double> x_std = Rcpp::as<std::vector<double>>(x);
+  std::vector<double> y_std = Rcpp::as<std::vector<double>>(y);
+  std::vector<std::vector<int>> nb_vec = nb2vec(nb);
+  int validSampleNum = x_std.size();
+
+  // Convert library indices (R 1-based → C++ 0-based)
+  std::vector<size_t> lib_std;
+  lib_std.reserve(lib.size());
+  for (int i = 0; i < lib.size(); ++i) {
+    if (lib[i] < 1 || lib[i] > validSampleNum)
+      Rcpp::stop("lib contains out-of-bounds index at position %d (value: %d)", i + 1, lib[i]);
+    if (!std::isnan(x_std[lib[i] - 1]) && !std::isnan(y_std[lib[i] - 1]))
+      lib_std.push_back(static_cast<size_t>(lib[i] - 1));
+  }
+
+  // Convert prediction indices (R 1-based → C++ 0-based)
+  std::vector<size_t> pred_std;
+  pred_std.reserve(pred.size());
+  for (int i = 0; i < pred.size(); ++i) {
+    if (pred[i] < 1 || pred[i] > validSampleNum)
+      Rcpp::stop("pred contains out-of-bounds index at position %d (value: %d)", i + 1, pred[i]);
+    if (!std::isnan(x_std[pred[i] - 1]) && !std::isnan(y_std[pred[i] - 1]))
+      pred_std.push_back(static_cast<size_t>(pred[i] - 1));
+  }
+
+  // Check neighbor and embedding parameters
+  if (b < 2 || b > validSampleNum)
+    Rcpp::stop("k cannot be less than or equal to 2 or greater than the number of non-NA values.");
+  else if (b + 1 > static_cast<int>(lib_std.size()))
+    Rcpp::stop("Please check `libsizes` or `lib`; no valid libraries available for running GPCM.");
+
+  // Validate and preprocess library sizes
+  std::vector<size_t> libsizes_std = Rcpp::as<std::vector<size_t>>(libsizes);
+  std::vector<size_t> valid_libsizes;
+  valid_libsizes.reserve(libsizes_std.size());
+  for (size_t s : libsizes_std) {
+    if (s > static_cast<size_t>(b) && s <= lib_std.size())
+      valid_libsizes.push_back(s);
+  }
+
+  std::sort(valid_libsizes.begin(), valid_libsizes.end());
+  valid_libsizes.erase(std::unique(valid_libsizes.begin(), valid_libsizes.end()), valid_libsizes.end());
+
+  if (valid_libsizes.empty()) {
+    Rcpp::warning("[Warning] No valid libsizes after filtering. Using full library size as fallback.");
+    valid_libsizes.push_back(lib_std.size());
+  }
+
+  // --- Embedding Construction ------------------------------------------------
+
+  std::vector<std::vector<double>> Mx = GenLatticeEmbeddings(x_std, nb_vec, E, tau, style);
+  std::vector<std::vector<double>> My = GenLatticeEmbeddings(y_std, nb_vec, E, tau, style);
+
+  // --- Perform Robust Geographical Pattern Causality -------------------------
+
+  std::vector<std::vector<std::vector<double>>> res = RobustPatternCausality(
+    Mx, My, valid_libsizes, lib_std, pred_std, b, boot, random, seed, zero_tolerance,
+    dist_metric, relative, weighted, threads, parallel_level, progressbar);
+
+  // --- Result Processing -----------------------------------------------------
+
+  // res structure: [3][valid_libsizes][boot]
+  // dimension 0: metric type (0=TotalPos,1=TotalNeg,2=TotalDark)
+  // dimension 1: libsizes index
+  // dimension 2: bootstrap replicates
+
+  int n_types = 3;
+  int n_libsizes = static_cast<int>(valid_libsizes.size());
+  int n_boot = static_cast<int>(res[0][0].size());
+
+  // Prepare vectors to hold dataframe columns
+  std::vector<size_t> df_libsizes;
+  std::vector<std::string> df_type;
+  std::vector<double> df_causality;
+  std::vector<double> df_q05, df_q50, df_q95;  // For quantiles if boot > 1
+
+  bool has_bootstrap = (n_boot > 1);
+  const std::string types[3] = {"positive", "negative", "dark"};
+
+  if (!has_bootstrap) {
+    // boot == 1, simple long format: columns = libsizes, type, causality
+    df_libsizes.reserve(n_types * n_libsizes);
+    df_type.reserve(n_types * n_libsizes);
+    df_causality.reserve(n_types * n_libsizes);
+
+    for (int t = 0; t < n_types; ++t) {
+      for (int l = 0; l < n_libsizes; ++l) {
+        df_libsizes.push_back(valid_libsizes[l]);
+        df_type.push_back(types[t]);
+        if(std::isnan(res[t][l][0])) res[t][l][0] = 0; // replace nan causal strength with 0
+        df_causality.push_back(res[t][l][0]);
+      }
+    }
+
+    return Rcpp::DataFrame::create(
+      Rcpp::Named("libsizes") = df_libsizes,
+      Rcpp::Named("type") = df_type,
+      Rcpp::Named("causality") = df_causality
+    );
+  } else {
+    // boot > 1, summary with mean and quantiles
+    df_libsizes.reserve(n_types * n_libsizes);
+    df_type.reserve(n_types * n_libsizes);
+    df_causality.reserve(n_types * n_libsizes);
+    df_q05.reserve(n_types * n_libsizes);
+    df_q50.reserve(n_types * n_libsizes);
+    df_q95.reserve(n_types * n_libsizes);
+
+    for (int t = 0; t < n_types; ++t) {
+      for (int l = 0; l < n_libsizes; ++l) {
+        const std::vector<double>& boot_vals = res[t][l];
+        double mean_val = CppMean(boot_vals, true);
+        std::vector<double> qs = CppQuantile(boot_vals, {0.05, 0.5, 0.95}, true);
+
+        // replace nan causal strength with 0
+        if(std::isnan(mean_val)) mean_val = 0;
+        for(double& q : qs){
+          if(std::isnan(q)) q = 0;
+        }
+
+        df_libsizes.push_back(valid_libsizes[l]);
+        df_type.push_back(types[t]);
+        df_causality.push_back(mean_val);
+        df_q05.push_back(qs[0]);
+        df_q50.push_back(qs[1]);
+        df_q95.push_back(qs[2]);
+      }
+    }
+
+    return Rcpp::DataFrame::create(
+      Rcpp::Named("libsizes") = df_libsizes,
+      Rcpp::Named("type") = df_type,
+      Rcpp::Named("mean") = df_causality,
+      Rcpp::Named("q05") = df_q05,
+      Rcpp::Named("q50") = df_q50,
+      Rcpp::Named("q95") = df_q95
+    );
+  }
 }
 
 // Wrapper function to perform SGC for spatial lattice data without bootstrapped significance

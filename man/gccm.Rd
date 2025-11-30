@@ -12,21 +12,22 @@
   effect,
   libsizes = NULL,
   E = 3,
-  tau = 1,
   k = E + 2,
-  theta = 1,
-  algorithm = "simplex",
+  tau = 1,
+  style = 1,
+  stack = FALSE,
   lib = NULL,
   pred = NULL,
-  style = 1,
   dist.metric = "L2",
   dist.average = TRUE,
-  nb = NULL,
+  theta = 1,
+  algorithm = "simplex",
   threads = detectThreads(),
+  detrend = TRUE,
   parallel.level = "low",
   bidirectional = TRUE,
-  detrend = TRUE,
-  progressbar = TRUE
+  progressbar = TRUE,
+  nb = NULL
 )
 
 \S4method{gccm}{SpatRaster}(
@@ -35,20 +36,24 @@
   effect,
   libsizes = NULL,
   E = 3,
-  tau = 1,
   k = E + 2,
-  theta = 1,
-  algorithm = "simplex",
+  tau = 1,
+  style = 1,
+  stack = FALSE,
   lib = NULL,
   pred = NULL,
-  style = 1,
   dist.metric = "L2",
   dist.average = TRUE,
+  theta = 1,
+  algorithm = "simplex",
   threads = detectThreads(),
+  detrend = TRUE,
   parallel.level = "low",
   bidirectional = TRUE,
-  detrend = TRUE,
-  progressbar = TRUE
+  progressbar = TRUE,
+  grid.coord = TRUE,
+  embed.direction = 0,
+  win.ratio = 0
 )
 }
 \arguments{
@@ -58,45 +63,53 @@
 
 \item{effect}{name of effect variable.}
 
-\item{libsizes}{(optional) number of spatial units used.}
+\item{libsizes}{(optional) number of spatial units used (input needed: \code{vector} - spatial vector, \code{matrix} - spatial raster).}
 
 \item{E}{(optional) embedding dimensions.}
 
-\item{tau}{(optional) step of spatial lags.}
-
 \item{k}{(optional) number of nearest neighbors.}
 
-\item{theta}{(optional) weighting parameter for distances, useful when \code{algorithm} is \code{smap}.}
-
-\item{algorithm}{(optional) prediction algorithm.}
-
-\item{lib}{(optional) libraries indices.}
-
-\item{pred}{(optional) predictions indices.}
+\item{tau}{(optional) step of spatial lags.}
 
 \item{style}{(optional) embedding style (\code{0} includes current state, \code{1} excludes it).}
+
+\item{stack}{(optional) whether to stack embeddings.}
+
+\item{lib}{(optional) libraries indices (input requirement same as \code{libsizes}).}
+
+\item{pred}{(optional) predictions indices (input requirement same as \code{libsizes}).}
 
 \item{dist.metric}{(optional) distance metric (\code{L1}: Manhattan, \code{L2}: Euclidean).}
 
 \item{dist.average}{(optional) whether to average distance.}
 
-\item{nb}{(optional) neighbours list.}
+\item{theta}{(optional) weighting parameter for distances, useful when \code{algorithm} is \code{smap}.}
+
+\item{algorithm}{(optional) prediction algorithm.}
 
 \item{threads}{(optional) number of threads to use.}
+
+\item{detrend}{(optional) whether to remove the linear trend.}
 
 \item{parallel.level}{(optional) level of parallelism, \code{low} or \code{high}.}
 
 \item{bidirectional}{(optional) whether to examine bidirectional causality.}
 
-\item{detrend}{(optional) whether to remove the linear trend.}
-
 \item{progressbar}{(optional) whether to show the progress bar.}
+
+\item{nb}{(optional) neighbours list.}
+
+\item{grid.coord}{(optional) whether to detrend using cell center coordinates (\code{TRUE}) or row/column numbers (\code{FALSE}).}
+
+\item{embed.direction}{(optional) direction selector for embeddings (\code{0} returns all directions, \code{1-8} correspond to NW, N, NE, W, E, SW, S, SE).}
+
+\item{win.ratio}{(optional) ratio of sliding window scale to speed up state-space predictions.}
 }
 \value{
 A list
 \describe{
 \item{\code{xmap}}{cross mapping results}
-\item{\code{varname}}{names of causal and effect variable}
+\item{\code{varname}}{names of causal and effect variables}
 \item{\code{bidirectional}}{whether to examine bidirectional causality}
 }
 }
@@ -104,11 +117,11 @@ A list
 geographical convergent cross mapping
 }
 \examples{
-columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
 g = gccm(columbus,"hoval","crime",libsizes = seq(5,45,5),E = 6)
 g
-plot(g, ylimits = c(0,0.85))
+plot(g,ylimits = c(0,0.85))
 }
 }
 \references{

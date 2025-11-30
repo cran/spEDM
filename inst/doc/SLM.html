@@ -49,8 +49,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -61,7 +62,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -339,8 +340,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Spatial Logistic Map</h1>
 <h4 class="author">Wenbo Lv</h4>
-<h4 class="date"><div class="line-block">Last update: 2025-08-31<br />
-Last run: 2025-08-31</div></h4>
+<h4 class="date"><div class="line-block">Last update: 2025-11-20<br />
+Last run: 2025-11-30</div></h4>
 
 
 
@@ -366,17 +367,17 @@ is also influenced by the states of other variables. A common form
 is:</p>
 <p><span class="math display">\[
 x_{t+1}^{(i)} = r_i x_t^{(i)} \left(1 - x_t^{(i)} - \sum_{j \neq i}
-\beta_{ij} x_t^{(j)} \right),
+\beta_{ji} x_t^{(j)} \right),
 \]</span></p>
-<p>where <span class="math inline">\(\beta_{ij}\)</span> denotes the
+<p>where <span class="math inline">\(\beta_{ji}\)</span> denotes the
 inhibitory (or facilitative) effect of variable <span class="math inline">\(j\)</span> on variable <span class="math inline">\(i\)</span>. These multivariate systems allow the
 study of interaction-driven complexity, including predator-prey
 dynamics, interspecies competition, and coevolutionary processes.</p>
 <p>This framework can be further extended to <strong>spatial
 domains</strong> to account for interactions among neighboring spatial
 units. The resulting system, known as the <strong>Spatial Logistic Map
-(SLM)</strong>, distributes the logistic dynamics over a spatial
-lattice. In the simplest case, each location <span class="math inline">\(i\)</span> on the lattice updates according
+(SLM)</strong>, distributes the logistic dynamics over a spatial cross
+section. In the simplest case, each location <span class="math inline">\(i\)</span> on the cross section updates according
 to:</p>
 <p><span class="math display">\[
 x_{i}^{(t+1)} = 1 - \alpha x_i^{(t)} \cdot \frac{1}{k} \sum_{j \in
@@ -398,10 +399,12 @@ spatial logistic map</strong>, the update rules may be written as:</p>
 form):</strong></li>
 </ul>
 <p><span class="math display">\[
-x_{i}^{(t+1)} = 1 - \alpha_1 x_i^{(t)} \left( \frac{1}{k} \sum_{j \in
-\mathcal{N}(i)} x_j^{(t)} - \beta_{21} y_i^{(t)} \right), \\
-y_{i}^{(t+1)} = 1 - \alpha_2 y_i^{(t)} \left( \frac{1}{k} \sum_{j \in
-\mathcal{N}(i)} y_j^{(t)} - \beta_{12} x_i^{(t)} \right).
+\begin{aligned}
+x_{i}^{(t+1)} &amp;= 1 - \alpha_x x_i^{(t)} \left( \frac{1}{k} \sum_{j
+\in \mathcal{N}(i)} x_j^{(t)} - \beta_{yx} y_i^{(t)} \right), \\
+y_{i}^{(t+1)} &amp;= 1 - \alpha_y y_i^{(t)} \left( \frac{1}{k} \sum_{j
+\in \mathcal{N}(i)} y_j^{(t)} - \beta_{xy} x_i^{(t)} \right).
+\end{aligned}
 \]</span></p>
 <p>Here, the inhibitory (or facilitative) influence between variables is
 restricted to the same spatial location.</p>
@@ -410,12 +413,14 @@ restricted to the same spatial location.</p>
 form):</strong></li>
 </ul>
 <p><span class="math display">\[
-x_{i}^{(t+1)} = 1 - \alpha_1 x_i^{(t)} \left( \frac{1}{k} \sum_{j \in
-\mathcal{N}(i)} x_j^{(t)} - \beta_{21} \frac{1}{k} \sum_{j \in
+\begin{aligned}
+x_{i}^{(t+1)} = 1 - \alpha_x x_i^{(t)} \left( \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} x_j^{(t)} - \beta_{yx} \frac{1}{k} \sum_{j \in
 \mathcal{N}(i)} y_j^{(t)} \right), \\
-y_{i}^{(t+1)} = 1 - \alpha_2 y_i^{(t)} \left( \frac{1}{k} \sum_{j \in
-\mathcal{N}(i)} y_j^{(t)} - \beta_{12} \frac{1}{k} \sum_{j \in
+y_{i}^{(t+1)} = 1 - \alpha_y y_i^{(t)} \left( \frac{1}{k} \sum_{j \in
+\mathcal{N}(i)} y_j^{(t)} - \beta_{xy} \frac{1}{k} \sum_{j \in
 \mathcal{N}(i)} x_j^{(t)} \right).
+\end{aligned}
 \]</span></p>
 <p>In this alternative form, the inter-variable interactions are
 mediated through the <strong>neighbor-averaged states</strong>, allowing
@@ -476,6 +481,7 @@ distribution.</p>
 <div class="figcaption"><strong>Figure 1</strong>. Simulated initial
 species density distributions for three species (a, b, and c).</div>
 </div>
+<p><br></p>
 <p>We assume an underlying causal interaction structure among species,
 where species <em>a</em> influences <em>b</em>, and <em>b</em> in turn
 influences <em>c</em> (i.e., <em>a</em> → <em>b</em> → <em>c</em>). The
@@ -515,6 +521,7 @@ interactions.</p>
 following spatiotemporal interaction and evolution after 20 simulation
 steps with 4-neighbor interactions.</div>
 </div>
+<p><br></p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>simv <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">slm</span>(species, <span class="at">x =</span> <span class="st">&quot;a&quot;</span>, <span class="at">y =</span> <span class="st">&quot;b&quot;</span>, <span class="at">z =</span> <span class="st">&quot;c&quot;</span>, <span class="at">k =</span> <span class="dv">4</span>, <span class="at">step =</span> <span class="dv">15</span>, <span class="at">transient =</span> <span class="dv">1</span>, <span class="at">interact =</span> <span class="st">&quot;neighbors&quot;</span>,</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>                  <span class="at">alpha_x =</span> <span class="fl">0.2</span>, <span class="at">alpha_y =</span> <span class="fl">0.2</span>, <span class="at">alpha_z =</span> <span class="fl">0.2</span>, <span class="at">beta_xy =</span> <span class="dv">1</span>, <span class="at">beta_xz =</span> <span class="dv">0</span>, <span class="at">beta_yx =</span> <span class="dv">0</span>, <span class="at">beta_yz =</span> <span class="dv">1</span>, <span class="at">beta_zx =</span> <span class="dv">0</span>, <span class="at">beta_zy =</span> <span class="dv">0</span>)</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>

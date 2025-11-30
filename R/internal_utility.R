@@ -52,16 +52,28 @@
   return(nb)
 }
 
-.internal_detrend = \(data,.varname,coords = NULL){
-  if (is.null(coords)){
-    for (i in seq_along(.varname)){
-      data[,.varname[i]] = sdsfun::rm_lineartrend(paste0(.varname[i],"~x+y"), data = data)
-    }
+.internal_grid2df = \(data, grid.coord = TRUE){
+  if (grid.coord) {
+    dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
   } else {
-    data = dplyr::bind_cols(data,coords)
-    for (i in seq_along(.varname)){
-      data[,.varname[i]] = sdsfun::rm_lineartrend(paste0(.varname[i],"~X+Y"), data = data)
-    }
+    dtf = terra::as.data.frame(data,xy = FALSE,na.rm = FALSE)
+    cellnum = terra::rowColFromCell(data,seq_len(terra::ncell(data)))
+    colnames(cellnum) = c("x","y")
+    dtf = dplyr::bind_cols(dtf,cellnum)
+  }
+  return(dtf)
+}
+
+.internal_detrend = \(data,.varname,coords = NULL){
+  if (!is.null(coords)) {
+    data = dplyr::bind_cols(data, coords)
+    formula_suffix = "~X+Y"
+  } else {
+    formula_suffix = "~x+y"
+  }
+
+  for (.var in .varname){
+    data[[.var]] = sdsfun::rm_lineartrend(paste0(.var,formula_suffix), data = data)
   }
   return(data)
 }
@@ -86,12 +98,12 @@
   return(res)
 }
 
-.uni_grid = \(data,target,detrend = FALSE){
+.uni_grid = \(data,target,detrend = FALSE,grid.coord = TRUE){
   if (is.null(target)) return(matrix(0,terra::nrow(data),terra::ncol(data)))
   target = .check_character(target)
   data = data[[target]]
   names(data) = "target"
-  dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
+  dtf = .internal_grid2df(data,grid.coord)
   if (detrend){
     dtf = .internal_detrend(dtf,"target")
   }
@@ -113,12 +125,12 @@
   return(res)
 }
 
-.multivar_grid = \(data,columns,detrend = FALSE){
+.multivar_grid = \(data,columns,detrend = FALSE,grid.coord = TRUE){
   columns = .check_character(columns)
   data = data[[columns]]
   .varname = paste0("z",seq_along(columns))
   names(data) = .varname
-  dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
+  dtf = .internal_grid2df(data,grid.coord)
   if (detrend){
     dtf = .internal_detrend(dtf,.varname)
   }
@@ -132,7 +144,7 @@
     colnames(y_xmap_x) = c(keyname,"y_xmap_x_mean")
   } else {
     colnames(y_xmap_x) = c(keyname,"y_xmap_x_mean","y_xmap_x_sig",
-                           "y_xmap_x_upper","y_xmap_x_lower")
+                           "y_xmap_x_lower","y_xmap_x_upper")
   }
   y_xmap_x = as.data.frame(y_xmap_x)
 
@@ -141,7 +153,7 @@
       colnames(x_xmap_y) = c(keyname,"x_xmap_y_mean")
     } else {
       colnames(x_xmap_y) = c(keyname,"x_xmap_y_mean","x_xmap_y_sig",
-                             "x_xmap_y_upper","x_xmap_y_lower")
+                             "x_xmap_y_lower","x_xmap_y_upper")
     }
     x_xmap_y = as.data.frame(x_xmap_y)
     resdf = x_xmap_y |>
@@ -175,8 +187,9 @@
   txmap = .internal_xmapdf_binding(txxmapy,tyxmapx,bidirectional)
   dxmap = .internal_xmapdf_binding(dxxmapy,dyxmapx,bidirectional)
 
-  res = list("pxmap" = dxmap, "xmap" = txmap,
-             "varname" = varname[1:2],
+  res = list("pxmap" = dxmap, 
+             "xmap" = txmap,
+             "varname" = varname,
              "bidirectional" = bidirectional)
   class(res) = 'pcm_res'
   return(res)
@@ -190,9 +203,9 @@
   return(res)
 }
 
-.bind_xmapself = \(x,varname,method,tau = NULL,...){
+.bind_xmapself = \(x,varname,method,maximize = NULL,...){
   res = list("xmap" = as.data.frame(x),"varname" = varname,"method" = method)
-  if (!is.null(tau)) res = append(res,c("tau" = tau))
+  if (!is.null(maximize)) res = append(res,c("maximize" = maximize))
   class(res) = "xmap_self"
   return(res)
 }
@@ -203,11 +216,12 @@
   return(res)
 }
 
-.bind_slm = \(mat_list,x,y,z,transient){
+.bind_slm = \(mat_list,x,y,z,transient,aggregate_fn){
+  if (is.null(aggregate_fn)) aggregate_fn = \(.x) mean(.x,na.rm = TRUE)
   if (is.null(transient)) {
-    res = lapply(mat_list, \(.x) apply(.x,1,mean,na.rm = TRUE))
+    res = lapply(mat_list, \(.x) apply(.x,1,aggregate_fn))
   } else {
-    res = lapply(mat_list, \(.x) apply(.x[,-unique(abs(transient)),drop = FALSE],1,mean,na.rm = TRUE))
+    res = lapply(mat_list, \(.x) apply(.x[,-unique(abs(transient)),drop = FALSE],1,aggregate_fn))
   }
 
   indices = NULL
@@ -216,4 +230,61 @@
   if (is.null(z)) indices = c(indices,3)
   if (is.null(indices)) return(res)
   return(res[-indices])
+}
+
+.run_gpc = \(x, y, E, k, tau, style, lib, pred, dist.metric, zero.tolerance, relative,
+             weighted, threads, bidirectional = FALSE, varname = NULL, nb = NULL,
+             libsizes = NULL, boot = 9, random = TRUE, seed = 42, parallel.level = "low",
+             progressbar = FALSE){
+  if (is.null(libsizes)){
+    if (is.null(nb)){
+      res = RcppGPC4Grid(y,x,lib,pred,E,tau,style,k,zero.tolerance,dist.metric,relative,weighted,threads)
+    } else {
+      res = RcppGPC4Lattice(y,x,nb,lib,pred,E,tau,style,k,zero.tolerance,dist.metric,relative,weighted,threads)
+    }
+    res$causality$direction = "y_xmap_x"
+    res$summary$direction = "y_xmap_x"
+    res$pattern = list("y_xmap_x" = as.data.frame(res$pattern))
+    res$varname = varname
+    res$bidirectional = FALSE
+
+    if (bidirectional){
+      res_bi = .run_gpc(y, x, E, k, tau, style, lib, pred,
+                        dist.metric, zero.tolerance,
+                        relative, weighted, threads,
+                        FALSE, varname, nb)
+      res_bi$causality$direction = "x_xmap_y"
+      res_bi$summary$direction = "x_xmap_y"
+      res$causality = rbind(res$causality,res_bi$causality)
+      res$summary = rbind(res$summary,res_bi$summary)
+      res$pattern$x_xmap_y = res_bi$pattern$y_xmap_x
+      res$bidirectional = TRUE
+    }
+
+    class(res) = "pc_res"
+    return(res)
+  } else {
+    pl = .check_parallellevel(parallel.level)
+    if (is.null(nb)){
+      res = RcppGPCRobust4Grid(y,x,libsizes,lib,pred,E,tau,style,k,boot,random,seed,zero.tolerance,
+                               dist.metric, relative, weighted, threads, pl, progressbar)
+    } else {
+      res = RcppGPCRobust4Lattice(y,x,nb,libsizes,lib,pred,E,tau,style,k,boot,random,seed,zero.tolerance,
+                                  dist.metric, relative, weighted, threads, pl, progressbar)
+    }
+    res$direction = "y_xmap_x"
+    res = list(xmap = res)
+
+    if (bidirectional){
+      res_bi = .run_gpc(y, x, E, k, tau, style, lib, pred, dist.metric,
+                        zero.tolerance, relative, weighted, threads, FALSE,
+                        varname, nb, libsizes, boot, random, seed, pl, progressbar)
+      res_bi$xmap$direction = "x_xmap_y"
+      res$xmap = rbind(res$xmap,res_bi$xmap)
+    }
+
+    return(structure(list(xmap = res$xmap, varname = varname,
+                          bidirectional = bidirectional),
+                     class = "rpc_res"))
+  }
 }

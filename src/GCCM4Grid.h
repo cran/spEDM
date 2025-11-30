@@ -35,6 +35,7 @@
  * @param row_size_mark        If true, use the row-wise libsize to mark the libsize; if false, use col-wise libsize.
  * @param dist_metric          Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average         Whether to average distance by the number of valid vector components.
+ * @param win_ratios           Scale the sliding window step relative to the matrix width/height to speed up state-space predictions.
  *
  * @return  A vector of pairs, where each pair contains the library size and the corresponding cross mapping result.
  */
@@ -53,7 +54,28 @@ std::vector<std::pair<int, double>> GCCMSingle4Grid(
     int parallel_level,
     bool row_size_mark,
     int dist_metric,
-    bool dist_average
+    bool dist_average,
+    const std::vector<double>& win_ratios = {0,0}
+);
+
+// Perform Grid-based Geographical Convergent Cross Mapping (GCCM) for a single library size and pred indice (composite embeddings version).
+std::vector<std::pair<int, double>> GCCMSingle4Grid(
+    const std::vector<std::vector<std::vector<double>>>& xEmbedings,
+    const std::vector<double>& yPred,
+    const std::vector<int>& lib_sizes,
+    const std::vector<bool>& possible_lib_indices,
+    const std::vector<int>& pred_indices,
+    int totalRow,
+    int totalCol,
+    int b,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    bool row_size_mark,
+    int dist_metric,
+    bool dist_average,
+    const std::vector<double>& win_ratios = {0,0}
 );
 
 /**
@@ -96,6 +118,24 @@ std::vector<std::pair<int, double>> GCCMSingle4GridOneDim(
     bool dist_average
 );
 
+// Perform Grid-based Geographical Convergent Cross Mapping (GCCM) for a single library size (composite embeddings version).
+std::vector<std::pair<int, double>> GCCMSingle4GridOneDim(
+    const std::vector<std::vector<std::vector<double>>>& xEmbedings,
+    const std::vector<double>& yPred,
+    int lib_size,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    int totalRow,
+    int totalCol,
+    int b,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    int dist_metric,
+    bool dist_average
+);
+
 /**
  * Perform Geographical Convergent Cross Mapping (GCCM) for spatial grid data.
  *
@@ -115,9 +155,12 @@ std::vector<std::pair<int, double>> GCCMSingle4GridOneDim(
  * @param threads        The number of threads to use for parallel processing.
  * @param parallel_level Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * @param style          Embedding style selector (0: includes current state, 1: excludes it).
+ * @param stack          Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * @param dist_metric    Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average   Whether to average distance by the number of valid vector components.
  * @param single_sig     Whether to estimate significance and confidence intervals using a single rho value.
+ * @param dir            Direction selector for embeddings where 0 returns all directions for embeddings, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+ * @param win_rations    Scale the sliding window step relative to the matrix width/height to speed up state-space predictions.
  * @param progressbar    If true, display a progress bar during computation.
  *
  * @return A 2D vector where each row contains the library size, mean cross mapping result,
@@ -137,10 +180,13 @@ std::vector<std::vector<double>> GCCM4Grid(
     int threads,
     int parallel_level,
     int style,
+    int stack,
     int dist_metric,
     bool dist_average,
     bool single_sig,
-    bool progressbar
+    const std::vector<int>& dir = {0},
+    const std::vector<double>& win_ratios = {0,0},
+    bool progressbar = false
 );
 
 /**
@@ -162,9 +208,11 @@ std::vector<std::vector<double>> GCCM4Grid(
  * @param threads        The number of threads to use for parallel processing.
  * @param parallel_level Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * @param style          Embedding style selector (0: includes current state, 1: excludes it).
+ * @param stack          Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * @param dist_metric    Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average   Whether to average distance by the number of valid vector components.
  * @param single_sig     Whether to estimate significance and confidence intervals using a single rho value.
+ * @param dir            Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
  * @param progressbar    If true, display a progress bar during computation.
  *
  * @return A 2D vector where each row contains the library size, mean cross mapping result,
@@ -184,10 +232,12 @@ std::vector<std::vector<double>> GCCM4GridOneDim(
     int threads,
     int parallel_level,
     int style,
+    int stack,
     int dist_metric,
     bool dist_average,
     bool single_sig,
-    bool progressbar
+    const std::vector<int>& dir = {0},
+    bool progressbar = false
 );
 
 #endif // GCCM4Grid_H

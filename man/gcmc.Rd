@@ -12,18 +12,18 @@
   effect,
   libsizes = NULL,
   E = 3,
-  tau = 1,
   k = pmin(E^2),
+  tau = 1,
+  style = 1,
   lib = NULL,
   pred = NULL,
-  style = 1,
   dist.metric = "L2",
-  nb = NULL,
   threads = detectThreads(),
+  detrend = FALSE,
   parallel.level = "low",
   bidirectional = TRUE,
-  detrend = FALSE,
-  progressbar = TRUE
+  progressbar = TRUE,
+  nb = NULL
 )
 
 \S4method{gcmc}{SpatRaster}(
@@ -32,17 +32,18 @@
   effect,
   libsizes = NULL,
   E = 3,
-  tau = 1,
   k = pmin(E^2),
+  tau = 1,
+  style = 1,
   lib = NULL,
   pred = NULL,
-  style = 1,
   dist.metric = "L2",
   threads = detectThreads(),
+  detrend = FALSE,
   parallel.level = "low",
   bidirectional = TRUE,
-  detrend = FALSE,
-  progressbar = TRUE
+  progressbar = TRUE,
+  grid.coord = TRUE
 )
 }
 \arguments{
@@ -52,40 +53,42 @@
 
 \item{effect}{name of effect variable.}
 
-\item{libsizes}{(optional) number of spatial units used.}
+\item{libsizes}{(optional) number of spatial units used (input needed: \code{vector} - spatial vector, \code{matrix} - spatial raster).}
 
 \item{E}{(optional) embedding dimensions.}
 
-\item{tau}{(optional) step of spatial lags.}
-
 \item{k}{(optional) number of nearest neighbors.}
 
-\item{lib}{(optional) libraries indices.}
-
-\item{pred}{(optional) predictions indices.}
+\item{tau}{(optional) step of spatial lags.}
 
 \item{style}{(optional) embedding style (\code{0} includes current state, \code{1} excludes it).}
 
+\item{lib}{(optional) libraries indices (input requirement same as \code{libsizes}).}
+
+\item{pred}{(optional) predictions indices (input requirement same as \code{libsizes}).}
+
 \item{dist.metric}{(optional) distance metric (\code{L1}: Manhattan, \code{L2}: Euclidean).}
 
-\item{nb}{(optional) neighbours list.}
-
 \item{threads}{(optional) number of threads to use.}
+
+\item{detrend}{(optional) whether to remove the linear trend.}
 
 \item{parallel.level}{(optional) level of parallelism, \code{low} or \code{high}.}
 
 \item{bidirectional}{(optional) whether to examine bidirectional causality.}
 
-\item{detrend}{(optional) whether to remove the linear trend.}
-
 \item{progressbar}{(optional) whether to show the progress bar.}
+
+\item{nb}{(optional) neighbours list.}
+
+\item{grid.coord}{(optional) whether to detrend using cell center coordinates (\code{TRUE}) or row/column numbers (\code{FALSE}).}
 }
 \value{
 A list
 \describe{
 \item{\code{xmap}}{cross mapping results}
 \item{\code{cs}}{causal strength}
-\item{\code{varname}}{names of causal and effect variable}
+\item{\code{varname}}{names of causal and effect variables}
 \item{\code{bidirectional}}{whether to examine bidirectional causality}
 }
 }
@@ -93,7 +96,7 @@ A list
 geographical cross mapping cardinality
 }
 \examples{
-columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
 g = gcmc(columbus,"hoval","crime",E = 7,k = 18)
 g

@@ -1,15 +1,15 @@
 Package: spEDM
 Title: Spatial Empirical Dynamic Modeling
-Version: 1.8
+Version: 1.9
 Authors@R: 
     person(given = "Wenbo", family = "Lv",
            email = "lyu.geosocial@gmail.com", 
            role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0009-0002-6003-3800"))
-Description: Inferring causation from spatial cross-sectional data through empirical dynamic modeling (EDM), with methodological extensions including geographical convergent cross mapping from Gao et al. (2023) <doi:10.1038/s41467-023-41619-6>, as well as the spatial causality test following the approach of Herrera et al. (2016) <doi:10.1111/pirs.12144>.
+Description: Inferring causation from spatial cross-sectional data through empirical dynamic modeling (EDM), with methodological extensions including geographical convergent cross mapping from Gao et al. (2023) <doi:10.1038/s41467-023-41619-6>, as well as the spatial causality test following the approach of Herrera et al. (2016) <doi:10.1111/pirs.12144>, together with geographical pattern causality proposed in Zhang et al. (2025) <doi:10.1080/13658816.2025.2581207>.
 License: GPL-3
 Encoding: UTF-8
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://stscl.github.io/spEDM/, https://github.com/stscl/spEDM
 BugReports: https://github.com/stscl/spEDM/issues
 Depends: R (>= 4.1.0)
@@ -19,9 +19,9 @@ Suggests: knitr, Rcpp, RcppThread, RcppArmadillo, rmarkdown, readr,
         plot3D
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2025-08-31 11:04:15 UTC; 31809
+Packaged: 2025-11-30 09:31:59 UTC; 31809
 Author: Wenbo Lv [aut, cre, cph] (ORCID:
     <https://orcid.org/0009-0002-6003-3800>)
 Maintainer: Wenbo Lv <lyu.geosocial@gmail.com>
 Repository: CRAN
-Date/Publication: 2025-08-31 11:30:02 UTC
+Date/Publication: 2025-11-30 16:30:02 UTC

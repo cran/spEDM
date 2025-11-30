@@ -1,3 +1,35 @@
+# spEDM 1.9
+
+### new
+
+* Provide R-level API and vignette for geographical pattern causality (#868).
+
+* Introduce cross mapping of raster data with anisotropic embedding and variable sliding window steps (#812).
+
+* Extend capabilities to incorporate mean-based and stacked spatial cross-sectional embeddings in cross mapping (#800).
+
+### enhancements
+
+* Drive extension of `slm` generics with custom aggregation capabilities (#912).
+
+* Permit `simplex` and `ic` generics to accept varying E, k, and tau inputs (#900).
+
+* Calibrate spacing conventions and enable real execution of available-thread detection (#885).
+
+* Maintain consistent double precision floating-point comparisons across cpp sources (#850).
+
+* Unify font specification in S3 plotting method for cross-mapping results (#830).
+
+* Support spatial grid(raster) data detrending with cell center coordinates or row/column numbers (#815).
+
+* Adjust `Makevars` to track latest rcpparmadillo release and armadillo updates improving build integration and forward compatibility (#785).
+
+### breaking changes
+
+* Remove redundant internal case data (`cu.tif`) from the package (#828).
+
+* Harmonize parameter order across s4 generics for spatial vector and raster data (#817).
+
 # spEDM 1.8
 
 ### new
@@ -6,8 +38,7 @@
 
 * Introduce configurable distance metrics for cross mapping (#761).
 
-* Enable alternative styles of spatial cross-sectional embedding 
-(#755).
+* Enable alternative styles of spatial cross-sectional embedding (#755).
 
 ### enhancements
 
@@ -15,7 +46,7 @@
 
 * Adjust the default `E` range in the `simplex` generic to `2:10` to support more robust reconstruction of state spaces (#739).
 
-* Introduce multithreading in distance-related computations where applicable to improve runtime efficiency (#718).
+* Introduce multi-threading in distance-related computations where applicable to improve runtime efficiency (#718).
 
 * Display p-value annotation for maximum library size in cross mapping visualization legend (#710).
 
@@ -151,9 +182,9 @@
 
 * Support testing causal links in GCCM with different `E` and `k` for cause and effect variables (#96).
 
-* Add thread settings for `gccm` (#94).
+* Add thread settings for `gccm` generic (#94).
 
-* Add `S-maps` cross-prediction support to `gccm` (#81).
+* Add `S-maps` cross-prediction support to `gccm` generic (#81).
 
 ### bug fixes
 
@@ -165,7 +196,7 @@
 
 ### enhancements
 
-* Encapsulate the `gccm` function using the S4 class (#72).
+* Encapsulate the `gccm` generic using the S4 class (#72).
 
 * Add options for `tau`, `k`, and `progressbar` in `gccm` (#69).
 
@@ -173,7 +204,7 @@
 
 ### bug fixes
 
-* Fix the bug where the `gccm` function returns empty results when input grid data contains NA values (#61).
+* Fix the bug where the `gccm` generic returns empty result when input grid data contains `NA` values (#61).
 
 # spEDM 1.1
 
@@ -185,4 +216,4 @@
 
 ### new
 
-* Implementing the `GCCM` method for spatial lattice and grid data using modern C++.
+* Implement `gccm` generic for spatial lattice and grid data using modern C++.

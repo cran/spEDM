@@ -32,13 +32,13 @@ bool checkOneDimVectorHasNaN(const std::vector<double>& vec) {
 
 // Function to count the number of non-NaN values in a one-dimensional vector
 int checkOneDimVectorNotNanNum(const std::vector<double>& vec) {
-  int count = 0; // Initialize the counter for non-NaN values
+  size_t count = 0; // Initialize the counter for non-NaN values
   for (double val : vec) {
     if (!std::isnan(val)) {
       ++count; // Increment the counter if the value is not NaN
     }
   }
-  return count; // Return the count of non-NaN values
+  return static_cast<int>(count); // Return the count of non-NaN values
 }
 
 /**
@@ -136,6 +136,9 @@ double CppLog(double x, double base = 10) {
 // Function to calculate the median of a vector.
 double CppMedian(const std::vector<double>& vec, bool NA_rm = false) {
   std::vector<double> filtered_vec;
+  if (filtered_vec.capacity() < vec.size()){
+    filtered_vec.reserve(vec.size());
+  }
   for (const double& value : vec) {
     if (std::isnan(value)) {
       if (!NA_rm) {
@@ -201,7 +204,6 @@ double CppMin(const std::vector<double>& vec, bool NA_rm = false) {
   // Return NaN if no valid value was found
   return found_valid ? min_val : std::numeric_limits<double>::quiet_NaN();
 }
-
 
 // Function to calculate the maximum of a vector, ignoring NA values if NA_rm is true
 double CppMax(const std::vector<double>& vec, bool NA_rm = false) {
@@ -393,6 +395,85 @@ std::vector<double> CppArithmeticSeq(double from, double to, size_t length_out) 
   return res;
 }
 
+/**
+ * @brief Compute quantiles of a numeric vector at specified probabilities.
+ *
+ * This function calculates the quantiles of a given vector of doubles `vec` at
+ * user-defined probability levels specified in `probs` (defaulting to 0.05, 0.5, 0.95).
+ * The quantiles are computed using linear interpolation between sorted values.
+ *
+ * Optionally, the function can remove NaN values before calculation if `NA_rm` is true,
+ * ensuring robust quantile estimates in the presence of missing data.
+ *
+ * @param vec     Input vector of double values.
+ * @param probs   Vector of probabilities in [0,1] at which to compute quantiles.
+ *                Default is {0.05, 0.5, 0.95}.
+ * @param NA_rm   Whether to remove NaN values from `vec` before quantile calculation.
+ *                Default is true.
+ *
+ * @return A vector of doubles containing quantile values corresponding to `probs`.
+ *
+ * @note If `NA_rm` is false and `vec` contains NaNs, the result may be undefined or contain NaNs.
+ *       It is recommended to set `NA_rm` to true when input may have missing values.
+ */
+std::vector<double> CppQuantile(const std::vector<double>& vec,
+                                const std::vector<double>& probs = {0.05, 0.5, 0.95},
+                                bool NA_rm = true) {
+  // Filter input vector if NA_rm == true (remove NaNs)
+  std::vector<double> clean_vec;
+  if (NA_rm) {
+    clean_vec.reserve(vec.size());
+    for (auto v : vec) {
+      if (!std::isnan(v)) {
+        clean_vec.push_back(v);
+      }
+    }
+  } else {
+    clean_vec = vec;
+  }
+
+  if (clean_vec.empty()) {
+    // If no data after removing NaNs, return vector of NaNs of same size as probs
+    return std::vector<double>(probs.size(), std::numeric_limits<double>::quiet_NaN());
+  }
+
+  // Sort the data
+  std::sort(clean_vec.begin(), clean_vec.end());
+
+  std::vector<double> results;
+  results.reserve(probs.size());
+
+  // Compute quantiles using linear interpolation (Type 7 method like R's quantile default)
+  // h = 1 + (n - 1) * p
+  // quantile = (1 - gamma) * x[j] + gamma * x[j+1]
+  size_t n = clean_vec.size();
+
+  for (double p : probs) {
+    if (p < 0.0 || p > 1.0) {
+      throw std::out_of_range("probabilities must be between 0 and 1");
+    }
+
+    if (n == 1) {
+      // Only one element
+      results.push_back(clean_vec[0]);
+      continue;
+    }
+
+    double h = 1 + (n - 1) * p;
+    size_t h_floor = static_cast<size_t>(std::floor(h));
+    double gamma = h - h_floor;
+
+    // Indices adjusted for 0-based indexing in C++
+    size_t idx_lower = (h_floor == 0) ? 0 : h_floor - 1;
+    size_t idx_upper = (h_floor >= n) ? n - 1 : h_floor;
+
+    double q = (1 - gamma) * clean_vec[idx_lower] + gamma * clean_vec[idx_upper];
+    results.push_back(q);
+  }
+
+  return results;
+}
+
 // Function to calculate the variance of a vector, ignoring NA values
 double CppVariance(const std::vector<double>& vec, bool NA_rm = false) {
   double mean_val = CppMean(vec, NA_rm);
@@ -439,8 +520,11 @@ double PearsonCor(const std::vector<double>& y,
 
   // Handle NA values
   std::vector<double> clean_y, clean_y_hat;
+  clean_y.reserve(y.size());
+  clean_y_hat.reserve(y_hat.size());
+
   for (size_t i = 0; i < y.size(); ++i) {
-    bool is_na = isNA(y[i]) || isNA(y_hat[i]);
+    bool is_na = std::isnan(y[i]) || std::isnan(y_hat[i]);
     if (is_na) {
       if (!NA_rm) {
         return std::numeric_limits<double>::quiet_NaN(); // Return NaN if NA_rm is false
@@ -456,9 +540,13 @@ double PearsonCor(const std::vector<double>& y,
     return std::numeric_limits<double>::quiet_NaN();
   }
 
-  // Convert cleaned vectors to Armadillo vectors
-  arma::vec arma_y(clean_y);
-  arma::vec arma_y_hat(clean_y_hat);
+  // // Convert cleaned vectors to Armadillo vectors
+  // arma::vec arma_y(clean_y);
+  // arma::vec arma_y_hat(clean_y_hat);
+
+  // Safe zero-copy view (valid while clean_y is alive)
+  arma::vec arma_y(clean_y.data(), clean_y.size(), false);
+  arma::vec arma_y_hat(clean_y_hat.data(), clean_y_hat.size(), false);
 
   // Compute Pearson correlation using Armadillo
   double corr = arma::as_scalar(arma::cor(arma_y, arma_y_hat));
@@ -531,8 +619,11 @@ double SpearmanCor(const std::vector<double>& y,
   }
 
   std::vector<double> clean_y, clean_y_hat;
+  clean_y.reserve(y.size());
+  clean_y_hat.reserve(y_hat.size());
+
   for (size_t i = 0; i < y.size(); ++i) {
-    bool is_na = isNA(y[i]) || isNA(y_hat[i]);
+    bool is_na = std::isnan(y[i]) || std::isnan(y_hat[i]);
     if (is_na) {
       if (!NA_rm) {
         return std::numeric_limits<double>::quiet_NaN();
@@ -547,8 +638,9 @@ double SpearmanCor(const std::vector<double>& y,
     return std::numeric_limits<double>::quiet_NaN();
   }
 
-  arma::vec arma_y(clean_y);
-  arma::vec arma_y_hat(clean_y_hat);
+  // Safe zero-copy view (valid while clean_y is alive)
+  arma::vec arma_y(clean_y.data(), clean_y.size(), false);
+  arma::vec arma_y_hat(clean_y_hat.data(), clean_y_hat.size(), false);
 
   // Rank-transform both vectors
   arma::vec rank_y = arma::conv_to<arma::vec>::from(arma::sort_index(arma::sort_index(arma_y))) + 1;
@@ -568,6 +660,9 @@ double KendallCor(const std::vector<double>& y,
   }
 
   std::vector<double> clean_y, clean_y_hat;
+  clean_y.reserve(y.size());
+  clean_y_hat.reserve(y_hat.size());
+
   for (size_t i = 0; i < y.size(); ++i) {
     bool is_na = isNA(y[i]) || isNA(y_hat[i]);
     if (is_na) {
@@ -645,7 +740,10 @@ double PartialCor(const std::vector<double>& y,
 
   // Handle NA values
   std::vector<double> clean_y, clean_y_hat;
+  clean_y.reserve(y.size());
+  clean_y_hat.reserve(y_hat.size());
   std::vector<std::vector<double>> clean_controls(controls.size());
+  for (auto& c : clean_controls) c.reserve(y.size());
 
   for (size_t i = 0; i < y.size(); ++i) {
     bool is_na = isNA(y[i]) || isNA(y_hat[i]);
@@ -693,8 +791,9 @@ double PartialCor(const std::vector<double>& y,
     // arma::vec residuals_y_hat = arma_y_hat - arma_controls * arma::solve(arma_controls, arma_y_hat);
 
     // Use a more robust method for solving the linear system, such as arma::pinv (pseudo-inverse):
-    arma::vec residuals_y = arma_y - arma_controls * arma::pinv(arma_controls) * arma_y;
-    arma::vec residuals_y_hat = arma_y_hat - arma_controls * arma::pinv(arma_controls) * arma_y_hat;
+    arma::mat pinv_controls = arma::pinv(arma_controls);
+    arma::vec residuals_y = arma_y - arma_controls * pinv_controls * arma_y;
+    arma::vec residuals_y_hat = arma_y_hat - arma_controls * pinv_controls * arma_y_hat;
 
     // Compute Pearson correlation of the residuals
     partial_corr = arma::as_scalar(arma::cor(residuals_y, residuals_y_hat));
@@ -703,11 +802,23 @@ double PartialCor(const std::vector<double>& y,
     int i = controls.size();
     int j = controls.size() + 1;
     arma::mat data(clean_y.size(), i + 2);
+
+    // for (size_t k = 0; k < controls.size(); ++k) {
+    //   data.col(k) = arma::vec(clean_controls[k]);
+    // }
+    // data.col(i) = arma::vec(clean_y);
+    // data.col(j) = arma::vec(clean_y_hat);
+
     for (size_t k = 0; k < controls.size(); ++k) {
-      data.col(k) = arma::vec(clean_controls[k]);
+      arma::vec view(clean_controls[k].data(),
+                     clean_controls[k].size(),
+                     false);
+      data.col(k) = view;
     }
-    data.col(i) = arma::vec(clean_y);
-    data.col(j) = arma::vec(clean_y_hat);
+    arma::vec y_view(clean_y.data(), clean_y.size(), false);
+    arma::vec yhat_view(clean_y_hat.data(), clean_y_hat.size(), false);
+    data.col(i) = y_view;
+    data.col(j) = yhat_view;
 
     if (data.n_rows < 2 || data.n_cols < 1) {
       return std::numeric_limits<double>::quiet_NaN();
@@ -785,7 +896,7 @@ double CppCorSignificance(double r, size_t n, size_t k = 0) {
 
   double pvalue = (1 - R::pt(t, df, true, false)) * 2;
 
-  // Ensure p value is within valid range [-1, 1]
+  // Ensure p value is within valid range [0, 1]
   if (pvalue < 0) pvalue = 0;
   if (pvalue > 1.0) pvalue = 1.0;
 
@@ -812,7 +923,7 @@ double CppCorSignificance(double r, size_t n, size_t k = 0) {
  * @param n The number of observations.
  * @param k The number of control variables (default = 0; use 0 for simple correlation).
  * @param level The significance level α for the confidence interval (default = 0.05).
- * @return A vector containing the upper and lower bounds of the confidence interval.
+ * @return A vector containing the lower and upper bounds of the confidence interval.
  */
 std::vector<double> CppCorConfidence(double r, size_t n, size_t k = 0,
                                      double level = 0.05) {
@@ -845,7 +956,7 @@ std::vector<double> CppCorConfidence(double r, size_t n, size_t k = 0,
   if (r_upper > 1.0) r_upper = 1.0;
 
   // Return the result as a std::vector<double>
-  return {r_upper, r_lower};
+  return {r_lower, r_upper};
 }
 
 /**
@@ -908,7 +1019,6 @@ double CppMeanCorSignificance(const std::vector<double>& rho_vec,
 
   return pvalue;
 }
-
 
 /**
  * Computes the confidence interval for correlation or partial correlation coefficients.
@@ -1025,7 +1135,7 @@ std::vector<double> CppDeLongAUCConfidence(const std::vector<double>& cases,
   ci_upper = std::min(1.0, ci_upper);
 
   // Return the results as a three-element vector
-  return {theta, ci_upper, ci_lower};
+  return {theta, ci_lower, ci_upper};
 }
 
 /**
@@ -1104,7 +1214,7 @@ std::vector<double> CppCMCTest(const std::vector<double>& cases,
   ci_upper = std::min(1.0, ci_upper);
 
   // Return the results as a four-element vector
-  return {theta, p_value, ci_upper, ci_lower};
+  return {theta, p_value, ci_lower, ci_upper};
 }
 
 // /**
@@ -1118,8 +1228,8 @@ std::vector<double> CppCMCTest(const std::vector<double>& cases,
 //  * @return A vector of four elements:
 //  *   - area_auc: AUC computed by trapezoidal rule (area method).
 //  *   - p_value: The p-value testing H0: AUC = 0.5 (via DeLong).
-//  *   - ci_upper: Upper bound of 100*(1-level)% confidence interval (via DeLong).
 //  *   - ci_lower: Lower bound of 100*(1-level)% confidence interval (via DeLong).
+//  *   - ci_upper: Upper bound of 100*(1-level)% confidence interval (via DeLong).
 //  */
 // std::vector<double> CppCMCTest(const std::vector<double>& cases,
 //                                const std::string& direction,
@@ -1196,7 +1306,7 @@ std::vector<double> CppCMCTest(const std::vector<double>& cases,
 //   ci_lower = std::max(0.0, ci_lower);
 //   ci_upper = std::min(1.0, ci_upper);
 //
-//   return {area_auc, p_value, ci_upper, ci_lower};
+//   return {area_auc, p_value, ci_lower, ci_upper};
 // }
 
 /*

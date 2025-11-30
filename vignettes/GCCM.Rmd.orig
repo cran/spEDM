@@ -2,11 +2,11 @@
 title: "Geographical Convergent Cross Mapping"
 author: "Wenbo Lv"
 date: |
-  | Last update: 2025-08-31
+  | Last update: 2025-11-25
   | Last run: `r Sys.Date()`
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{GCCM}
+  %\VignetteIndexEntry{3. Geographical Convergent Cross Mapping}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -46,7 +46,7 @@ $$
 \omega_{si} \mid M_x = \frac{weight \left(\psi\left(M_x,s_i\right),\psi\left(M_x,s\right)\right)}{\sum_{i=1}^{L+1}weight \left(\psi\left(M_x,s_i\right),\psi\left(M_x,s\right)\right)}
 $$
 
-where $\psi(M_x, s_i)$ is the state vector of spatial unit $s_i$ in the shadow manifold $ M_x$, and $weight (\ast, \ast)$ is the weight function between two states in the shadow manifold, defined as:
+where $\psi(M_x, s_i)$ is the state vector of spatial unit $s_i$ in the shadow manifold $M_x$, and $weight (\ast, \ast)$ is the weight function between two states in the shadow manifold, defined as:
 
 $$
 weight \left(\psi\left(M_x,s_i\right),\psi\left(M_x,s\right)\right) =
@@ -103,22 +103,17 @@ popd_sf
 Determining optimal embedding dimension:
 
 ```{r simplex_lattice}
-simplex(popd_sf, "pre", "pre", E = 2:10, k = 6)
-simplex(popd_sf, "popd", "popd", E = 2:10, k = 6)
+spEDM::simplex(popd_sf, "pre", "pre", E = 2:10, k = 12)
+spEDM::simplex(popd_sf, "popd", "popd", E = 2:10, k = 12)
 ```
 
 Run GCCM:
 
 ```{r gccm_lattice}
 startTime = Sys.time()
-pd_res = gccm(data = popd_sf,
-              cause = "pre",
-              effect = "popd",
-              libsizes = seq(100, 2800, by = 200),
-              E = c(3,9),
-              k = 6,
-              nb = popd_nb,
-              progressbar = FALSE)
+pd_res = spEDM::gccm(data = popd_sf, cause = "pre", effect = "popd",
+                     libsizes = seq(100, 2800, by = 200),
+                     E = c(3,9), k = 12, nb = popd_nb, progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
 pd_res
@@ -130,6 +125,8 @@ Visualize the result:
 plot(pd_res, xlimits = c(0, 2800), draw_ci = TRUE) +
   ggplot2::theme(legend.justification = c(0.65,1))
 ```
+
+<br>
 
 ### An example of spatial grid data
 
@@ -160,23 +157,18 @@ predindice = nnaindice[indices,]
 Determining optimal embedding dimension:
 
 ```{r simplex_grid}
-simplex(npp, "pre", "pre", E = 2:10, k = 8, lib = nnaindice, pred = predindice)
-simplex(npp, "npp", "npp", E = 2:10, k = 8, lib = nnaindice, pred = predindice)
+spEDM::simplex(npp, "pre", "pre", E = 2:10, k = 12, lib = nnaindice, pred = predindice)
+spEDM::simplex(npp, "npp", "npp", E = 2:10, k = 12, lib = nnaindice, pred = predindice)
 ```
 
 Run GCCM:
 
 ```{r gccm_grid}
 startTime = Sys.time()
-npp_res = gccm(data = npp,
-               cause = "pre",
-               effect = "npp",
-               libsizes = matrix(rep(seq(10,130,20),2),ncol = 2),
-               E = c(2,10),
-               k = 8,
-               lib = nnaindice,
-               pred = predindice,
-               progressbar = FALSE)
+npp_res = spEDM::gccm(data = npp, cause = "pre", effect = "npp",
+                      libsizes = matrix(rep(seq(10,130,20),2),ncol = 2),
+                      E = c(2,10), k = 12, lib = nnaindice, pred = predindice, 
+                      progressbar = FALSE)
 endTime = Sys.time()
 print(difftime(endTime,startTime, units ="mins"))
 npp_res

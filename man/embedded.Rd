@@ -6,9 +6,28 @@
 \alias{embedded,SpatRaster-method}
 \title{embedding spatial cross sectional data}
 \usage{
-\S4method{embedded}{sf}(data, target, E = 3, tau = 1, style = 1, nb = NULL, detrend = FALSE)
+\S4method{embedded}{sf}(
+  data,
+  target,
+  E = 3,
+  tau = 1,
+  style = 1,
+  stack = FALSE,
+  detrend = FALSE,
+  nb = NULL
+)
 
-\S4method{embedded}{SpatRaster}(data, target, E = 3, tau = 1, style = 1, detrend = FALSE)
+\S4method{embedded}{SpatRaster}(
+  data,
+  target,
+  E = 3,
+  tau = 1,
+  style = 1,
+  stack = FALSE,
+  detrend = FALSE,
+  grid.coord = TRUE,
+  embed.direction = 0
+)
 }
 \arguments{
 \item{data}{observation data.}
@@ -21,23 +40,29 @@
 
 \item{style}{(optional) embedding style (\code{0} includes current state, \code{1} excludes it).}
 
-\item{nb}{(optional) neighbours list.}
+\item{stack}{(optional) whether to stack embeddings.}
 
 \item{detrend}{(optional) whether to remove the linear trend.}
+
+\item{nb}{(optional) neighbours list.}
+
+\item{grid.coord}{(optional) whether to detrend using cell center coordinates (\code{TRUE}) or row/column numbers (\code{FALSE}).}
+
+\item{embed.direction}{(optional) direction selector for embeddings (\code{0} returns all directions, \code{1-8} correspond to NW, N, NE, W, E, SW, S, SE).}
 }
 \value{
-A matrix
+A matrix (when \code{stack} is \code{FALSE}) or list.
 }
 \description{
 embedding spatial cross sectional data
 }
 \examples{
-columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 v = embedded(columbus,"crime")
 v[1:5,]
 
-cu = terra::rast(system.file("case/cu.tif", package="spEDM"))
-r = embedded(cu,"cu")
-r[1:5,]
+npp = terra::rast(system.file("case/npp.tif",package="spEDM"))
+r = embedded(npp,"npp")
+r[which(!is.na(r),arr.ind = TRUE)[1:5],]
 
 }

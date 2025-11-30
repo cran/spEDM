@@ -4,39 +4,38 @@
 \alias{ic}
 \alias{ic,sf-method}
 \alias{ic,SpatRaster-method}
-\title{intersection cardinality}
+\title{optimal parameter search for intersection cardinality}
 \usage{
 \S4method{ic}{sf}(
   data,
   column,
   target,
+  E = 2:10,
+  k = E + 2,
+  tau = 1,
+  style = 1,
   lib = NULL,
   pred = NULL,
-  E = 2:10,
-  tau = 1,
-  k = E + 2,
-  style = 1,
   dist.metric = "L2",
-  nb = NULL,
   threads = detectThreads(),
-  parallel.level = "low",
-  detrend = FALSE
+  detrend = FALSE,
+  nb = NULL
 )
 
 \S4method{ic}{SpatRaster}(
   data,
   column,
   target,
+  E = 2:10,
+  k = E + 2,
+  tau = 1,
+  style = 1,
   lib = NULL,
   pred = NULL,
-  E = 2:10,
-  tau = 1,
-  k = E + 2,
-  style = 1,
   dist.metric = "L2",
   threads = detectThreads(),
-  parallel.level = "low",
-  detrend = FALSE
+  detrend = FALSE,
+  grid.coord = TRUE
 )
 }
 \arguments{
@@ -46,27 +45,27 @@
 
 \item{target}{name of target variable.}
 
-\item{lib}{(optional) libraries indices.}
-
-\item{pred}{(optional) predictions indices.}
-
 \item{E}{(optional) embedding dimensions.}
-
-\item{tau}{(optional) step of spatial lags.}
 
 \item{k}{(optional) number of nearest neighbors used.}
 
+\item{tau}{(optional) step of spatial lags.}
+
 \item{style}{(optional) embedding style (\code{0} includes current state, \code{1} excludes it).}
+
+\item{lib}{(optional) libraries indices (input needed: \code{vector} - spatial vector, \code{matrix} - spatial raster).}
+
+\item{pred}{(optional) predictions indices (input requirement same as \code{lib}).}
 
 \item{dist.metric}{(optional) distance metric (\code{L1}: Manhattan, \code{L2}: Euclidean).}
 
-\item{nb}{(optional) neighbours list.}
-
 \item{threads}{(optional) number of threads to use.}
 
-\item{parallel.level}{(optional) level of parallelism, \code{low} or \code{high}.}
-
 \item{detrend}{(optional) whether to remove the linear trend.}
+
+\item{nb}{(optional) neighbours list.}
+
+\item{grid.coord}{(optional) whether to detrend using cell center coordinates (\code{TRUE}) or row/column numbers (\code{FALSE}).}
 }
 \value{
 A list
@@ -74,16 +73,15 @@ A list
 \item{\code{xmap}}{cross mapping performance}
 \item{\code{varname}}{name of target variable}
 \item{\code{method}}{method of cross mapping}
-\item{\code{tau}}{step of time lag}
 }
 }
 \description{
-intersection cardinality
+optimal parameter search for intersection cardinality
 }
 \examples{
-columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
-ic(columbus,"hoval","crime", E = 7, k = 15:25)
+ic(columbus,"hoval","crime",E = 7,k = 15:25)
 }
 }
 \references{

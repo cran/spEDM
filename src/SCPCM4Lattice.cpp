@@ -9,7 +9,7 @@
 #include "CppLatticeUtils.h"
 #include "SimplexProjection.h"
 #include "SMap.h"
-#include "spEDMDataStruct.h"
+#include "DataStruct.h"
 #include <RcppThread.h>
 
 // [[Rcpp::depends(RcppThread)]]
@@ -97,6 +97,70 @@ std::vector<double> PartialSimplex4Lattice(
 }
 
 /**
+ * Computes the partial correlation between the target variable and its simplex projection,
+ * incorporating control variables using a lattice-based embedding approach (composite embeddings version).
+ */
+std::vector<double> PartialSimplex4Lattice(
+    const std::vector<std::vector<std::vector<double>>>& vectors,
+    const std::vector<double>& target,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<std::vector<int>>& nb_vec,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& num_neighbors,
+    bool cumulate = false,
+    int style = 1,
+    int dist_metric = 2,
+    bool dist_average = true
+){
+  int n_controls = controls.size();
+  std::vector<double> rho(2, std::numeric_limits<double>::quiet_NaN());
+
+  if (cumulate) {
+    std::vector<double> temp_pred;
+    std::vector<std::vector<std::vector<double>>> temp_embedding;
+
+    for (int i = 0; i < n_controls; ++i) {
+      if (i == 0){
+        temp_pred = SimplexProjectionPrediction(vectors, controls[i], lib_indices, pred_indices, num_neighbors[0], dist_metric, dist_average);
+      } else {
+        temp_pred = SimplexProjectionPrediction(temp_embedding, controls[i], lib_indices, pred_indices, num_neighbors[i], dist_metric, dist_average);
+      }
+      temp_embedding = GenLatticeEmbeddingsCom(temp_pred,nb_vec,conEs[i],taus[i],style);
+    }
+
+    std::vector<double> con_pred = SimplexProjectionPrediction(temp_embedding, target, lib_indices, pred_indices, num_neighbors[n_controls], dist_metric, dist_average);
+    std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors[0], dist_metric, dist_average);
+
+    if (checkOneDimVectorNotNanNum(target_pred) >= 3){
+      rho[0] = PearsonCor(target,target_pred,true);
+      rho[1] = PartialCorTrivar(target,target_pred,con_pred,true,false);
+    }
+  } else {
+    std::vector<std::vector<double>> con_pred(n_controls);
+    std::vector<double> temp_pred;
+    std::vector<std::vector<std::vector<double>>> temp_embedding;
+
+    for (int i = 0; i < n_controls; ++i) {
+      temp_pred = SimplexProjectionPrediction(vectors, controls[i], lib_indices, pred_indices, num_neighbors[0], dist_metric, dist_average);
+      temp_embedding = GenLatticeEmbeddingsCom(temp_pred,nb_vec,conEs[i],taus[i],style);
+      temp_pred = SimplexProjectionPrediction(temp_embedding, target, lib_indices, pred_indices, num_neighbors[i+1], dist_metric, dist_average);
+      con_pred[i] = temp_pred;
+    }
+    std::vector<double> target_pred = SimplexProjectionPrediction(vectors, target, lib_indices, pred_indices, num_neighbors[0], dist_metric, dist_average);
+
+    if (checkOneDimVectorNotNanNum(target_pred) >= 3){
+      rho[0] = PearsonCor(target,target_pred,true);
+      rho[1] = PartialCor(target,target_pred,con_pred,true,false);
+    }
+  }
+
+  return rho;
+}
+
+/**
  * @brief Computes the partial correlation between a spatial cross-sectional series and its prediction
  *        using the S-Map method, incorporating control variables.
  *
@@ -169,6 +233,71 @@ std::vector<double> PartialSMap4Lattice(
     for (int i = 0; i < n_controls; ++i) {
       temp_pred = SMapPrediction(vectors, controls[i], lib_indices, pred_indices, num_neighbors[0], theta, dist_metric, dist_average);
       temp_embedding = GenLatticeEmbeddings(temp_pred,nb_vec,conEs[i],taus[i],style);
+      temp_pred = SMapPrediction(temp_embedding, target, lib_indices, pred_indices, num_neighbors[i+1], theta, dist_metric, dist_average);
+      con_pred[i] = temp_pred;
+    }
+    std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors[0], theta, dist_metric, dist_average);
+
+    if (checkOneDimVectorNotNanNum(target_pred) >= 3){
+      rho[0] = PearsonCor(target,target_pred,true);
+      rho[1] = PartialCor(target,target_pred,con_pred,true,false);
+    }
+  }
+
+  return rho;
+}
+
+/**
+ * Computes the partial correlation between a spatial cross-sectional series and its prediction
+ * using the S-Map method, incorporating control variables (composite embeddings version).
+ */
+std::vector<double> PartialSMap4Lattice(
+    const std::vector<std::vector<std::vector<double>>>& vectors,
+    const std::vector<double>& target,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<std::vector<int>>& nb_vec,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& num_neighbors,
+    double theta = 1.0,
+    bool cumulate = false,
+    int style = 1,
+    int dist_metric = 2,
+    bool dist_average = true
+){
+  int n_controls = controls.size();
+  std::vector<double> rho(2, std::numeric_limits<double>::quiet_NaN());
+
+  if (cumulate){
+    std::vector<double> temp_pred;
+    std::vector<std::vector<std::vector<double>>> temp_embedding;
+
+    for (int i = 0; i < n_controls; ++i) {
+      if (i == 0){
+        temp_pred = SMapPrediction(vectors, controls[i], lib_indices, pred_indices, num_neighbors[0], theta, dist_metric, dist_average);
+      } else {
+        temp_pred = SMapPrediction(temp_embedding, controls[i], lib_indices, pred_indices, num_neighbors[i], theta, dist_metric, dist_average);
+      }
+      temp_embedding = GenLatticeEmbeddingsCom(temp_pred,nb_vec,conEs[i],taus[i],style);
+    }
+
+    std::vector<double> con_pred = SMapPrediction(temp_embedding, target, lib_indices, pred_indices, num_neighbors[n_controls], theta, dist_metric, dist_average);
+    std::vector<double> target_pred = SMapPrediction(vectors, target, lib_indices, pred_indices, num_neighbors[0], theta, dist_metric, dist_average);
+
+    if (checkOneDimVectorNotNanNum(target_pred) >= 3){
+      rho[0] = PearsonCor(target,target_pred,true);
+      rho[1] = PartialCorTrivar(target,target_pred,con_pred,true,false);
+    }
+  } else {
+    std::vector<std::vector<double>> con_pred(n_controls);
+    std::vector<double> temp_pred;
+    std::vector<std::vector<std::vector<double>>> temp_embedding;
+
+    for (int i = 0; i < n_controls; ++i) {
+      temp_pred = SMapPrediction(vectors, controls[i], lib_indices, pred_indices, num_neighbors[0], theta, dist_metric, dist_average);
+      temp_embedding = GenLatticeEmbeddingsCom(temp_pred,nb_vec,conEs[i],taus[i],style);
       temp_pred = SMapPrediction(temp_embedding, target, lib_indices, pred_indices, num_neighbors[i+1], theta, dist_metric, dist_average);
       con_pred[i] = temp_pred;
     }
@@ -320,6 +449,115 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
   }
 }
 
+// Perform SCPCM on a single library and prediction set for lattice data (composite embeddings version).
+std::vector<PartialCorRes> SCPCMSingle4Lattice(
+    const std::vector<std::vector<std::vector<double>>>& x_vectors,
+    const std::vector<double>& y,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<std::vector<int>>& nb_vec,
+    int lib_size,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& b,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    bool cumulate,
+    int style,
+    int dist_metric,
+    bool dist_average
+) {
+  int max_lib_size = lib_indices.size();
+
+  // No possible library variation if using all vectors
+  if (lib_size == max_lib_size) {
+    std::vector<PartialCorRes> x_xmap_y;
+    // Run partial cross map and store results
+    std::vector<double> rho;
+    if (simplex) {
+      rho = PartialSimplex4Lattice(x_vectors, y, controls, nb_vec, lib_indices, pred_indices, conEs, taus, b, cumulate, style, dist_metric, dist_average);
+    } else {
+      rho = PartialSMap4Lattice(x_vectors, y, controls, nb_vec, lib_indices, pred_indices, conEs, taus, b, theta, cumulate, style, dist_metric, dist_average);
+    }
+    x_xmap_y.emplace_back(lib_size, rho[0], rho[1]);
+    return x_xmap_y;
+  } else if (parallel_level == 0){
+    // Precompute valid indices for the library
+    std::vector<std::vector<int>> valid_lib_indices;
+    for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
+      std::vector<int> local_lib_indices;
+      // Loop around to beginning of lib indices
+      if (start_lib + lib_size > max_lib_size) {
+        for (int i = start_lib; i < max_lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+        int num_vectors_remaining = lib_size - (max_lib_size - start_lib);
+        for (int i = 0; i < num_vectors_remaining; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      } else {
+        for (int i = start_lib; i < start_lib + lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      }
+      valid_lib_indices.emplace_back(local_lib_indices);
+    }
+
+    // Preallocate the result vector to avoid out-of-bounds access
+    std::vector<PartialCorRes> x_xmap_y(valid_lib_indices.size());
+
+    // Perform the operations using RcppThread
+    RcppThread::parallelFor(0, valid_lib_indices.size(), [&](size_t i) {
+      // Run partial cross map and store results
+      std::vector<double> rho;
+      if (simplex) {
+        rho = PartialSimplex4Lattice(x_vectors, y, controls, nb_vec, valid_lib_indices[i], pred_indices, conEs, taus, b, cumulate, style, dist_metric, dist_average);
+      } else {
+        rho = PartialSMap4Lattice(x_vectors, y, controls, nb_vec, valid_lib_indices[i], pred_indices, conEs, taus, b, theta, cumulate, style, dist_metric, dist_average);
+      }
+      // Directly initialize a PartialCorRes struct with the three values
+      PartialCorRes result(lib_size, rho[0], rho[1]);
+      x_xmap_y[i] = result;
+    }, threads);
+
+    return x_xmap_y;
+  } else {
+    std::vector<PartialCorRes> x_xmap_y;
+
+    for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
+      std::vector<int> local_lib_indices;
+      // Setup changing library
+      if (start_lib + lib_size > max_lib_size) { // Loop around to beginning of lib indices
+        for (int i = start_lib; i < max_lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+        int num_vectors_remaining = lib_size - (max_lib_size - start_lib);
+        for (int i = 0; i < num_vectors_remaining; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      } else {
+        for (int i = start_lib; i < start_lib + lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      }
+
+      // Run partial cross map and store results
+      std::vector<double> rho;
+      if (simplex) {
+        rho = PartialSimplex4Lattice(x_vectors, y, controls, nb_vec, local_lib_indices, pred_indices, conEs, taus, b, cumulate, style, dist_metric, dist_average);
+      } else {
+        rho = PartialSMap4Lattice(x_vectors, y, controls, nb_vec, local_lib_indices, pred_indices, conEs, taus, b, theta, cumulate, style, dist_metric, dist_average);
+      }
+      x_xmap_y.emplace_back(lib_size, rho[0], rho[1]);
+    }
+
+    return x_xmap_y;
+  }
+}
+
 /**
  * Performs SCPCM on a spatial lattice dataset.
  *
@@ -340,6 +578,7 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
  * - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * - cumulate: Boolean flag indicating whether to cumulate partial correlations.
  * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * - dist_average: Whether to average distance by the number of valid vector components.
  * - single_sig: Whether to estimate significance and confidence intervals using a single rho value.
@@ -350,12 +589,12 @@ std::vector<PartialCorRes> SCPCMSingle4Lattice(
  *      - The library size.
  *      - The mean pearson cross-mapping correlation.
  *      - The statistical significance of the pearson correlation.
- *      - The upper bound of the pearson correlation confidence interval.
  *      - The lower bound of the pearson correlation confidence interval.
+ *      - The upper bound of the pearson correlation confidence interval.
  *      - The mean partial cross-mapping partial correlation.
  *      - The statistical significance of the partial correlation.
- *      - The upper bound of the partial correlation confidence interval.
  *      - The lower bound of the partial correlation confidence interval.
+ *      - The upper bound of the partial correlation confidence interval.
  */
 std::vector<std::vector<double>> SCPCM4Lattice(
     const std::vector<double>& x,                       // Spatial cross-sectional series to cross map from
@@ -374,6 +613,7 @@ std::vector<std::vector<double>> SCPCM4Lattice(
     int parallel_level,                                 // Level of parallel computing: 0 for `lower`, 1 for `higher`
     bool cumulate,                                      // Whether to cumulate the partial correlations
     int style,                                          // Embedding style selector (0: includes current state, 1: excludes it)
+    int stack,                                          // Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
     int dist_metric,                                    // Distance metric selector (1: Manhattan, 2: Euclidean)
     bool dist_average,                                  // Whether to average distance by the number of valid vector components
     bool single_sig,                                    // Whether to estimate significance and confidence intervals using a single rho value
@@ -399,7 +639,16 @@ std::vector<std::vector<double>> SCPCM4Lattice(
   size_t threads_sizet = static_cast<size_t>(std::abs(threads));
   threads_sizet = std::min(static_cast<size_t>(std::thread::hardware_concurrency()), threads_sizet);
 
-  std::vector<std::vector<double>> x_vectors = GenLatticeEmbeddings(x,nb_vec,Ex,taux,style);
+  // Generate embeddings
+  std::vector<std::vector<double>> Emb2D;
+  std::vector<std::vector<std::vector<double>>> Emb3D;
+  if (stack == 0){
+    Emb2D = GenLatticeEmbeddings(x, nb_vec, Ex, taux, style);
+  } else {
+    Emb3D = GenLatticeEmbeddingsCom(x, nb_vec, Ex, taux, style);
+  }
+
+  // Number of forecasting samples
   size_t n = pred.size();
 
   size_t n_confounds;
@@ -433,50 +682,96 @@ std::vector<std::vector<double>> SCPCM4Lattice(
     if (progressbar) {
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
-        local_results[i] = SCPCMSingle4Lattice(
-          x_vectors,
-          y,
-          controls,
-          nb_vec,
-          unique_lib_sizes[i],
-          lib,
-          pred,
-          conEs,
-          contaus,
-          bs,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          cumulate,
-          style,
-          dist_metric,
-          dist_average
-        );
+        if (stack == 0){
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb2D,
+            y,
+            controls,
+            nb_vec,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        } else {
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb3D,
+            y,
+            controls,
+            nb_vec,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        }
         bar++;
       }
     } else {
       for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
-        local_results[i] = SCPCMSingle4Lattice(
-          x_vectors,
-          y,
-          controls,
-          nb_vec,
-          unique_lib_sizes[i],
-          lib,
-          pred,
-          conEs,
-          contaus,
-          bs,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          cumulate,
-          style,
-          dist_metric,
-          dist_average
-        );
+        if (stack == 0){
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb2D,
+            y,
+            controls,
+            nb_vec,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        } else{
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb3D,
+            y,
+            controls,
+            nb_vec,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        }
       }
     }
   } else {
@@ -485,51 +780,97 @@ std::vector<std::vector<double>> SCPCM4Lattice(
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        local_results[i] = SCPCMSingle4Lattice(
-          x_vectors,
-          y,
-          controls,
-          nb_vec,
-          lib_size,
-          lib,
-          pred,
-          conEs,
-          contaus,
-          bs,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          cumulate,
-          style,
-          dist_metric,
-          dist_average
-        );
+        if (stack == 0) {
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb2D,
+            y,
+            controls,
+            nb_vec,
+            lib_size,
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        } else {
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb3D,
+            y,
+            controls,
+            nb_vec,
+            lib_size,
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        }
         bar++;
       }, threads_sizet);
     } else {
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        local_results[i] = SCPCMSingle4Lattice(
-          x_vectors,
-          y,
-          controls,
-          nb_vec,
-          lib_size,
-          lib,
-          pred,
-          conEs,
-          contaus,
-          bs,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          cumulate,
-          style,
-          dist_metric,
-          dist_average
-        );
+        if (stack == 0) {
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb2D,
+            y,
+            controls,
+            nb_vec,
+            lib_size,
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        } else {
+          local_results[i] = SCPCMSingle4Lattice(
+            Emb3D,
+            y,
+            controls,
+            nb_vec,
+            lib_size,
+            lib,
+            pred,
+            conEs,
+            contaus,
+            bs,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            cumulate,
+            style,
+            dist_metric,
+            dist_average
+          );
+        }
       }, threads_sizet);
     }
   }

@@ -23,23 +23,20 @@
   return(resdf)
 }
 
-#' print ccm result
-#' @noRd
 #' @export
+#' @noRd
 print.ccm_res = \(x,significant = FALSE,...){
   print(.internal_xmapdf_print(x,significant = significant))
 }
 
-#' print cmc result
-#' @noRd
 #' @export
+#' @noRd
 print.cmc_res = \(x,significant = FALSE,...){
   print(.internal_xmapdf_print(x,"neighbors",significant = significant))
 }
 
-#' print pcm result
-#' @noRd
 #' @export
+#' @noRd
 print.pcm_res = \(x,significant = FALSE,...){
   pxmap = x[-2]
   xmap = x[-1]
@@ -54,39 +51,70 @@ print.pcm_res = \(x,significant = FALSE,...){
   print(.internal_xmapdf_print(xmap,significant = significant))
 }
 
-#' print xmap_self result
-#' @noRd
 #' @export
+#' @noRd
+print.pc_res = \(x,...){
+  pc = x$summary
+  if (x$bidirectional){
+    pc$direction = rep(c(paste0(x$varname[1], " -> ", x$varname[2]),
+                         paste0(x$varname[2], " -> ", x$varname[1])), each = 3)
+  } else {
+    pc$direction = paste0(x$varname[1], " -> ", x$varname[2])
+  }
+  cat('-------------------------------- \n')
+  cat("***pattern causality analysis*** \n")
+  cat('-------------------------------- \n')
+  print(pc)
+}
+
+#' @export
+#' @noRd
+print.rpc_res = \(x,...){
+  pc = x$xmap
+  if (x$bidirectional){
+    pc$direction = rep(c(paste0(x$varname[1], " -> ", x$varname[2]),
+                         paste0(x$varname[2], " -> ", x$varname[1])),
+                       each = (nrow(pc) / 2))
+  } else {
+    pc$direction = paste0(x$varname[1], " -> ", x$varname[2])
+  }
+  cat('-------------------------------- \n')
+  cat("***pattern causality analysis*** \n")
+  cat('-------------------------------- \n')
+  print(pc)
+}
+
+#' @export
+#' @noRd
 print.xmap_self = \(x,...){
   res = as.matrix(x$xmap)
-  if (x$method == "smap"){
+  if (x$method == "smap") {
     cat(paste0("The suggested theta for variable ", x$varname, " is ", OptThetaParm(res)), "\n")
   } else {
-    if (x$method == "simplex"){
-      res = OptEmbedDim(res)
-    } else {
-      res = OptICparm(res)
-    }
-    cat(paste0("The suggested E and k for variable ", x$varname, " is ", res[1], " and ", res[2]), "\n")
-    if (res[1] == 1 && x$tau == 0) warning("When tau = 0, E should not be 1")
+      if (x$method == "simplex") {
+        res = OptSimplexParm(res)
+      } else if (x$method == "ic") {
+        res = OptICparm(res)
+      } else if (x$method == "pc") {
+        res = OptPCparm(res,x$maximize)
+      }
+      cat(paste0("The suggested E,k,tau for variable ", x$varname, " is ", res[1], ", ", res[2], " and ", res[3]), "\n")
+      if (res[1] == 1 && res[3] == 0) warning("When tau = 0, E should not be 1")
   }
 }
 
-#' print sc result
-#' @noRd
 #' @export
+#' @noRd
 print.sc_res = \(x,...){
   sc = round(x$sc,3)
-  varname = x$varname
   cat(c("spatial causality test",
         paste0(paste0(x$varname[1], " -> ", x$varname[2],": statistic = "), sc[1], ", p value = ", sc[2]),
         paste0(paste0(x$varname[2], " -> ", x$varname[1],": statistic = "), sc[3], ", p value = ", sc[4])),
       sep = "\n")
 }
 
-#' plot ccm result
-#' @noRd
 #' @export
+#' @noRd
 plot.ccm_res = \(x, family = "serif",
                  legend_sig = TRUE, legend_texts = NULL,
                  legend_cols = c("#ed795b","#608dbe"),
@@ -146,27 +174,23 @@ plot.ccm_res = \(x, family = "serif",
 
   fig1 = fig1 +
     ggplot2::scale_x_continuous(breaks = xbreaks, limits = xlimits,
-                                expand = c(0, 0), name = "Library size") +
+                                expand = c(0, 0), name = "Library Size") +
     ggplot2::scale_y_continuous(breaks = ybreaks, limits = ylimits,
                                 expand = c(0, 0), name = ylabel) +
     ggplot2::scale_color_manual(values = legend_cols,
                                 labels = legend_texts,
                                 name = "") +
-    ggplot2::theme_bw() +
-    ggplot2::theme(axis.text = ggplot2::element_text(family = family),
-                   axis.text.x = ggplot2::element_text(angle = 30),
-                   axis.title = ggplot2::element_text(family = family),
+    ggplot2::theme_bw(base_family = family) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30),
                    panel.grid = ggplot2::element_blank(),
                    legend.position = "inside",
                    legend.justification = c(0.05,1),
-                   legend.background = ggplot2::element_rect(fill = 'transparent'),
-                   legend.text = ggplot2::element_text(family = family))
+                   legend.background = ggplot2::element_rect(fill = 'transparent'))
   return(fig1)
 }
 
-#' plot cmc result
-#' @noRd
 #' @export
+#' @noRd
 plot.cmc_res = \(x, ...){
   xmap = x[-1]
   class(xmap) = "ccm"
@@ -175,13 +199,51 @@ plot.cmc_res = \(x, ...){
   return(fig1)
 }
 
-#' plot pcm result
-#' @noRd
+
 #' @export
+#' @noRd
 plot.pcm_res = \(x, partial = TRUE, ...){
   indice = ifelse(partial,-2,-1)
   xmap = x[indice]
   class(xmap) = "ccm"
   fig1 = plot.ccm_res(xmap,...)
   return(fig1)
+}
+
+#' @export
+#' @noRd
+plot.rpc_res = \(x, family = "serif",
+                 xbreaks = NULL, xlimits = NULL,
+                 ybreaks = seq(0, 1, by = 0.1),
+                 ylimits = c(-0.05, 1), ...){
+  xmapdf = x$xmap
+  if("q50" %in% names(xmapdf)) xmapdf = dplyr::rename(xmapdf,causality = q50)
+  if (x$bidirectional){
+    xmapdf$direction = rep(c(paste0(x$varname[1], " %->% ", x$varname[2]),
+                             paste0(x$varname[2], " %->% ", x$varname[1])),
+                             each = (nrow(xmapdf) / 2))
+  } else {
+    xmapdf$direction = paste0(x$varname[1], " %->% ", x$varname[2])
+  }
+  if(is.null(xbreaks)) xbreaks = xmapdf$libsizes
+  if(is.null(xlimits)) xlimits = c(min(xbreaks)-1,max(xbreaks)+1)
+
+  ggplot2::ggplot(xmapdf, ggplot2::aes(x = libsizes, y = causality, color = type)) +
+    ggplot2::geom_line(linewidth = 1.25) +
+    ggplot2::facet_wrap(~ direction, scales = "fixed", ncol = 2,
+                        labeller = ggplot2::label_parsed) +
+    ggplot2::scale_color_manual(name = NULL,
+                                values = c("dark" = "#6A0DAD", "negative" = "#FF4136", "positive" = "#0074D9")) +
+    ggplot2::scale_x_continuous(breaks = xbreaks, limits = xlimits,
+                                expand = c(0, 0), name = "Library Size") +
+    ggplot2::scale_y_continuous(breaks = ybreaks, limits = ylimits,
+                                expand = c(0, 0), name = "Causal Strength") +
+    ggplot2::theme_bw(base_family = family) +
+    ggplot2::theme(
+      legend.position = "bottom",
+      legend.box = "horizontal",
+      panel.grid.minor = ggplot2::element_blank(),
+      axis.text.x = ggplot2::element_text(angle = 30),
+      strip.text = ggplot2::element_text(face = "bold")
+    )
 }

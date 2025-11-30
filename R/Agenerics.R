@@ -1,5 +1,5 @@
 register_generic = \(name, def = NULL) {
-  if (!methods::isGeneric(name)){
+  if (!methods::isGeneric(name)) {
     if (is.null(def)) {
       def = eval(bquote(function(data, ...) standardGeneric(.(name))))
     }
@@ -7,7 +7,7 @@ register_generic = \(name, def = NULL) {
   }
 }
 
-for (gen in c("embedded", "fnn", "slm", "simplex", "smap", "ic",
-              "multiview", "sc.test", "gccm", "gcmc", "scpcm")) {
+for (gen in c("embedded", "fnn", "slm", "simplex", "smap", "ic", "pc",
+              "multiview", "sc.test", "gccm", "gpc", "gcmc", "scpcm")) {
   register_generic(gen)
 }

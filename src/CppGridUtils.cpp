@@ -232,7 +232,8 @@ std::vector<std::vector<double>> GenGridEmbeddings(
         if (!allNaN) break;
       }
 
-      // If all elements are NaN, stop further processing for this lagNum
+      // If all elements are NaN, stop further processing for larger lagNum
+      // (since larger lag distances will only produce more NaN results)
       if (allNaN) {
         break;
       }
@@ -287,7 +288,8 @@ std::vector<std::vector<double>> GenGridEmbeddings(
           if (!allNaN) break;
         }
 
-        // If all elements are NaN, stop further processing for this lagNum
+        // If all elements are NaN, stop further processing for larger lagNum
+        // (since larger lag distances will only produce more NaN results)
         if (allNaN) {
           break;
         }
@@ -330,7 +332,8 @@ std::vector<std::vector<double>> GenGridEmbeddings(
           if (!allNaN) break;
         }
 
-        // If all elements are NaN, stop further processing for this lagNum
+        // If all elements are NaN, stop further processing for larger lagNum
+        // (since larger lag distances will only produce more NaN results)
         if (allNaN) {
           break;
         }
@@ -382,15 +385,274 @@ std::vector<std::vector<double>> GenGridEmbeddings(
 
     // Construct the filtered embeddings matrix
     std::vector<std::vector<double>> filteredEmbeddings;
+    filteredEmbeddings.reserve(validColumns.size());
+
     for (size_t row = 0; row < result.size(); ++row) {
       std::vector<double> filteredRow;
       for (size_t col : validColumns) {
         filteredRow.push_back(result[row][col]);
       }
-      filteredEmbeddings.push_back(filteredRow);
+      filteredEmbeddings.push_back(std::move(filteredRow));
     }
 
     // Return the filtered embeddings matrix
+    return filteredEmbeddings;
+  }
+}
+
+/**
+ * Generates multi-level grid embeddings by computing lagged neighbor values
+ * for each embedding dimension and returning all lag results instead of averaging them.
+ *
+ * Each embedding dimension corresponds to a lagged state (τ, 2τ, ... depending on style),
+ * and each lagged state is stored as a separate 2D structure representing the grid's lagged values.
+ *
+ * Parameters:
+ *   mat   - A 2D vector representing the grid data.
+ *   E     - The number of embedding dimensions (number of lag steps to compute).
+ *   tau   - The spatial lag step for constructing lagged state-space vectors.
+ *   style - Embedding style selector:
+ *             - style = 0: embedding includes the current state as the first dimension.
+ *             - style != 0: embedding excludes the current state.
+ *   dir   - Direction selector (optional):
+ *             - If dir = {0}, returns all directional lag values (no filtering).
+ *             - If dir ∈ {1,...,8}, keeps only lag values in that direction:
+ *                 1: NW, 2: N, 3: NE, 4: W, 5: E, 6: SW, 7: S, 8: SE
+ *             - Multiple directions can be specified (e.g., {1,2,3} = NW, N, NE).
+ *
+ * Returns:
+ *   A 3D vector (std::vector<std::vector<std::vector<double>>>) structured as:
+ *     - Outer level (size E): Each element corresponds to an embedding dimension.
+ *     - Middle level: Each element corresponds to a grid cell (flattened from 2D).
+ *     - Inner level: Contains all lagged neighbor values (may include NaNs).
+ *
+ * Notes:
+ *   - This function differs from GenGridEmbeddings in that it does NOT average lagged values.
+ *     Instead, it preserves the full neighbor value sets for each lag step.
+ *   - This function also enables direction-based filtering:
+ *      - For example, for a 3x3 window (lag = 1), directions map to indices 0–7:
+ *         1: NW (0), 2: N (1), 3: NE (2), 4: W (3), 5: E (4), 6: SW (5), 7: S (6), 8: SE (7)
+ *      - For larger lags, each direction expands radially; indices are extended accordingly.
+ *   - For tau and style:
+ *      - When tau = 0, lag steps are sequential (0, 1, 2, ..., E-1).
+ *      - When tau > 0 and style = 0, lag steps are 0, τ, 2τ, ..., (E-1)τ.
+ *      - When tau > 0 and style != 0, lag steps are τ, 2τ, ..., Eτ.
+ */
+std::vector<std::vector<std::vector<double>>> GenGridEmbeddingsCom(
+    const std::vector<std::vector<double>>& mat,
+    int E,
+    int tau,
+    int style = 1,
+    const std::vector<int>& dir = {0}
+) {
+  std::vector<std::vector<std::vector<double>>> embeddings; // Final 3D result container
+  embeddings.reserve(E); // Reserve space for E embedding levels
+
+  if (tau == 0) {
+    // tau = 0: lag steps are 0, 1, 2, ..., E-1
+    for (int lagNum = 0; lagNum < E; ++lagNum) {
+      std::vector<std::vector<double>> lagged_vals = CppLaggedVal4Grid(mat, lagNum);
+
+      // Check if all elements in lagged_vals are NaN
+      bool allNaN = true;
+      for (const auto& subset : lagged_vals) {
+        for (double val : subset) {
+          if (!std::isnan(val)) {
+            allNaN = false;
+            break;
+          }
+        }
+        if (!allNaN) break;
+      }
+
+      // If all elements are NaN, stop further processing for larger lagNum
+      // (since larger lag distances will only produce more NaN results)
+      if (allNaN) {
+        break;
+      }
+
+      embeddings.push_back(std::move(lagged_vals));
+    }
+  } else {
+    // tau > 0 cases
+    if (style == 0) {
+      // style == 0: include current state; lag steps: 0, τ, 2τ, ..., (E-1)τ
+      for (int i = 0; i < E; ++i) {
+        int lagNum = i * tau;
+        std::vector<std::vector<double>> lagged_vals = CppLaggedVal4Grid(mat, lagNum);
+
+        // Check if all elements in lagged_vals are NaN
+        bool allNaN = true;
+        for (const auto& subset : lagged_vals) {
+          for (double val : subset) {
+            if (!std::isnan(val)) {
+              allNaN = false;
+              break;
+            }
+          }
+          if (!allNaN) break;
+        }
+
+        // If all elements are NaN, stop further processing for larger lagNum
+        // (since larger lag distances will only produce more NaN results)
+        if (allNaN) {
+          break;
+        }
+
+        embeddings.push_back(std::move(lagged_vals));
+      }
+    } else {
+      // style != 0: exclude current state; lag steps: τ, 2τ, ..., Eτ
+      for (int i = 1; i <= E; ++i) {
+        int lagNum = i * tau;
+        std::vector<std::vector<double>> lagged_vals = CppLaggedVal4Grid(mat, lagNum);
+
+        // Check if all elements in lagged_vals are NaN
+        bool allNaN = true;
+        for (const auto& subset : lagged_vals) {
+          for (double val : subset) {
+            if (!std::isnan(val)) {
+              allNaN = false;
+              break;
+            }
+          }
+          if (!allNaN) break;
+        }
+
+        // If all elements are NaN, stop further processing for larger lagNum
+        // (since larger lag distances will only produce more NaN results)
+        if (allNaN) {
+          break;
+        }
+
+        embeddings.push_back(std::move(lagged_vals));
+      }
+    }
+  }
+
+  // --- Directional filtering section ---
+  if (!(dir.size() == 1 && dir[0] == 0)) {
+
+    // Helper function: compute column indices for each of 8 compass directions
+    // according to the spatial ring pattern around the grid center.
+    //
+    // The grid window is (2*lagNum+1) × (2*lagNum+1).
+    // Only the outer ring (Chebyshev distance == lagNum) is scanned
+    // in row-major order (top-left to bottom-right).
+    //
+    // Directions are assigned by the sign of (row offset, col offset):
+    //   1: NW (dr < 0, dc < 0)
+    //   2: N  (dr < 0, dc == 0)
+    //   3: NE (dr < 0, dc > 0)
+    //   4: W  (dr == 0, dc < 0)
+    //   5: E  (dr == 0, dc > 0)
+    //   6: SW (dr > 0, dc < 0)
+    //   7: S  (dr > 0, dc == 0)
+    //   8: SE (dr > 0, dc > 0)
+    //
+    // For lagNum > 1, diagonal directions (NW, NE, SW, SE)
+    // accumulate multiple indices; N/S/E/W remain single.
+    auto getDirIndicesForLag = [&](int lagNum) {
+      std::vector<std::vector<int>> dirGroups(8);
+      int idx = 0; // 0-based column index for C++
+      for (int dr = -lagNum; dr <= lagNum; ++dr) {
+        for (int dc = -lagNum; dc <= lagNum; ++dc) {
+          // only take perimeter cells (Chebyshev distance == lagNum)
+          if (std::max(std::abs(dr), std::abs(dc)) != lagNum) continue;
+
+          // assign this position to its directional group
+          if (dr < 0 && dc < 0)       dirGroups[0].push_back(idx); // NW
+          else if (dr < 0 && dc == 0) dirGroups[1].push_back(idx); // N
+          else if (dr < 0 && dc > 0)  dirGroups[2].push_back(idx); // NE
+          else if (dr == 0 && dc < 0) dirGroups[3].push_back(idx); // W
+          else if (dr == 0 && dc > 0) dirGroups[4].push_back(idx); // E
+          else if (dr > 0 && dc < 0)  dirGroups[5].push_back(idx); // SW
+          else if (dr > 0 && dc == 0) dirGroups[6].push_back(idx); // S
+          else if (dr > 0 && dc > 0)  dirGroups[7].push_back(idx); // SE
+
+          ++idx;
+        }
+      }
+      return dirGroups;
+    };
+
+    // --- Apply directional filtering for each embedding level ---
+    for (auto& emb : embeddings) {
+      if (emb.empty() || emb[0].empty()) continue;
+
+      int totalCols = static_cast<int>(emb[0].size());
+      if (totalCols <= 1) continue; // skip single-column (current-state-only) embeddings
+
+      // infer lag number by total column count (8 * lagNum)
+      int lagNum = totalCols / 8;
+      if (lagNum < 1) lagNum = 1;
+
+      // compute direction index groups for this lag
+      auto dirGroups = getDirIndicesForLag(lagNum);
+
+      // collect all column indices belonging to the requested directions
+      std::vector<int> selectedCols;
+      for (int d : dir) {
+        if (d >= 1 && d <= 8) {
+          selectedCols.insert(selectedCols.end(),
+                              dirGroups[d - 1].begin(),
+                              dirGroups[d - 1].end());
+        }
+      }
+
+      // ensure unique, sorted indices
+      std::sort(selectedCols.begin(), selectedCols.end());
+      selectedCols.erase(std::unique(selectedCols.begin(), selectedCols.end()), selectedCols.end());
+
+      // subset each row of this embedding by selected column indices
+      for (auto& row : emb) {
+        std::vector<double> filteredRow;
+        filteredRow.reserve(selectedCols.size());
+        for (int idx : selectedCols) {
+          if (idx >= 0 && idx < static_cast<int>(row.size())) {
+            filteredRow.push_back(row[idx]);
+          }
+        }
+        row = std::move(filteredRow);
+      }
+    }
+  }
+
+  // Calculate validSubsets (indices of subsets that are not entirely NaN)
+  std::vector<size_t> validSubsets; // To store indices of valid subsets
+
+  // Iterate over each subset to check if it contains any non-NaN values
+  for (size_t sub = 0; sub < embeddings.size(); ++sub) {
+    bool isAllNaN = true;
+    for (size_t row = 0; row < embeddings[sub].size(); ++row) {
+      for (size_t col = 0; col < embeddings[sub][row].size(); ++col) {
+        if (!std::isnan(embeddings[sub][row][col])) {
+          isAllNaN = false;
+          break;
+        }
+      }
+      if (!isAllNaN) {
+        break;
+      }
+    }
+
+    if (!isAllNaN) {
+      validSubsets.push_back(sub); // Store the index of valid subsets
+    }
+  }
+
+  // If no subsets are removed, return the original embeddings
+  if (validSubsets.size() == embeddings.size()) {
+    return embeddings;
+  } else {
+    // Construct the filtered embeddings
+    std::vector<std::vector<std::vector<double>>> filteredEmbeddings;
+    filteredEmbeddings.reserve(validSubsets.size());
+    for (size_t sub : validSubsets) {
+      filteredEmbeddings.push_back(std::move(embeddings[sub]));
+    }
+
+    // Return the filtered embeddings
     return filteredEmbeddings;
   }
 }

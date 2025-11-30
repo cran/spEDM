@@ -5,6 +5,8 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+#include <numeric>
+#include "NumericUtils.h"
 #include "CppStats.h"
 #include "CppDistances.h"
 #include <RcppThread.h>
@@ -41,8 +43,43 @@
  *   If no valid pairs are found, returns NaN.
  */
 double CppSingleFNN(const std::vector<std::vector<double>>& embedding,
-                    const std::vector<int>& lib,
-                    const std::vector<int>& pred,
+                    const std::vector<size_t>& lib,
+                    const std::vector<size_t>& pred,
+                    size_t E1,
+                    size_t E2,
+                    size_t threads,
+                    int parallel_level = 0,
+                    double Rtol = 10.0,
+                    double Atol = 2.0,
+                    bool L1norm = false);
+
+/*
+ * Compute the False Nearest Neighbors (FNN) ratio for 3D embeddings.
+ *
+ * Embedding structure:
+ *   embedding[e][unit][lag]
+ *     e    = embedding level
+ *     unit = spatial index
+ *     lag  = lagged coordinate
+ *
+ * Distance definitions:
+ *   Dist_E1 = mean_{e = 0 .. E1-1} distance( embedding[e][pred], embedding[e][lib] )
+ *
+ *   Dist_E2 = mean_{lag = 0 .. embedding[E2-1][pred].size()} abs( embedding[E2-1][pred][lag] - embedding[E2-1][lib][lag] )
+ *
+ * A false neighbor is flagged if:
+ *       Dist_E2 / Dist_E1 > Rtol    OR    Dist_E2 > Atol
+ *
+ * Supports two computation modes:
+ *   parallel_level = 0  → per-pred parallel computation
+ *   parallel_level = 1  → precompute distance tables to reuse for repeated queries
+ *
+ * Returns:
+ *   proportion of false nearest neighbors in [0,1], or NaN if none are valid.
+ */
+double CppSingleFNN(const std::vector<std::vector<std::vector<double>>>& embedding,
+                    const std::vector<size_t>& lib,
+                    const std::vector<size_t>& pred,
                     size_t E1,
                     size_t E2,
                     size_t threads,
@@ -72,8 +109,8 @@ double CppSingleFNN(const std::vector<std::vector<double>>& embedding,
  * Parameters:
  * - embedding: A vector of vectors where each row is a spatial unit’s embedding.
  *              Must have at least 2 columns (dimensions).
- * - lib: A vector of integer indices indicating the library set (0-based).
- * - pred: A vector of integer indices indicating the prediction set (0-based).
+ * - lib: A vector of indices indicating the library set (0-based).
+ * - pred: A vector of indices indicating the prediction set (0-based).
  * - Rtol: A vector of relative distance thresholds (one per E1).
  * - Atol: A vector of absolute distance thresholds (one per E1).
  * - L1norm: If true, use L1 (Manhattan) distance; otherwise, use L2 (Euclidean).
@@ -85,8 +122,22 @@ double CppSingleFNN(const std::vector<std::vector<double>>& embedding,
  *   If not computable for a given E1, NaN is returned at that position.
  */
 std::vector<double> CppFNN(const std::vector<std::vector<double>>& embedding,
-                           const std::vector<int>& lib,
-                           const std::vector<int>& pred,
+                           const std::vector<size_t>& lib,
+                           const std::vector<size_t>& pred,
+                           const std::vector<double>& Rtol,
+                           const std::vector<double>& Atol,
+                           bool L1norm = false,
+                           int threads = 8,
+                           int parallel_level = 0);
+
+/*
+ * Compute FNN ratios for 3D embeddings across all embedding dimensions E1 = 1 .. D-1
+ *
+ * Returns: std::vector<double> of size D-1
+ */
+std::vector<double> CppFNN(const std::vector<std::vector<std::vector<double>>>& embedding,
+                           const std::vector<size_t>& lib,
+                           const std::vector<size_t>& pred,
                            const std::vector<double>& Rtol,
                            const std::vector<double>& Atol,
                            bool L1norm = false,

@@ -17,11 +17,11 @@
   base = 2,
   lib = NULL,
   pred = NULL,
-  nb = NULL,
   threads = detectThreads(),
   detrend = TRUE,
   normalize = FALSE,
-  progressbar = FALSE
+  progressbar = FALSE,
+  nb = NULL
 )
 
 \S4method{sc.test}{SpatRaster}(
@@ -38,7 +38,8 @@
   threads = detectThreads(),
   detrend = TRUE,
   normalize = FALSE,
-  progressbar = FALSE
+  progressbar = FALSE,
+  grid.coord = TRUE
 )
 }
 \arguments{
@@ -58,11 +59,9 @@
 
 \item{base}{(optional) logarithm base.}
 
-\item{lib}{(optional) libraries indices.}
+\item{lib}{(optional) libraries indices (input needed: \code{vector} - spatial vector, \code{matrix} - spatial raster).}
 
-\item{pred}{(optional) predictions indices.}
-
-\item{nb}{(optional) neighbours list.}
+\item{pred}{(optional) predictions indices (input requirement same as \code{lib}).}
 
 \item{threads}{(optional) number of threads to use.}
 
@@ -71,21 +70,25 @@
 \item{normalize}{(optional) whether to normalize the result.}
 
 \item{progressbar}{(optional) whether to show the progress bar.}
+
+\item{nb}{(optional) neighbours list.}
+
+\item{grid.coord}{(optional) whether to detrend using cell center coordinates (\code{TRUE}) or row/column numbers (\code{FALSE}).}
 }
 \value{
 A list
 \describe{
 \item{\code{sc}}{statistic for spatial causality}
-\item{\code{varname}}{names of causal and effect variable}
+\item{\code{varname}}{names of causal and effect variables}
 }
 }
 \description{
 spatial causality test
 }
 \examples{
-columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
-sc.test(columbus,"hoval","crime", k = 15)
+sc.test(columbus,"hoval","crime",k = 15)
 }
 }
 \references{

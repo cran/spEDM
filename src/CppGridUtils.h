@@ -122,6 +122,52 @@ std::vector<std::vector<double>> GenGridEmbeddings(
 );
 
 /**
+ * Generates multi-level grid embeddings by computing lagged neighbor values
+ * for each embedding dimension and returning all lag results instead of averaging them.
+ *
+ * Each embedding dimension corresponds to a lagged state (τ, 2τ, ... depending on style),
+ * and each lagged state is stored as a separate 2D structure representing the grid's lagged values.
+ *
+ * Parameters:
+ *   mat   - A 2D vector representing the grid data.
+ *   E     - The number of embedding dimensions (number of lag steps to compute).
+ *   tau   - The spatial lag step for constructing lagged state-space vectors.
+ *   style - Embedding style selector:
+ *             - style = 0: embedding includes the current state as the first dimension.
+ *             - style != 0: embedding excludes the current state.
+ *   dir   - Direction selector (optional):
+ *             - If dir = {0}, returns all directional lag values (no filtering).
+ *             - If dir ∈ {1,...,8}, keeps only lag values in that direction:
+ *                 1: NW, 2: N, 3: NE, 4: W, 5: E, 6: SW, 7: S, 8: SE
+ *             - Multiple directions can be specified (e.g., {1,2,3} = NW, N, NE).
+ *
+ * Returns:
+ *   A 3D vector (std::vector<std::vector<std::vector<double>>>) structured as:
+ *     - Outer level (size E): Each element corresponds to an embedding dimension.
+ *     - Middle level: Each element corresponds to a grid cell (flattened from 2D).
+ *     - Inner level: Contains all lagged neighbor values (may include NaNs).
+ *
+ * Notes:
+ *   - This function differs from GenGridEmbeddings in that it does NOT average lagged values.
+ *     Instead, it preserves the full neighbor value sets for each lag step.
+ *   - This function also enables direction-based filtering:
+ *      - For example, for a 3x3 window (lag = 1), directions map to indices 0–7:
+ *         1: NW (0), 2: N (1), 3: NE (2), 4: W (3), 5: E (4), 6: SW (5), 7: S (6), 8: SE (7)
+ *      - For larger lags, each direction expands radially; indices are extended accordingly.
+ *   - For tau and style:
+ *      - When tau = 0, lag steps are sequential (0, 1, 2, ..., E-1).
+ *      - When tau > 0 and style = 0, lag steps are 0, τ, 2τ, ..., (E-1)τ.
+ *      - When tau > 0 and style != 0, lag steps are τ, 2τ, ..., Eτ.
+ */
+std::vector<std::vector<std::vector<double>>> GenGridEmbeddingsCom(
+    const std::vector<std::vector<double>>& mat,
+    int E,
+    int tau,
+    int style = 1,
+    const std::vector<int>& dir = {0}
+);
+
+/**
  * @brief Generate k nearest neighbors for all cells in a grid,
  *        choosing only from cells listed in lib and using Queen adjacency.
  *

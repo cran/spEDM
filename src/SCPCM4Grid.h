@@ -12,7 +12,7 @@
 #include "CppGridUtils.h"
 #include "SimplexProjection.h"
 #include "SMap.h"
-#include "spEDMDataStruct.h"
+#include "DataStruct.h"
 #include <RcppThread.h>
 
 /**
@@ -36,6 +36,8 @@
  * @param style: Embedding style selector (0: includes current state, 1: excludes it).
  * @param dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average: Whether to average distance by the number of valid vector components.
+ * @param dir: Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+ *
  * @return A vector of size 2 containing:
  *         - rho[0]: Pearson correlation between the target and its predicted values.
  *         - rho[1]: Partial correlation between the target and its predicted values, adjusting for control variables.
@@ -54,6 +56,28 @@ std::vector<double> PartialSimplex4Grid(
     int style = 1,
     int dist_metric = 2,
     bool dist_average = true
+);
+
+/**
+ * Computes the partial correlation between a spatial cross-sectional series and its prediction
+ * using the Simplex Projection method, incorporating control variables in a grid-based spatial
+ * setting (composite embeddings version).
+ */
+std::vector<double> PartialSimplex4Grid(
+    const std::vector<std::vector<std::vector<double>>>& vectors,
+    const std::vector<double>& target,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& num_neighbors,
+    int nrow,
+    bool cumulate = false,
+    int style = 1,
+    int dist_metric = 2,
+    bool dist_average = true,
+    const std::vector<int>& dir = {0}
 );
 
 /**
@@ -78,6 +102,8 @@ std::vector<double> PartialSimplex4Grid(
  * @param style: Embedding style selector (0: includes current state, 1: excludes it).
  * @param dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average: Whether to average distance by the number of valid vector components.
+ * @param dir: Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+ *
  * @return A vector of size 2 containing:
  *         - rho[0]: Pearson correlation between the target and its predicted values.
  *         - rho[1]: Partial correlation between the target and its predicted values, adjusting for control variables.
@@ -97,6 +123,28 @@ std::vector<double> PartialSMap4Grid(
     int style = 1,
     int dist_metric = 2,
     bool dist_average = true
+);
+
+/**
+ * Computes the partial correlation between a spatial cross-sectional series and its prediction
+ * using the S-Map method, incorporating control variables in a grid-based spatial setting (composite embeddings version).
+ */
+std::vector<double> PartialSMap4Grid(
+    const std::vector<std::vector<std::vector<double>>>& vectors,
+    const std::vector<double>& target,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& num_neighbors,
+    int nrow,
+    double theta = 1.0,
+    bool cumulate = false,
+    int style = 1,
+    int dist_metric = 2,
+    bool dist_average = true,
+    const std::vector<int>& dir = {0}
 );
 
 /**
@@ -125,6 +173,8 @@ std::vector<double> PartialSMap4Grid(
  * @param style                Embedding style selector (0: includes current state, 1: excludes it).
  * @param dist_metric          Distance metric selector (1: Manhattan, 2: Euclidean).
  * @param dist_average         Whether to average distance by the number of valid vector components.
+ * @param dir                  Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+ * @param win_ratios           Scale the sliding window step relative to the matrix width/height to speed up state-space predictions.
  *
  * @return  A vector contains the library size and the corresponding cross mapping and partial cross mapping result.
  */
@@ -148,7 +198,34 @@ std::vector<PartialCorRes> SCPCMSingle4Grid(
     bool row_size_mark,
     int style,
     int dist_metric,
-    bool dist_average
+    bool dist_average,
+    const std::vector<double>& win_ratios = {0,0}
+);
+
+// Perform Grid-based Spatially Convergent Partial Cross Mapping (SCPCM) for a single library size (composite embeddings version).
+std::vector<PartialCorRes> SCPCMSingle4Grid(
+    const std::vector<std::vector<std::vector<double>>>& xEmbedings,
+    const std::vector<double>& yPred,
+    const std::vector<std::vector<double>>& controls,
+    const std::vector<int>& lib_sizes,
+    const std::vector<bool>& possible_lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& b,
+    int totalRow,
+    int totalCol,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    bool cumulate,
+    bool row_size_mark,
+    int style,
+    int dist_metric,
+    bool dist_average,
+    const std::vector<int>& dir = {0},
+    const std::vector<double>& win_ratios = {0,0}
 );
 
 /**
@@ -176,6 +253,7 @@ std::vector<PartialCorRes> SCPCMSingle4Grid(
  * @param style                Embedding style selector (0: includes current state, 1: excludes it)
  * @param dist_metric          Distance metric selector (1: Manhattan, 2: Euclidean)
  * @param dist_average         Whether to average distance by the number of valid vector components
+ * @param dir                  Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
  *
  * @return Vector of PartialCorRes containing mapping results for each library configuration
  */
@@ -201,6 +279,30 @@ std::vector<PartialCorRes> SCPCMSingle4GridOneDim(
     bool dist_average
 );
 
+// Perform Grid-based Spatially Convergent Partial Cross Mapping (SCPCM) for a single library size (composite embeddings version).
+std::vector<PartialCorRes> SCPCMSingle4GridOneDim(
+    const std::vector<std::vector<std::vector<double>>>& xEmbedings,
+    const std::vector<double>& yPred,
+    const std::vector<std::vector<double>>& controls,
+    int lib_size,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    const std::vector<int>& conEs,
+    const std::vector<int>& taus,
+    const std::vector<int>& b,
+    int totalRow,
+    int totalCol,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    bool cumulate,
+    int style,
+    int dist_metric,
+    bool dist_average,
+    const std::vector<int>& dir = {0}
+);
+
 /**
  * Perform Grid-based Spatially Convergent Partial Cross Mapping (SCPCM) for multiple library sizes.
  *
@@ -224,9 +326,12 @@ std::vector<PartialCorRes> SCPCMSingle4GridOneDim(
  * - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * - cumulate: Boolean flag indicating whether to cumulate partial correlations.
  * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * - dist_average: Whether to average distance by the number of valid vector components.
  * - single_sig: Whether to estimate significance and confidence intervals using a single rho value.
+ * - dir: Direction selector for embeddings where 0 returns all directions for embeddings, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+ * - win_rations: Scale the sliding window step relative to the matrix width/height to speed up state-space predictions.
  * - progressbar: Boolean flag indicating whether to display a progress bar during computation.
  *
  * Returns:
@@ -234,12 +339,12 @@ std::vector<PartialCorRes> SCPCMSingle4GridOneDim(
  *      - The library size.
  *      - The mean pearson cross-mapping correlation.
  *      - The statistical significance of the pearson correlation.
- *      - The upper bound of the pearson correlation confidence interval.
  *      - The lower bound of the pearson correlation confidence interval.
+ *      - The upper bound of the pearson correlation confidence interval.
  *      - The mean partial cross-mapping partial correlation.
  *      - The statistical significance of the partial correlation.
- *      - The upper bound of the partial correlation confidence interval.
  *      - The lower bound of the partial correlation confidence interval.
+ *      - The upper bound of the partial correlation confidence interval.
  */
 std::vector<std::vector<double>> SCPCM4Grid(
     const std::vector<std::vector<double>>& xMatrix,     // Two dimension matrix of X variable
@@ -257,10 +362,13 @@ std::vector<std::vector<double>> SCPCM4Grid(
     int parallel_level,                                  // Level of parallel computing: 0 for `lower`, 1 for `higher`
     bool cumulate,                                       // Whether to cumulate the partial correlations
     int style,                                           // Embedding style selector (0: includes current state, 1: excludes it)
+    int stack,                                           // Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
     int dist_metric,                                     // Distance metric selector (1: Manhattan, 2: Euclidean)
     bool dist_average,                                   // Whether to average distance by the number of valid vector components
     bool single_sig,                                     // Whether to estimate significance and confidence intervals using a single rho value
-    bool progressbar                                     // Whether to print the progress bar
+    const std::vector<int>& dir = {0},                   // Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
+    const std::vector<double>& win_ratios = {0,0},       // Scale the sliding window step relative to the matrix width/height to speed up state-space predictions.
+    bool progressbar = false                             // Whether to print the progress bar
 );
 
 /**
@@ -282,9 +390,11 @@ std::vector<std::vector<double>> SCPCM4Grid(
  * - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * - cumulate: Enable cumulative partial correlations
  * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * - dist_average: Whether to average distance by the number of valid vector components.
  * - single_sig: Whether to estimate significance and confidence intervals using a single rho value.
+ * - dir: Direction selector for embeddings where 0 returns all directions, 1–8 correspond to NW, N, NE, W, E, SW, S, SE, and multiple directions can be combined (e.g., {1,2,3} for NW, N, NE).
  * - progressbar: Display progress bar during computation
  *
  * Returns:
@@ -292,12 +402,12 @@ std::vector<std::vector<double>> SCPCM4Grid(
  *     - Library size
  *     - Mean cross-map correlation (rho)
  *     - Rho significance
- *     - Rho upper CI
  *     - Rho lower CI
+ *     - Rho upper CI
  *     - Mean partial correlation
  *     - Partial correlation significance
- *     - Partial upper CI
  *     - Partial lower CI
+ *     - Partial upper CI
  */
 std::vector<std::vector<double>> SCPCM4GridOneDim(
     const std::vector<std::vector<double>>& xMatrix,
@@ -315,10 +425,12 @@ std::vector<std::vector<double>> SCPCM4GridOneDim(
     int parallel_level,
     bool cumulate,
     int style,
+    int stack,
     int dist_metric,
     bool dist_average,
     bool single_sig,
-    bool progressbar
+    const std::vector<int>& dir = {0},
+    bool progressbar = false
 );
 
 #endif // SCPCM4Grid_H

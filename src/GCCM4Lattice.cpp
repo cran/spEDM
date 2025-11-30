@@ -138,6 +138,110 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
   }
 }
 
+// Perform GCCM on a single lib and pred for lattice data (composite embeddings version).
+std::vector<std::pair<int, double>> GCCMSingle4Lattice(
+    const std::vector<std::vector<std::vector<double>>>& x_vectors,
+    const std::vector<double>& y,
+    int lib_size,
+    const std::vector<int>& lib_indices,
+    const std::vector<int>& pred_indices,
+    int b,
+    bool simplex,
+    double theta,
+    size_t threads,
+    int parallel_level,
+    int dist_metric,
+    bool dist_average
+) {
+  int max_lib_size = lib_indices.size();
+
+  // No possible library variation if using all vectors
+  if (lib_size == max_lib_size) {
+    std::vector<std::pair<int, double>> x_xmap_y;
+
+    // Run cross map and store results
+    double rho = std::numeric_limits<double>::quiet_NaN();
+    if (simplex) {
+      rho = SimplexProjection(x_vectors, y, lib_indices, pred_indices, b, dist_metric, dist_average);
+    } else {
+      rho = SMap(x_vectors, y, lib_indices, pred_indices, b, theta, dist_metric, dist_average);
+    }
+    x_xmap_y.emplace_back(lib_size, rho);
+    return x_xmap_y;
+  } else if (parallel_level == 0){
+    // Precompute valid indices for the library
+    std::vector<std::vector<int>> valid_lib_indices;
+    for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
+      std::vector<int> local_lib_indices;
+      // Loop around to beginning of lib indices
+      if (start_lib + lib_size > max_lib_size) {
+        for (int i = start_lib; i < max_lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+        int num_vectors_remaining = lib_size - (max_lib_size - start_lib);
+        for (int i = 0; i < num_vectors_remaining; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      } else {
+        for (int i = start_lib; i < start_lib + lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      }
+      valid_lib_indices.emplace_back(local_lib_indices);
+    }
+
+    // Preallocate the result vector to avoid out-of-bounds access
+    std::vector<std::pair<int, double>> x_xmap_y(valid_lib_indices.size());
+
+    // Perform the operations using RcppThread
+    RcppThread::parallelFor(0, valid_lib_indices.size(), [&](size_t i) {
+      // Run cross map and store results
+      double rho = std::numeric_limits<double>::quiet_NaN();
+      if (simplex) {
+        rho = SimplexProjection(x_vectors, y, valid_lib_indices[i], pred_indices, b, dist_metric, dist_average);
+      } else {
+        rho = SMap(x_vectors, y, valid_lib_indices[i], pred_indices, b, theta, dist_metric, dist_average);
+      }
+
+      std::pair<int, double> result(lib_size, rho); // Store the product of row and column library sizes
+      x_xmap_y[i] = result;
+    }, threads);
+
+    return x_xmap_y;
+  } else {
+    std::vector<std::pair<int, double>> x_xmap_y;
+
+    for (int start_lib = 0; start_lib < max_lib_size; ++start_lib) {
+      std::vector<int> local_lib_indices;
+      // Setup changing library
+      if (start_lib + lib_size > max_lib_size) { // Loop around to beginning of lib indices
+        for (int i = start_lib; i < max_lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+        int num_vectors_remaining = lib_size - (max_lib_size - start_lib);
+        for (int i = 0; i < num_vectors_remaining; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      } else {
+        for (int i = start_lib; i < start_lib + lib_size; ++i) {
+          local_lib_indices.emplace_back(lib_indices[i]);
+        }
+      }
+
+      // Run cross map and store results
+      double rho = std::numeric_limits<double>::quiet_NaN();
+      if (simplex) {
+        rho = SimplexProjection(x_vectors, y, local_lib_indices, pred_indices, b, dist_metric, dist_average);
+      } else {
+        rho = SMap(x_vectors, y, local_lib_indices, pred_indices, b, theta, dist_metric, dist_average);
+      }
+      x_xmap_y.emplace_back(lib_size, rho);
+    }
+
+    return x_xmap_y;
+  }
+}
+
 /**
  * Performs GCCM on a spatial lattice data.
  *
@@ -156,6 +260,7 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
  * - threads: Number of threads to use for parallel computation.
  * - parallel_level: Level of parallel computing: 0 for `lower`, 1 for `higher`.
  * - style: Embedding style selector (0: includes current state, 1: excludes it).
+ * - stack: Embedding arrangement selector (0: single - average lags, 1: composite - stack).  Default is 0 (average lags).
  * - dist_metric: Distance metric selector (1: Manhattan, 2: Euclidean).
  * - dist_average: Whether to average distance by the number of valid vector components.
  * - single_sig: Whether to estimate significance and confidence intervals using a single rho value.
@@ -166,8 +271,8 @@ std::vector<std::pair<int, double>> GCCMSingle4Lattice(
  *      - The library size.
  *      - The mean cross-mapping correlation.
  *      - The statistical significance of the correlation.
- *      - The upper bound of the confidence interval.
  *      - The lower bound of the confidence interval.
+ *      - The upper bound of the confidence interval.
  */
 std::vector<std::vector<double>> GCCM4Lattice(
     const std::vector<double>& x,
@@ -184,6 +289,7 @@ std::vector<std::vector<double>> GCCM4Lattice(
     int threads,
     int parallel_level,
     int style,
+    int stack,
     int dist_metric,
     bool dist_average,
     bool single_sig,
@@ -199,7 +305,13 @@ std::vector<std::vector<double>> GCCM4Lattice(
   threads_sizet = std::min(static_cast<size_t>(std::thread::hardware_concurrency()), threads_sizet);
 
   // Generate embeddings
-  std::vector<std::vector<double>> x_vectors = GenLatticeEmbeddings(x, nb_vec, E, tau, style);
+  std::vector<std::vector<double>> Emb2D;
+  std::vector<std::vector<std::vector<double>>> Emb3D;
+  if (stack == 0){
+    Emb2D = GenLatticeEmbeddings(x, nb_vec, E, tau, style);
+  } else {
+    Emb3D = GenLatticeEmbeddingsCom(x, nb_vec, E, tau, style);
+  }
 
   size_t n = pred.size();
 
@@ -226,36 +338,68 @@ std::vector<std::vector<double>> GCCM4Lattice(
     if (progressbar) {
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
-        local_results[i] = GCCMSingle4Lattice(
-          x_vectors,
-          y,
-          unique_lib_sizes[i],
-          lib,
-          pred,
-          b,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          dist_metric,
-          dist_average);
+        if (stack == 0){
+          local_results[i] = GCCMSingle4Lattice(
+            Emb2D,
+            y,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        } else {
+          local_results[i] = GCCMSingle4Lattice(
+            Emb3D,
+            y,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        }
         bar++;
       }
     } else {
       for (size_t i = 0; i < unique_lib_sizes.size(); ++i) {
-        local_results[i] = GCCMSingle4Lattice(
-          x_vectors,
-          y,
-          unique_lib_sizes[i],
-          lib,
-          pred,
-          b,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          dist_metric,
-          dist_average);
+        if (stack == 0){
+          local_results[i] = GCCMSingle4Lattice(
+            Emb2D,
+            y,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        } else {
+          local_results[i] = GCCMSingle4Lattice(
+            Emb3D,
+            y,
+            unique_lib_sizes[i],
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        }
       }
     }
   } else {
@@ -264,37 +408,69 @@ std::vector<std::vector<double>> GCCM4Lattice(
       RcppThread::ProgressBar bar(unique_lib_sizes.size(), 1);
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        local_results[i] = GCCMSingle4Lattice(
-          x_vectors,
-          y,
-          lib_size,
-          lib,
-          pred,
-          b,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          dist_metric,
-          dist_average);
+        if (stack == 0){
+          local_results[i] = GCCMSingle4Lattice(
+            Emb2D,
+            y,
+            lib_size,
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        } else {
+          local_results[i] = GCCMSingle4Lattice(
+            Emb3D,
+            y,
+            lib_size,
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        }
         bar++;
       }, threads_sizet);
     } else {
       RcppThread::parallelFor(0, unique_lib_sizes.size(), [&](size_t i) {
         int lib_size = unique_lib_sizes[i];
-        local_results[i] = GCCMSingle4Lattice(
-          x_vectors,
-          y,
-          lib_size,
-          lib,
-          pred,
-          b,
-          simplex,
-          theta,
-          threads_sizet,
-          parallel_level,
-          dist_metric,
-          dist_average);
+        if (stack == 0){
+          local_results[i] = GCCMSingle4Lattice(
+            Emb2D,
+            y,
+            lib_size,
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        } else {
+          local_results[i] = GCCMSingle4Lattice(
+            Emb3D,
+            y,
+            lib_size,
+            lib,
+            pred,
+            b,
+            simplex,
+            theta,
+            threads_sizet,
+            parallel_level,
+            dist_metric,
+            dist_average);
+        }
       }, threads_sizet);
     }
   }

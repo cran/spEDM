@@ -1,5 +1,5 @@
-.gcmc_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, tau = 1, k = pmin(E^2), lib = NULL, pred = NULL, style = 1, dist.metric = "L2",
-                    nb = NULL, threads = detectThreads(), parallel.level = "low", bidirectional = TRUE, detrend = FALSE, progressbar = TRUE){
+.gcmc_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, k = pmin(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
+                    threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, nb = NULL){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
   tau = .check_inputelementnum(tau,2)
@@ -33,8 +33,8 @@
   return(.bind_intersectdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
 
-.gcmc_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, tau = 1, k = pmin(E^2), lib = NULL, pred = NULL, style = 1, dist.metric = "L2",
-                            threads = detectThreads(), parallel.level = "low", bidirectional = TRUE, detrend = FALSE, progressbar = TRUE){
+.gcmc_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, k = pmin(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
+                            threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, grid.coord = TRUE){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,2)
   tau = .check_inputelementnum(tau,2)
@@ -44,7 +44,7 @@
   data = data[[varname]]
   names(data) = .varname
 
-  dtf = terra::as.data.frame(data,xy = TRUE,na.rm = FALSE)
+  dtf = .internal_grid2df(data,grid.coord)
   if (detrend){
     dtf = .internal_detrend(dtf,.varname)
   }
@@ -71,26 +71,26 @@
 #' @param data observation data.
 #' @param cause name of causal variable.
 #' @param effect name of effect variable.
-#' @param libsizes (optional) number of spatial units used.
+#' @param libsizes (optional) number of spatial units used (input needed: `vector` - spatial vector, `matrix` - spatial raster).
 #' @param E (optional) embedding dimensions.
-#' @param tau (optional) step of spatial lags.
 #' @param k (optional) number of nearest neighbors.
-#' @param lib (optional) libraries indices.
-#' @param pred (optional) predictions indices.
+#' @param tau (optional) step of spatial lags.
 #' @param style (optional) embedding style (`0` includes current state, `1` excludes it).
+#' @param lib (optional) libraries indices (input requirement same as `libsizes`).
+#' @param pred (optional) predictions indices (input requirement same as `libsizes`).
 #' @param dist.metric (optional) distance metric (`L1`: Manhattan, `L2`: Euclidean).
-#' @param nb (optional) neighbours list.
 #' @param threads (optional) number of threads to use.
+#' @param detrend (optional) whether to remove the linear trend.
 #' @param parallel.level (optional) level of parallelism, `low` or `high`.
 #' @param bidirectional (optional) whether to examine bidirectional causality.
-#' @param detrend (optional) whether to remove the linear trend.
 #' @param progressbar (optional) whether to show the progress bar.
+#' @param nb (optional) neighbours list.
 #'
 #' @return A list
 #' \describe{
 #' \item{\code{xmap}}{cross mapping results}
 #' \item{\code{cs}}{causal strength}
-#' \item{\code{varname}}{names of causal and effect variable}
+#' \item{\code{varname}}{names of causal and effect variables}
 #' \item{\code{bidirectional}}{whether to examine bidirectional causality}
 #' }
 #' @export
@@ -98,7 +98,7 @@
 #' @aliases gcmc,sf-method
 #'
 #' @examples
-#' columbus = sf::read_sf(system.file("case/columbus.gpkg", package="spEDM"))
+#' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 #' \donttest{
 #' g = gcmc(columbus,"hoval","crime",E = 7,k = 18)
 #' g
@@ -106,4 +106,5 @@
 methods::setMethod("gcmc", "sf", .gcmc_sf_method)
 
 #' @rdname gcmc
+#' @param grid.coord (optional) whether to detrend using cell center coordinates (`TRUE`) or row/column numbers (`FALSE`).
 methods::setMethod("gcmc", "SpatRaster", .gcmc_spatraster_method)
