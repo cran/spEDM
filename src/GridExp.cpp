@@ -17,7 +17,6 @@
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
 // #include <Rcpp.h>
 #include <RcppArmadillo.h>
-// [[Rcpp::depends(RcppArmadillo)]]
 
 // Wrapper function to convert row and column indices to 1-based linear indices
 // [[Rcpp::export(rng = false)]]
@@ -296,7 +295,9 @@ Rcpp::NumericMatrix RcppSLMUni4Grid(
     int k = 4,
     int step = 20,
     double alpha = 0.77,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   int numRows = mat.nrow();
@@ -310,7 +311,8 @@ Rcpp::NumericMatrix RcppSLMUni4Grid(
   }
 
   // Call the core function
-  std::vector<std::vector<double>> result = SLMUni4Grid(cppMat, k, step, alpha, escape_threshold);
+  std::vector<std::vector<double>> result = SLMUni4Grid(cppMat, k, step, alpha,
+                                                        noise_level, escape_threshold, random_seed);
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
   int n_rows = static_cast<int>(result.size());
@@ -339,7 +341,9 @@ Rcpp::List RcppSLMBi4Grid(
     double beta_xy = 0.05,
     double beta_yx = 0.4,
     int interact = 0,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   int numRows = mat1.nrow();
@@ -356,7 +360,8 @@ Rcpp::List RcppSLMBi4Grid(
 
   // Call the core function
   std::vector<std::vector<std::vector<double>>> result = SLMBi4Grid(
-    cppMat1, cppMat2, k, step, alpha_x, alpha_y, beta_xy, beta_yx, interact, escape_threshold
+    cppMat1, cppMat2, k, step, alpha_x, alpha_y, beta_xy, beta_yx,
+    interact, noise_level, escape_threshold, random_seed
   );
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
@@ -400,7 +405,9 @@ Rcpp::List RcppSLMTri4Grid(
     double beta_zx = 0.65,
     double beta_zy = 0.65,
     int interact = 0,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert Rcpp::NumericMatrix to std::vector<std::vector<double>>
   int numRows = mat1.nrow();
@@ -422,7 +429,7 @@ Rcpp::List RcppSLMTri4Grid(
     cppMat1, cppMat2, cppMat3,
     k, step, alpha_x, alpha_y, alpha_z,
     beta_xy, beta_xz, beta_yx, beta_yz, beta_zx, beta_zy,
-    interact, escape_threshold
+    interact, noise_level, escape_threshold, random_seed
   );
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
@@ -572,7 +579,7 @@ Rcpp::NumericVector RcppFNN4Grid(
   return result;
 }
 
-// Wrapper function to perform simplex forecasting for spatial grid data
+// Wrapper function to perform parameter selection of simplex forecasting for spatial grid data
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppSimplex4Grid(const Rcpp::NumericMatrix& source,
                                      const Rcpp::NumericMatrix& target,
@@ -724,7 +731,7 @@ Rcpp::NumericMatrix RcppSimplex4Grid(const Rcpp::NumericMatrix& source,
   return result;
 }
 
-// Wrapper function to perform s-mapping for spatial grid data
+// Wrapper function to perform parameter selection of s-mapping for spatial grid data
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppSMap4Grid(const Rcpp::NumericMatrix& source,
                                   const Rcpp::NumericMatrix& target,
@@ -1090,7 +1097,7 @@ Rcpp::NumericMatrix RcppMultiView4Grid(const Rcpp::NumericMatrix& xMatrix,
   return resmat;
 }
 
-// Wrapper function to compute intersection cardinality for spatial grid data
+// Wrapper function to perform parameter selection of intersectional cardinality for spatial grid data
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppIC4Grid(const Rcpp::NumericMatrix& source,
                                 const Rcpp::NumericMatrix& target,
@@ -1927,8 +1934,10 @@ Rcpp::List RcppGCMC4Grid(
     }
   }
 
-  if (b < 3 || b > validCellNum) {
-    Rcpp::stop("k cannot be less than or equal to 3 or greater than the number of non-NA values.");
+  if (b <= 3 || b > validCellNum) {
+    Rcpp::stop("k must be greater than 3 and no larger than the number of non-NA values.\n"
+               "An empirical rule of thumb is to set k = sqrt(E * N),\n"
+               "where E is the embedding dimension and N is the number of valid observations in the prediction set.");
   }
 
   // -- Convert libsizes --------------------------------------------------
@@ -2125,7 +2134,7 @@ Rcpp::List RcppGPC4Grid(
         case 3: pattern_labels[idx]  = "dark"; break;
         default: pattern_labels[idx] = "unknown"; break;
       }
-    } 
+    }
   }
 
   // --- Build DataFrame outputs ---------------------------------------------
@@ -2167,7 +2176,7 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     int b = 4,
     int boot = 99,
     bool random = true,
-    unsigned int seed = 42,
+    unsigned long long seed = 42,
     int zero_tolerance = 0,
     int dist_metric = 2,
     bool relative = true,
@@ -2466,7 +2475,7 @@ Rcpp::NumericVector RcppSGC4Grid(const Rcpp::NumericMatrix& x,
                                  int threads = 8,
                                  int boot = 399,
                                  double base = 2,
-                                 unsigned int seed = 42,
+                                 unsigned long long seed = 42,
                                  bool symbolize = true,
                                  bool normalize = false,
                                  bool progressbar = true){

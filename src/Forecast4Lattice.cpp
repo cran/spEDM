@@ -6,11 +6,9 @@
 #include "CppLatticeUtils.h"
 #include "SimplexProjection.h"
 #include "SMap.h"
-#include "IntersectionCardinality.h"
+#include "IntersectionalCardinality.h"
 #include "PatternCausality.h"
 #include <RcppThread.h>
-
-// [[Rcpp::depends(RcppThread)]]
 
 /*
  * Evaluates prediction performance of different combinations of embedding dimensions, number of nearest neighbors
@@ -246,17 +244,17 @@ std::vector<std::vector<double>> SMap4LatticeCom(const std::vector<double>& sour
 }
 
 /**
- * Compute Intersection Cardinality AUC over spatial lattice data.
+ * Compute Intersectional Cardinality AUC over spatial lattice data.
  *
- * This function computes the causal strength between two lattice-structured spatial 
- * cross-sections (`source` and `target`) by evaluating the Intersection Cardinality 
+ * This function computes the causal strength between two lattice-structured spatial
+ * cross-sections (`source` and `target`) by evaluating the Intersectional Cardinality
  * (IC) curve, and summarizing it using the Area Under the Curve (AUC) metric.
  *
  * For each combination of embedding dimension `E`, neighbor size `b` and spatial lag
  * step `tau`, the function:
  *  - Generates state-space embeddings based on lattice neighborhood topology.
  *  - Filters out prediction points with missing (NaN) values.
- *  - Computes neighbor structures and evaluates intersection sizes between the mapped
+ *  - Computes neighbor structures and evaluates intersectional sizes between the mapped
  *    neighbors of `source` and `target`.
  *  - Aggregates the IC curve and estimates the AUC (optionally using significance test).
  *
@@ -320,7 +318,7 @@ std::vector<std::vector<double>> IC4Lattice(const std::vector<double>& source,
     for (int t : taus)
       unique_ETau.emplace_back(e, t);
 
-  std::vector<std::vector<double>> result(unique_ETau.size() * bs.size(), 
+  std::vector<std::vector<double>> result(unique_ETau.size() * bs.size(),
                                           std::vector<double>(5));
 
   size_t max_num_neighbors = 0;
@@ -367,7 +365,7 @@ std::vector<std::vector<double>> IC4Lattice(const std::vector<double>& source,
         const size_t k = static_cast<size_t>(bs[j]);
 
         // run cross mapping
-        std::vector<IntersectionRes> res = IntersectionCardinalitySingle(
+        std::vector<IntersectionRes> res = IntersectionalCardinalitySingle(
           nx,ny,lib_indices.size(),lib_indices,valid_pred,k,n_excluded_sizet,threads_sizet,0
         );
 
@@ -420,7 +418,7 @@ std::vector<std::vector<double>> IC4Lattice(const std::vector<double>& source,
         const size_t k = static_cast<size_t>(bs[j]);
 
         // run cross mapping
-        std::vector<IntersectionRes> res = IntersectionCardinalitySingle(
+        std::vector<IntersectionRes> res = IntersectionalCardinalitySingle(
           nx,ny,lib_indices.size(),lib_indices,valid_pred,k,n_excluded_sizet,threads_sizet,1
         );
 

@@ -9,7 +9,10 @@
 #include <utility>
 #include <stdexcept>
 #include "NumericUtils.h"
-#include <RcppThread.h>
+// Note: <RcppThread.h> is intentionally excluded from this header to avoid
+//       unnecessary Rcpp dependencies and potential header inclusion order
+//       issues (e.g., R.h being included before Rcpp headers). It should only
+//       be included in the corresponding .cpp implementation file.
 
 double CppDistance(const std::vector<double>& vec1,
                    const std::vector<double>& vec2,
@@ -52,14 +55,14 @@ std::vector<size_t> CppKNNIndice(
     const std::vector<std::vector<double>>& embedding_space,
     size_t target_idx,
     size_t k,
-    const std::vector<int>& lib,
+    const std::vector<size_t>& lib,
     bool include_self = false);
 
 std::vector<size_t> CppDistKNNIndice(
     const std::vector<std::vector<double>>& dist_mat,
     size_t target_idx,
     size_t k,
-    const std::vector<int>& lib,
+    const std::vector<size_t>& lib,
     bool include_self = false);
 
 std::vector<std::vector<size_t>> CppDistSortedIndice(

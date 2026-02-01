@@ -17,7 +17,6 @@
 // 'Rcpp.h' should not be included and correct to include only 'RcppArmadillo.h'.
 // #include <Rcpp.h>
 #include <RcppArmadillo.h>
-// [[Rcpp::depends(RcppArmadillo)]]
 
 // Function to convert Rcpp::List to std::vector<std::vector<int>> (the `nb` object)
 std::vector<std::vector<int>> nb2vec(const Rcpp::List& nb) {
@@ -87,13 +86,13 @@ Rcpp::List RcppLaggedVal4Lattice(const Rcpp::NumericVector& vec,
   // Convert Rcpp::NumericVector to std::vector<double>
   std::vector<double> vec_std = Rcpp::as<std::vector<double>>(vec);
 
-  // Convert Rcpp::List to std::vector<std::vector<int>>
+  // Convert nb object from Rcpp::List to std::vector<std::vector<int>>
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
-  // Calculate lagged indices
+  // Calculate lagged values
   std::vector<std::vector<double>> lagged_values = CppLaggedVal4Lattice(vec_std, nb_vec, lagNum);
 
-  // Convert std::vector<std::vector<int>> to Rcpp::List
+  // Convert std::vector<std::vector<double>> to Rcpp::List
   Rcpp::List result(n);
   for (int i = 0; i < n; ++i) {
     result[i] = Rcpp::wrap(lagged_values[i]);
@@ -279,7 +278,9 @@ Rcpp::NumericMatrix RcppSLMUni4Lattice(
     int k = 4,
     int step = 20,
     double alpha = 0.77,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert vec to std::vector<double>
   std::vector<double> vec_std = Rcpp::as<std::vector<double>>(vec);
@@ -288,7 +289,8 @@ Rcpp::NumericMatrix RcppSLMUni4Lattice(
   std::vector<std::vector<int>> nb_vec = nb2vec(nb);
 
   // Call the core function
-  std::vector<std::vector<double>> result = SLMUni4Lattice(vec_std, nb_vec, k, step, alpha, escape_threshold);
+  std::vector<std::vector<double>> result = SLMUni4Lattice(vec_std, nb_vec, k, step, alpha,
+                                                           noise_level, escape_threshold, random_seed);
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
   int n_rows = static_cast<int>(result.size());
@@ -318,7 +320,9 @@ Rcpp::List RcppSLMBi4Lattice(
     double beta_xy = 0.05,
     double beta_yx = 0.4,
     int interact = 0,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert x/y to std::vector<double>
   std::vector<double> vec1 = Rcpp::as<std::vector<double>>(x);
@@ -329,7 +333,8 @@ Rcpp::List RcppSLMBi4Lattice(
 
   // Call the core function
   std::vector<std::vector<std::vector<double>>> result = SLMBi4Lattice(
-    vec1, vec2, nb_vec, k, step, alpha_x, alpha_y, beta_xy, beta_yx, interact, escape_threshold
+    vec1, vec2, nb_vec, k, step, alpha_x, alpha_y, beta_xy, beta_yx,
+    interact, noise_level, escape_threshold, random_seed
   );
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
@@ -374,7 +379,9 @@ Rcpp::List RcppSLMTri4Lattice(
     double beta_zx = 0.65,
     double beta_zy = 0.65,
     int interact = 0,
-    double escape_threshold = 1e10
+    double noise_level = 0.0,
+    double escape_threshold = 1e10,
+    unsigned long long random_seed = 42
 ) {
   // Convert x/y to std::vector<double>
   std::vector<double> vec1 = Rcpp::as<std::vector<double>>(x);
@@ -389,7 +396,7 @@ Rcpp::List RcppSLMTri4Lattice(
     vec1, vec2, vec3, nb_vec,
     k, step, alpha_x, alpha_y, alpha_z,
     beta_xy, beta_xz, beta_yx, beta_yz, beta_zx, beta_zy,
-    interact, escape_threshold
+    interact, noise_level, escape_threshold, random_seed
   );
 
   // Create NumericMatrix with rows = number of spatial units, cols = number of steps+1
@@ -494,9 +501,9 @@ Rcpp::NumericVector RcppFNN4Lattice(
 
 /**
  * Description:
- *   Computes Simplex projection for lattice data and returns a matrix containing
- *   the embedding dimension (E), Pearson correlation coefficient (PearsonCor),
- *   mean absolute error (MAE), and root mean squared error (RMSE).
+ *   Performs parameter selection of Simplex projection for lattice data and returns
+ *   a matrix containing the embedding dimension (E), Pearson correlation coefficient
+ *   (PearsonCor), mean absolute error (MAE), and root mean squared error (RMSE).
  *
  * Parameters:
  *   - source: A NumericVector containing the source spatial cross-sectional data to be embedded.
@@ -622,6 +629,9 @@ Rcpp::NumericMatrix RcppSimplex4Lattice(const Rcpp::NumericVector& source,
 }
 
 /**
+ * Description:
+ *   Performs parameter selection of s-mapping for lattice data
+ *
  * Parameters:
  *   - source: A NumericVector containing the source spatial cross-sectional data to be embedded.
  *   - target: A NumericVector containing the source spatial cross-sectional data to be predicted.
@@ -928,7 +938,7 @@ Rcpp::NumericVector RcppMultiView4Lattice(const Rcpp::NumericMatrix& x,
   }
 }
 
-// Wrapper function to compute intersection cardinality for spatial lattice data
+// Wrapper function to perform parameter selection of intersectional cardinality for spatial lattice data
 // [[Rcpp::export(rng = false)]]
 Rcpp::NumericMatrix RcppIC4Lattice(const Rcpp::NumericVector& source,
                                    const Rcpp::NumericVector& target,
@@ -1373,8 +1383,10 @@ Rcpp::List RcppGCMC4Lattice(
   }
 
   // check b that are greater than validSampleNum or less than or equal to 3
-  if (b < 3 || b > validSampleNum) {
-    Rcpp::stop("k cannot be less than or equal to 3 or greater than the number of non-NA values.");
+  if (b <= 3 || b > validSampleNum) {
+    Rcpp::stop("k must be greater than 3 and no larger than the number of non-NA values.\n"
+               "An empirical rule of thumb is to set k = sqrt(E * N),\n"
+               "where E is the embedding dimension and N is the number of valid observations in the prediction set.");
   } else if (b + 1 > static_cast<int>(lib_std.size())){
     Rcpp::stop("Please check `libsizes` or `lib`; no valid libraries available for running GCMC.");
   }
@@ -1514,7 +1526,7 @@ Rcpp::List RcppGPC4Lattice(
         case 3: pattern_labels[idx]  = "dark"; break;
         default: pattern_labels[idx] = "unknown"; break;
       }
-    } 
+    }
   }
 
   Rcpp::DataFrame causality_df = Rcpp::DataFrame::create(
@@ -1560,7 +1572,7 @@ Rcpp::DataFrame RcppGPCRobust4Lattice(
     int b = 0,
     int boot = 99,
     bool random = true,
-    unsigned int seed = 42,
+    unsigned long long seed = 42,
     int zero_tolerance = 0,
     int dist_metric = 2,
     bool relative = true,
@@ -1787,7 +1799,7 @@ Rcpp::NumericVector RcppSGC4Lattice(const Rcpp::NumericVector& x,
                                     int threads = 8,
                                     int boot = 399,
                                     double base = 2,
-                                    unsigned int seed = 42,
+                                    unsigned long long seed = 42,
                                     bool symbolize = true,
                                     bool normalize = false,
                                     bool progressbar = true){

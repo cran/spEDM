@@ -1,0 +1,218 @@
+---
+title: "Geographical Cross Mapping Cardinality"
+author: "Wenbo Lv"
+date: |
+  | Last update: 2026-02-01
+  | Last run: `r Sys.Date()`
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{5. Geographical Cross Mapping Cardinality}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##",
+  fig.path = "man/figures/gcmc/"
+)
+```
+
+## Methodological Background
+
+To measure causal strengths from spatial cross-sectional data, GCMC (Geographical Cross Mapping Cardinality) employs a three-stage procedure:
+
+**Stage one** involves reconstructing the shadow manifolds. Given two spatial variables, $x$ and $y$, this step requires determining a suitable embedding dimension $E$ and a spatial lag step $\tau$. For each spatial unit $i$, the attribute values from its spatial neighbors at spatial lag orders $\tau, 2\tau, \dots, E\tau$ are collected. These values are then summarized—commonly using the mean—to construct an embedding vector for each unit. Aggregating these vectors across all spatial units results in the reconstructed shadow manifolds, denoted as $M_x$ and $M_y$.
+
+**Stage two** constructs the intersectional cardinality (IC) curve, which serves to evaluate causal strength. To measure whether $y$ causally affects $x$, one computes, for each $k$, the overlap between the $k$ nearest neighbors of $M_y$ and the corresponding "projected" neighbors traced through $M_x$. Specifically, for each point in $M_x$, its $k$ nearest neighbors are identified, and their mapped neighbors in $M_y$ are compared with the direct neighbors of $M_y$. The IC curve is formed by recording the number of shared neighbors across a range of $k = 1, 2, \dots, n$. This process can also be reversed to test for causality from $x$ to $y$.
+
+**Stage three** involves quantifying and validating the causal strengths. The area under the IC curve (AUC) provides a numerical measure of causal strength. To determine whether the observed causal strength is statistically significant, a hypothesis test is performed: the null assumes no causality, while the alternative assumes its presence. The DeLong palcements method is applied to evaluate the difference in AUCs under these hypotheses. It also yields statistical significance and confidence intervals, supporting reliable causal inference.
+
+## Usage examples
+
+### Example of spatial vector data
+
+Load the `spEDM` package and its county-level population density data:
+
+```{r load_lattice_data}
+library(spEDM)
+
+popd_nb = spdep::read.gal(system.file("case/popd_nb.gal",package = "spEDM"))
+popd = readr::read_csv(system.file("case/popd.csv",package = "spEDM"))
+popd_sf = sf::st_as_sf(popd, coords = c("lon","lat"), crs = 4326)
+popd_sf
+```
+
+The false nearest neighbours (FNN) method helps identify the appropriate embedding dimension for reconstructing the state space of a time series or spatial cross-sectional data. A low embedding dimension that minimizes false neighbours is considered optimal.
+
+```{r fnn_lattice_data}
+spEDM::fnn(popd_sf, "popd", E = 1:15, eps = stats::sd(popd_sf$popd))
+```
+
+The false nearest neighbours (FNN) ratio decreased to approximately $0.001$ when the embedding dimension E reached $11$, and remained relatively stable thereafter. Therefore, we adopted $E = 11$ as the embedding dimension for subsequent GCMC analysis.
+
+Adopt an empirical k value derived from the square root of the product of embedding dimension and number of prediction samples:
+
+```{r k_lattice}
+ceiling(sqrt(11 * nrow(popd_sf)))
+```
+
+Then, run GCMC:
+
+```{r case_lattice}
+# temperature and population density
+g1 = spEDM::gcmc(popd_sf, "tem", "popd", E = 11, k = 176, nb = popd_nb, progressbar = FALSE)
+g1
+
+# elevation and population density
+g2 = spEDM::gcmc(popd_sf, "elev", "popd", E = 11, k = 176, nb = popd_nb, progressbar = FALSE)
+g2
+
+# elevation and temperature
+g3 = spEDM::gcmc(popd_sf, "elev", "tem", E = 11, k = 176, nb = popd_nb, progressbar = FALSE)
+g3
+```
+
+Here we define two functions to process the results and plot the causal strengths matrix.
+
+```{r camat_fun}
+.process_xmap_result = \(g){
+  tempdf = g$xmap
+  tempdf$x = g$varname[1]
+  tempdf$y = g$varname[2]
+  tempdf = dplyr::select(tempdf, 1, x, y,
+                         x_xmap_y_mean,x_xmap_y_sig,
+                         y_xmap_x_mean,y_xmap_x_sig,
+                         dplyr::everything())
+
+  g1 = tempdf |>
+    dplyr::select(x,y,y_xmap_x_mean,y_xmap_x_sig)|>
+    purrr::set_names(c("cause","effect","cs","sig"))
+  g2 = tempdf |>
+    dplyr::select(y,x,x_xmap_y_mean,x_xmap_y_sig) |>
+    purrr::set_names(c("cause","effect","cs","sig"))
+
+  return(rbind(g1,g2))
+}
+
+plot_cs_matrix = \(.tbf,legend_title = "Causal Strength"){
+  .tbf = .tbf |>
+    dplyr::mutate(sig_marker = dplyr::case_when(
+        sig > 0.05 ~ sprintf("paste(%.4f^'#')", cs),
+              TRUE ~ sprintf('%.4f', cs)
+    ))
+
+  fig = ggplot2::ggplot(data = .tbf,
+                        ggplot2::aes(x = effect, y = cause)) +
+    ggplot2::geom_tile(color = "black", ggplot2::aes(fill = cs)) +
+    ggplot2::geom_abline(slope = 1, intercept = 0,
+                         color = "black", linewidth = 0.25) +
+    ggplot2::geom_text(ggplot2::aes(label = sig_marker), parse = TRUE,
+                       color = "black", family = "serif") +
+    ggplot2::labs(x = "Effect", y = "Cause", fill = legend_title) +
+    ggplot2::scale_x_discrete(expand = c(0, 0)) +
+    ggplot2::scale_y_discrete(expand = c(0, 0)) +
+    ggplot2::scale_fill_gradient(low = "#9bbbb8", high = "#256c68") +
+    ggplot2::coord_equal() +
+    ggplot2::theme_void() +
+    ggplot2::theme(
+      axis.text.x = ggplot2::element_text(angle = 0, family = "serif"),
+      axis.text.y = ggplot2::element_text(color = "black", family = "serif"),
+      axis.title.y = ggplot2::element_text(angle = 90, family = "serif"),
+      axis.title.x = ggplot2::element_text(color = "black", family = "serif",
+                                           margin = ggplot2::margin(t = 5.5, unit = "pt")),
+      legend.text = ggplot2::element_text(family = "serif"),
+      legend.title = ggplot2::element_text(family = "serif"),
+      legend.background = ggplot2::element_rect(fill = NA, color = NA),
+      legend.direction = "horizontal",
+      legend.position = "bottom",
+      legend.margin = ggplot2::margin(t = 1, r = 0, b = 0, l = 0, unit = "pt"),
+      legend.key.width = ggplot2::unit(20, "pt"),
+      panel.grid = ggplot2::element_blank(),
+      panel.border = ggplot2::element_rect(color = "black", fill = NA)
+    )
+  return(fig)
+}
+```
+
+Organize the results into a long table:
+
+```{r lattice_res}
+res1 = list(g1,g2,g3) |>
+  purrr::map(.process_xmap_result) |>
+  purrr::list_rbind()
+res1
+```
+
+Visualize the result:
+
+```{r fig1,fig.width=3.55,fig.height=4.05,fig.dpi=100,fig.cap=knitr::asis_output("**Figure 1**. **Causal strengths among elevation, temperature, and population density.**")}
+plot_cs_matrix(res1)
+```
+
+<br>
+
+### Example of spatial raster data
+
+Load the `spEDM` package and its farmland NPP data:
+
+```{r load_grid_data}
+library(spEDM)
+
+npp = terra::rast(system.file("case/npp.tif", package = "spEDM"))
+# To save the computation time, we will aggregate the data by 4 times
+npp = terra::aggregate(npp, fact = 4, na.rm = TRUE)
+npp
+
+# Inspect NA values
+terra::global(npp,"isNA")
+terra::ncell(npp)
+nnamat = terra::as.matrix(npp[[1]], wide = TRUE)
+nnaindice = which(!is.na(nnamat), arr.ind = TRUE)
+dim(nnaindice)
+```
+
+Determining optimal embedding dimension:
+
+```{r fnn_grid_data}
+spEDM::fnn(npp, "npp", E = 1:25,
+           eps = stats::sd(terra::values(npp[["npp"]]),na.rm = TRUE))
+```
+
+At $E = 5$, the false nearest neighbor ratio stabilizes at $0$ and remains constant thereafter. Therefore, $E = 5$ is selected for the subsequent GCMC analysis.
+
+Adopt an empirical k value derived from the square root of the product of embedding dimension and number of prediction samples:
+
+```{r k_grid}
+ceiling(sqrt(5 * dim(nnaindice)[1]))
+```
+
+```{r case_grid}
+# precipitation and npp
+g1 = spEDM::gcmc(npp, "pre", "npp", E = 5, k = 144, progressbar = FALSE)
+g1
+
+# temperature and npp
+g2 = spEDM::gcmc(npp, "tem", "npp", E = 5, k = 144, progressbar = FALSE)
+g2
+
+# precipitation and temperature
+g3 = spEDM::gcmc(npp, "pre", "tem", E = 5, k = 144, progressbar = FALSE)
+g3
+```
+
+Organize the results into a long table:
+
+```{r grid_res}
+res2 = list(g1,g2,g3) |>
+  purrr::map(.process_xmap_result) |>
+  purrr::list_rbind()
+res2
+```
+
+Visualize the result:
+
+```{r fig2,fig.width=3.55,fig.height=4.05,fig.dpi=100,fig.cap=knitr::asis_output("**Figure 2**. **Causal strengths among precipitation, temperature, and NPP.**")}
+plot_cs_matrix(res2)
+```

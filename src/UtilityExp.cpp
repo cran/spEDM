@@ -2,11 +2,8 @@
 #include <limits>
 #include <cmath>
 #include "NumericUtils.h"
-#include <RcppThread.h>
+#include <thread>
 #include <RcppArmadillo.h>
-
-// [[Rcpp::depends(RcppThread)]]
-// [[Rcpp::depends(RcppArmadillo)]]
 
 // [[Rcpp::export(rng = false)]]
 unsigned int DetectMaxNumThreads(){
@@ -217,7 +214,7 @@ double OptThetaParm(Rcpp::NumericMatrix Thetamat) {
 }
 
 /**
- * Select the optimal embedding parameters (E k tau) from an intersection
+ * Select the optimal embedding parameters (E k tau) from an intersectional
  * cardinality evaluation matrix using a global scan and full tie tracking.
  *
  * The input matrix must contain the following columns in this order:

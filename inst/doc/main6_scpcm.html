@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Wenbo Lv" />
+
+
+<title>Spatially Convergent Partial Cross Mapping</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Spatially Convergent Partial Cross
+Mapping</h1>
+<h4 class="author">Wenbo Lv</h4>
+<h4 class="date"><div class="line-block">Last update: 2026-02-01<br />
+Last run: 2026-02-01</div></h4>
+
+
+
+<div id="model-principles" class="section level2">
+<h2>Model principles</h2>
+<p>The methodological details are pending peer review and will be made
+available thereafter.</p>
+</div>
+<div id="usage-examples" class="section level2">
+<h2>Usage examples</h2>
+<div id="example-of-spatial-vector-data" class="section level3">
+<h3>Example of spatial vector data</h3>
+<p>Load the <code>spEDM</code> package and columbus OH spatial analysis
+dataset:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;spEDM&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;spEDM&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>columbus <span class="ot">=</span> sf<span class="sc">::</span><span class="fu">read_sf</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/columbus.gpkg&quot;</span>, <span class="at">package=</span><span class="st">&quot;spEDM&quot;</span>))</span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a>columbus</span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">## Simple feature collection with 49 features and 6 fields</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="do">## Geometry type: POLYGON</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## Dimension:     XY</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">## Bounding box:  xmin: 5.874907 ymin: 10.78863 xmax: 11.28742 ymax: 14.74245</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">## Projected CRS: Undefined Cartesian SRS with unknown unit</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## # A tibble: 49 × 7</span></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">##    hoval   inc  crime  open plumb discbd                                     geom</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">##    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;                                &lt;POLYGON&gt;</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.5597 14.74245, 8…</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.282758 14.22994, …</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.81814 14.00205, …</span></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="do">##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473408 13.83227,…</span></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="do">##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677577 13.72221,…</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="do">##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.434411 13.69427, …</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="do">##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062716 13.60452,…</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="do">##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.2795 13.5965, 8.…</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="do">##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671007 13.27361,…</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="do">## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.0925 13.05275, …</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="do">## # ℹ 39 more rows</span></span></code></pre></div>
+<p>We demonstrate how spatial vector data can be used in SCPCM analysis
+through a causal example examining the influences of the level of
+burglary incidents in a neighbourhood on house values, with
+neighbourhood household income included as a conditioning variable.</p>
+<p>Determine minimum embedding dimensions:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;crime&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## 0.79591837 0.53061224 0.63265306 0.51020408 0.12244898 0.04081633 0.00000000 </span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">##        E:8 </span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">## 0.00000000</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;hoval&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="do">## 0.85714286 0.77551020 0.51020408 0.61224490 0.22448980 0.08163265 0.00000000 </span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="do">##        E:8 </span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## 0.00000000</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;inc&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="do">## 0.73469388 0.24489796 0.30612245 0.38775510 0.24489796 0.04081633 0.00000000 </span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="do">##        E:8 </span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## 0.00000000</span></span></code></pre></div>
+<p>Self prediction for parameter turning:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">simplex</span>(columbus,<span class="st">&quot;crime&quot;</span>,<span class="st">&quot;crime&quot;</span>,<span class="at">E =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">10</span>,<span class="at">k=</span><span class="dv">12</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable crime is 8, 12 and 1</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">simplex</span>(columbus,<span class="st">&quot;hoval&quot;</span>,<span class="st">&quot;hoval&quot;</span>,<span class="at">E =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">10</span>,<span class="at">k=</span><span class="dv">12</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable hoval is 7, 12 and 1</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">simplex</span>(columbus,<span class="st">&quot;inc&quot;</span>,<span class="st">&quot;inc&quot;</span>,<span class="at">E =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">10</span>,<span class="at">k=</span><span class="dv">12</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable inc is 8, 12 and 1</span></span></code></pre></div>
+<p>Conduct SCPCM:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>crime_hoval <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">scpcm</span>(<span class="at">data =</span> columbus,</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>                           <span class="at">cause =</span> <span class="st">&quot;crime&quot;</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                           <span class="at">effect =</span> <span class="st">&quot;hoval&quot;</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>                           <span class="at">conds =</span> <span class="st">&quot;inc&quot;</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>                           <span class="at">libsizes =</span> <span class="fu">seq</span>(<span class="dv">5</span>, <span class="dv">45</span>, <span class="at">by =</span> <span class="dv">5</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>                           <span class="at">E =</span> <span class="fu">c</span>(<span class="dv">8</span>,<span class="dv">7</span>,<span class="dv">8</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>                           <span class="at">k =</span> <span class="dv">12</span>,</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>                           <span class="at">progressbar =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>crime_hoval</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="do">## -------------------------------------- </span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="do">## ***partial cross mapping prediction*** </span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="do">## -------------------------------------- </span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="do">##   libsizes crime-&gt;hoval hoval-&gt;crime</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="do">## 1        5   0.08948688  0.022401607</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="do">## 2       10   0.14511673  0.062986079</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="do">## 3       15   0.16849249  0.080653365</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a><span class="do">## 4       20   0.20940427  0.040974217</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="do">## 5       25   0.23160147  0.026613757</span></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a><span class="do">## 6       30   0.24709326  0.001942294</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a><span class="do">## 7       35   0.29707812 -0.014879976</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a><span class="do">## 8       40   0.33591810 -0.028758126</span></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a><span class="do">## 9       45   0.36337200 -0.040204136</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a><span class="do">## </span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a><span class="do">## ------------------------------ </span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a><span class="do">## ***cross mapping prediction*** </span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a><span class="do">## ------------------------------ </span></span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a><span class="do">##   libsizes crime-&gt;hoval hoval-&gt;crime</span></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a><span class="do">## 1        5    0.2224861    0.1378071</span></span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a><span class="do">## 2       10    0.3023880    0.1880328</span></span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a><span class="do">## 3       15    0.4005255    0.2085278</span></span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a><span class="do">## 4       20    0.4681692    0.2203727</span></span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a><span class="do">## 5       25    0.5098130    0.2293076</span></span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a><span class="do">## 6       30    0.5467173    0.2326005</span></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a><span class="do">## 7       35    0.5732757    0.2331852</span></span>
+<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a><span class="do">## 8       40    0.5822545    0.2361204</span></span>
+<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a><span class="do">## 9       45    0.5883504    0.2364234</span></span></code></pre></div>
+<p>Visualize the result:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;cowplot&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;cowplot&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="do">## Loading required namespace: cowplot</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>fig1a <span class="ot">=</span> <span class="fu">plot</span>(crime_hoval,<span class="at">partial =</span> <span class="cn">FALSE</span>,<span class="at">ylimits =</span> <span class="fu">c</span>(<span class="fl">0.1</span>,<span class="fl">0.75</span>))</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>fig1b <span class="ot">=</span> <span class="fu">plot</span>(crime_hoval,<span class="at">partial =</span> <span class="cn">TRUE</span>,<span class="at">ylimits =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="fl">0.05</span>,<span class="fl">0.55</span>))</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>fig1 <span class="ot">=</span> cowplot<span class="sc">::</span><span class="fu">plot_grid</span>(fig1a,fig1b,<span class="at">ncol =</span> <span class="dv">2</span>,<span class="at">label_fontfamily =</span> <span class="st">&#39;serif&#39;</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>                          <span class="at">labels =</span> <span class="fu">paste0</span>(<span class="st">&#39;(&#39;</span>,letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>],<span class="st">&#39;)&#39;</span>))</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>fig1</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="Figure 1. The cross mapping between crime and house value. a Crime–hoval causality without accounting for covariates. b Crime–hoval causality controlling for household income." src="data:image/png;base64,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" alt="Figure 1. The cross mapping between crime and house value. a Crime–hoval causality without accounting for covariates. b Crime–hoval causality controlling for household income." />
+<div class="figcaption"><strong>Figure 1</strong>. The cross mapping
+between crime and house value. <strong>a</strong> Crime–hoval causality
+without accounting for covariates. <strong>b</strong> Crime–hoval
+causality controlling for household income.</div>
+</div>
+<p><br></p>
+</div>
+<div id="example-of-spatial-raster-data" class="section level3">
+<h3>Example of spatial raster data</h3>
+<p>Load the <code>spEDM</code> package and simulate raster data with a
+cyclic interaction structure <span class="math inline">\(x \rightarrow y
+\rightarrow z \rightarrow x\)</span>:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;fields&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;fields&quot;</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="do">## Loading required namespace: fields</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;MASS&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;MASS&quot;</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>sim_trispecies <span class="ot">=</span> \(nx,ny,<span class="at">seed =</span> <span class="dv">123</span>){</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>  grid <span class="ot">=</span> <span class="fu">expand.grid</span>(<span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">10</span>, <span class="at">length.out =</span> nx),</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>                     <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">10</span>, <span class="at">length.out =</span> ny))</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>  cov.fun <span class="ot">=</span> \(d, <span class="at">range =</span> <span class="fl">1.5</span>, <span class="at">sill=</span><span class="dv">1</span>) sill <span class="sc">*</span> <span class="fu">exp</span>(<span class="sc">-</span>d<span class="sc">/</span>range)</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>  dist.mat <span class="ot">=</span> fields<span class="sc">::</span><span class="fu">rdist</span>(grid)</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  cov.mat <span class="ot">=</span> <span class="fu">cov.fun</span>(dist.mat, <span class="at">range=</span><span class="fl">1.5</span>, <span class="at">sill=</span><span class="dv">1</span>)</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>  <span class="fu">set.seed</span>(seed)</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  res <span class="ot">=</span> <span class="fu">replicate</span>(<span class="dv">3</span>, {</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>    MASS<span class="sc">::</span><span class="fu">mvrnorm</span>(<span class="dv">1</span>, <span class="fu">rep</span>(<span class="dv">0</span>, <span class="fu">nrow</span>(grid)), cov.mat) <span class="sc">|&gt;</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>      <span class="fu">pmax</span>(<span class="dv">0</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>      sdsfun<span class="sc">::</span><span class="fu">normalize_vector</span>(<span class="dv">0</span>,<span class="dv">1</span>) <span class="sc">|&gt;</span></span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>      <span class="fu">matrix</span>(<span class="at">nrow =</span> nx, <span class="at">ncol =</span> ny) <span class="sc">|&gt;</span></span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>      terra<span class="sc">::</span><span class="fu">rast</span>()</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>  }, <span class="at">simplify =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>  terra<span class="sc">::</span><span class="fu">rast</span>(res)</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>}</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a></span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>species <span class="ot">=</span> <span class="fu">sim_trispecies</span>(<span class="dv">20</span>,<span class="dv">20</span>, <span class="at">seed =</span> <span class="dv">42</span>)</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a><span class="fu">names</span>(species) <span class="ot">=</span> <span class="fu">c</span>(<span class="st">&quot;x&quot;</span>,<span class="st">&quot;y&quot;</span>,<span class="st">&quot;z&quot;</span>)</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>sim <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">slm</span>(species, <span class="at">x =</span> <span class="st">&quot;x&quot;</span>, <span class="at">y =</span> <span class="st">&quot;y&quot;</span>, <span class="at">z =</span> <span class="st">&quot;z&quot;</span>, <span class="at">k =</span> <span class="dv">4</span>,</span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>                 <span class="at">step =</span> <span class="dv">15</span>, <span class="at">transient =</span> <span class="dv">1</span>, <span class="at">threshold =</span> <span class="cn">Inf</span>,</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>                 <span class="at">aggregate_fn =</span> \(.x) <span class="fu">mean</span>(.x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>                 <span class="at">alpha_x =</span> <span class="fl">0.05</span>, <span class="at">alpha_y =</span> <span class="fl">0.05</span>, <span class="at">alpha_z =</span> <span class="fl">0.05</span>,</span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>                 <span class="at">beta_xy =</span> <span class="dv">1</span>, <span class="at">beta_xz =</span> <span class="dv">0</span>, <span class="at">beta_yx =</span> <span class="dv">0</span>, <span class="at">beta_yz =</span> <span class="dv">1</span>,</span>
+<span id="cb6-30"><a href="#cb6-30" tabindex="-1"></a>                 <span class="at">beta_zx =</span> <span class="dv">1</span>, <span class="at">beta_zy =</span> <span class="dv">0</span>)</span>
+<span id="cb6-31"><a href="#cb6-31" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species[[<span class="st">&quot;x&quot;</span>]]) <span class="ot">=</span> sim<span class="sc">$</span>x</span>
+<span id="cb6-33"><a href="#cb6-33" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species[[<span class="st">&quot;y&quot;</span>]]) <span class="ot">=</span> sim<span class="sc">$</span>y</span>
+<span id="cb6-34"><a href="#cb6-34" tabindex="-1"></a>terra<span class="sc">::</span><span class="fu">values</span>(species[[<span class="st">&quot;z&quot;</span>]]) <span class="ot">=</span> sim<span class="sc">$</span>z</span>
+<span id="cb6-35"><a href="#cb6-35" tabindex="-1"></a>species</span>
+<span id="cb6-36"><a href="#cb6-36" tabindex="-1"></a><span class="do">## class       : SpatRaster </span></span>
+<span id="cb6-37"><a href="#cb6-37" tabindex="-1"></a><span class="do">## size        : 20, 20, 3  (nrow, ncol, nlyr)</span></span>
+<span id="cb6-38"><a href="#cb6-38" tabindex="-1"></a><span class="do">## resolution  : 1, 1  (x, y)</span></span>
+<span id="cb6-39"><a href="#cb6-39" tabindex="-1"></a><span class="do">## extent      : 0, 20, 0, 20  (xmin, xmax, ymin, ymax)</span></span>
+<span id="cb6-40"><a href="#cb6-40" tabindex="-1"></a><span class="do">## coord. ref. :  </span></span>
+<span id="cb6-41"><a href="#cb6-41" tabindex="-1"></a><span class="do">## source(s)   : memory</span></span>
+<span id="cb6-42"><a href="#cb6-42" tabindex="-1"></a><span class="do">## names       :         x,         y,        z </span></span>
+<span id="cb6-43"><a href="#cb6-43" tabindex="-1"></a><span class="do">## min values  : 0.9984091, 0.9983558, 0.998285 </span></span>
+<span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a><span class="do">## max values  : 1.0009110, 1.0011445, 1.001050</span></span></code></pre></div>
+<p>Determine minimum embedding dimensions:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;x&quot;</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">## 0.8937824 0.3125000 0.0100000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">##       E:9 </span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">## 0.0000000</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="do">## 0.9333333 0.2525000 0.0425000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="do">##       E:9 </span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="do">## 0.0000000</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;z&quot;</span>)</span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="do">## 0.9238845 0.3375000 0.0625000 0.0200000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="do">##       E:9 </span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="do">## 0.0000000</span></span></code></pre></div>
+<p>Self prediction for parameter turning:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>s1 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">simplex</span>(species, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">15</span>, <span class="at">tau =</span> <span class="dv">1</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>s2 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">simplex</span>(species, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">15</span>, <span class="at">tau =</span> <span class="dv">1</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>s3 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">simplex</span>(species, <span class="st">&quot;z&quot;</span>, <span class="st">&quot;z&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">15</span>, <span class="at">tau =</span> <span class="dv">1</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="fu">list</span>(s1,s2,s3)</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="do">## [[1]]</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable x is 7, 15 and 1 </span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="do">## </span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="do">## [[2]]</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable y is 9, 15 and 1 </span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="do">## </span></span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a><span class="do">## [[3]]</span></span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable z is 5, 15 and 1</span></span></code></pre></div>
+<p>Due to the statistical aggregation performed after simulating with
+the spatial logistic map, we adopt a uniform embedding dimension for x,
+y, and z to reduce inference bias:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a><span class="cf">if</span> (<span class="sc">!</span><span class="fu">requireNamespace</span>(<span class="st">&quot;purrr&quot;</span>)) <span class="fu">install.packages</span>(<span class="st">&quot;purrr&quot;</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="do">## Loading required namespace: purrr</span></span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>simplex_res <span class="ot">=</span> purrr<span class="sc">::</span><span class="fu">map2_dfr</span>(<span class="fu">list</span>(s1,s2,s3), <span class="fu">c</span>(<span class="st">&quot;x&quot;</span>,<span class="st">&quot;y&quot;</span>,<span class="st">&quot;z&quot;</span>),</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>                              \(.list,.name) dplyr<span class="sc">::</span><span class="fu">mutate</span>(.list<span class="sc">$</span>xmap,<span class="at">variable =</span> .name))</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>ggplot2<span class="sc">::</span><span class="fu">ggplot</span>(<span class="at">data =</span> simplex_res) <span class="sc">+</span></span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">geom_line</span>(ggplot2<span class="sc">::</span><span class="fu">aes</span>(<span class="at">x =</span> E, <span class="at">y =</span> rho, <span class="at">color =</span> variable)) <span class="sc">+</span></span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">theme_classic</span>()</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="Figure 2. Self cross prediction skills for three variables." src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWMAAAEdCAMAAADuNPZiAAAAhFBMVEUAAAAAADoAAGYAOpAAZrYAujg6AAA6ADo6AGY6OpA6ZrY6kLY6kNthnP9mAABmADpmAGZmOpBmZmZmtv+QOgCQOjqQOmaQZgCQkDqQkGaQtpCQ27aQ2/+2ZgC2Zjq225C2/7a2///bkDrb/9vb///4dm3/tmb/25D/29v//7b//9v///+2ZvMNAAAACXBIWXMAAA9hAAAPYQGoP6dpAAAIiElEQVR4nO2dC3ubNhSGyaVpu8XpxekubbwtboZn8///35AAS7JBOjJ8WMD3Pt0SK0iQ1ycHmcshKwia7NobsADoGA8d46FjPHSMh47xXO6Y744UOsZDx3joGA8d46FjPHSMh47x0DEeOsZDx3hGcPxvTy7ewlTAOB7U0eTtD+f4Cr98n1WOuK0DOE4jqLwBft2/gXnu89JKKvN0nBZ0jIeO8fhM7Z+yuzf93e4hu321GwI9iY3H1OF5XWzv1Xf7Ty/F9u7NNAR6EgePqf3n12L3oQzfYvfxTb0yDYGexMFjSpstI/gYx6YhU4y1iZPHYyq/a5TWidhq8PckDqI43r1/KfLbV9MQ6EkcRPm4DmDm48vwzise62lEHcemIdCTOITnxypy8yy7eeH8+EL4OQ8PHeOhYzx0jIeO8dAxHjrGQ8d46BgPHeOhYzx0jIeO8dAxHjrGQ8d46BgPHeOhYzx0jIeO8dAxHjrGQ8d46BgPHeOhYzx0jIeO8dAxHjrGQ8d46BgPHeOhYzx0jIeO8dAxHjrGQ8d46BgPHeMR1brZ6noVa/31lvekxyKqdaNQ9/5v1rKexEFUW6GoSrEcvr1YP16yY1UI4eRbq+kUUY2QEhXQZe5QGaNgrRuLfo7t0jb6qxrGxDIda4aL4/xYt+KYkxfiWBVGKf+Mb193D+Xf7mOZPf/Ibv8uhTav3/+Z6TIfKgCfrTmBQZiPN49N69Icq4JgSvT+aV2rvtdBa16rwnf3qkl90YufIKp1U2cIFcyH35Y2d1MBWv7331v1/e5hXbS9Lv/lVS3H9ekIslo3dcrYViVvwj3nhA41FZx5pn59nXf1/+rXHyqxZVP1MSJ7PB2Bn/OC5Hc/S837p5uXOl7rXFG/thyfpwkNHQfZf/quylbpUDZxfPpaNd20Ty3oOMwmu9c6y6mE5bh5be/zVDHHc9F0HCbXH7w2Zfb9oXNClY+Pr8u5231xnLu1xDId46FjPHSMh47x0DEeOsZDx3joGA8d46FjPHSMh47x0DEeOsZDx3joGA8d46FjPHSMh477srEfYtUKHQvwPgJ8//mfz+fXuNnQcW+251cGudBxbzxXxVbQcW82X/3p+MTUtvWaOEnP5bL7+PObP5AdU9vq4k6ZZDrWqDuT8o6LCWtsU/Wls3nLpeCBnsQHHeNhrsDDfR4ezt3w0DEex5S+5az1FrNQT+LBNqXvL7uoJ/HRMne7oCfx4cYxHSNwTAk/fZz0XJUMt0Ez5GhKF07InH3eWR2WY4PTU7Fa0XQnMXVY3IaWnjTdiicfn9VhcRq6350VVbt45hVndVhMg6QOC003uMeEnOOgZ3VY7AbpvIKmT+PY2eed1WFxAjtq7rZs0TF1WIT5uIsEPQ+xSZu1Dj4PMXVYrAZ/z26S0Lw6Iuzw7hzzw/xR/fMRVYele34cwdXCOdaskP2Xt78izplG0eez9Iiao4M2lsO3H1+8qeJ6x4+h4byCm7XYfk35OqEhHaxWo4q1SP86oT5GrqbVwZRj6+Dqjou4cL5euHay+yWwQAqOFR5jCWq12XZUwzKk4rhwwzltrZEk5FgxG682iTmeJXSMh47x0DEeOsZDx3joGA8d46FjPHSMh47x0DEeOsZDx33ZZLoevQc6FrA6x/7xIeZ+6SgW5DjANuXz0vMgcCUWHfcnlCnouD+hTEHHvakuKPZ6pmM8dIyHjvHQMR46xkPHeOgYDx3joWM8dIyHjvHQMR46xkPHeML38ioOz/rZ1Fu7+BsdS5HVutlUNX43dg0ROpYiqq2wrx4c4J5VoWMpHlOmJMju4+8qV+hD/jqUJbVuSIPHlClts3vQdTDUjcEmlulYijCOTZGbY06mYymyfPyFjnsgq3VT1cxRycPc5E7HUoS1bp70vLicH5sbsOlYCj/n4aFjPHSMh47x0DEeOsZDx3joGM98HTuFR6/KPB3XlV0TsTw/x07l3CQsz8vxu/MEkYDl2Th+1+K3+cnIm3LKLBx36j3+fKwtaWXyjkN+m6XwW9LJpB3L/DbLIrfEy2Qdx/htemC2JMgUHXfv3oIdh94UEVNzfKneY/fBtkTOlBz39NsMMsCWxDEVx4P4bYYaaCApE3B8cfr1jDjocCESdzy43uO4iFE7SNgxym8zOm7sExJ1jPXbrAO9hpoEHY/ht1nTKKtJyfHZY9PwjLK26ztueybdiIyw1ms5vrLZURnX8ZLMGsZyvDyzhlEcL9ZuBd7xwgUXaMfLzQ82QMf0W4NyTMEGiGMKdhjeMQWfMrBjCm5hQMecRHQwlGP67WYQxxTsJarWjWmwe1JwgJhaN1aDvydxiKl1YxoCPYlDTK0b08BaNzHE1LoxDYGexCGm1o1d8oaO5cTUumE+voyYWjdWg78ncYiqddM+PyYBrn99xfzp4Xh2DKjVNTXWEMIVDTnYoBvWAzqm41SW6gP3XHjoGA8d46FjPHSMp69j51ELndTnqgRj1cXYfeweBGuULaWPcDlHCBD0dbwJKqmXymW/R3gxdXR1G17qaR1eKldvg3sGDUFPx+EHWCvqc1WSJT8Fx9NHsYMDuse629ncfFfHu5wjtgh6OjaPWvBRn6sSIAgoWRxLHFe5QrZkH3o6dh+10LlUda4qPJzodxXlT50rgu+rcuyeQUMwxLwimJPFoSJJ2uptzQW7s4fs1/CbP4U41gQd289l8I/kfaZ7hTzuBFl7CvnYfdRCJxtZrhDtQWVxrLN2MLkrt+4ZNAQDzI8Fe7P6XFVwMVF45qJVlkuFE8805sckDB3joWM8dIyHjvHQMR46xpO248NzdXWJZHKdLqk7Fny4Th46xkPHeOgYT+qOq33etE2n7njadivoGA8d46FjPKk7rvZ5sgsHUiVtx/OAjvHQMR46xkPHeOgYDx3joWM8dIyHjvH8D1mtXKRmt1IrAAAAAElFTkSuQmCC" alt="Figure 2. Self cross prediction skills for three variables." />
+<div class="figcaption"><strong>Figure 2</strong>. Self cross prediction
+skills for three variables.</div>
+</div>
+<p><br></p>
+<p>Since the self-prediction performance of the y variable is relatively
+weaker than that of x and z, we select the embedding dimension that
+yields the strongest predictive performance for y as the final
+dimension, that is <span class="math inline">\(E = 9\)</span>.</p>
+<p>Investigate the causation between x and z, with y as control
+variables:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a>xz <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">scpcm</span>(species, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;z&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="at">E =</span> <span class="dv">9</span>, <span class="at">k =</span> <span class="dv">15</span>,</span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>                  <span class="at">libsizes =</span> <span class="fu">matrix</span>(<span class="fu">seq</span>(<span class="dv">50</span>,<span class="dv">400</span>,<span class="dv">50</span>), <span class="at">ncol =</span> <span class="dv">1</span>),</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>                  <span class="at">progressbar =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>xz</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a><span class="do">## -------------------------------------- </span></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="do">## ***partial cross mapping prediction*** </span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a><span class="do">## -------------------------------------- </span></span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a><span class="do">##   libsizes       x-&gt;z      z-&gt;x</span></span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a><span class="do">## 1       50 0.07977338 0.1020714</span></span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a><span class="do">## 2      100 0.10473775 0.1762694</span></span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a><span class="do">## 3      150 0.14175015 0.1959109</span></span>
+<span id="cb10-12"><a href="#cb10-12" tabindex="-1"></a><span class="do">## 4      200 0.20562278 0.2543825</span></span>
+<span id="cb10-13"><a href="#cb10-13" tabindex="-1"></a><span class="do">## 5      250 0.25500417 0.3300376</span></span>
+<span id="cb10-14"><a href="#cb10-14" tabindex="-1"></a><span class="do">## 6      300 0.27904324 0.3956866</span></span>
+<span id="cb10-15"><a href="#cb10-15" tabindex="-1"></a><span class="do">## 7      350 0.31249554 0.4597477</span></span>
+<span id="cb10-16"><a href="#cb10-16" tabindex="-1"></a><span class="do">## 8      400 0.28091955 0.4843444</span></span>
+<span id="cb10-17"><a href="#cb10-17" tabindex="-1"></a><span class="do">## </span></span>
+<span id="cb10-18"><a href="#cb10-18" tabindex="-1"></a><span class="do">## ------------------------------ </span></span>
+<span id="cb10-19"><a href="#cb10-19" tabindex="-1"></a><span class="do">## ***cross mapping prediction*** </span></span>
+<span id="cb10-20"><a href="#cb10-20" tabindex="-1"></a><span class="do">## ------------------------------ </span></span>
+<span id="cb10-21"><a href="#cb10-21" tabindex="-1"></a><span class="do">##   libsizes      x-&gt;z      z-&gt;x</span></span>
+<span id="cb10-22"><a href="#cb10-22" tabindex="-1"></a><span class="do">## 1       50 0.1542880 0.1368370</span></span>
+<span id="cb10-23"><a href="#cb10-23" tabindex="-1"></a><span class="do">## 2      100 0.1827606 0.2217753</span></span>
+<span id="cb10-24"><a href="#cb10-24" tabindex="-1"></a><span class="do">## 3      150 0.2426258 0.2781118</span></span>
+<span id="cb10-25"><a href="#cb10-25" tabindex="-1"></a><span class="do">## 4      200 0.3239733 0.3487456</span></span>
+<span id="cb10-26"><a href="#cb10-26" tabindex="-1"></a><span class="do">## 5      250 0.4035323 0.4185710</span></span>
+<span id="cb10-27"><a href="#cb10-27" tabindex="-1"></a><span class="do">## 6      300 0.4653763 0.4835619</span></span>
+<span id="cb10-28"><a href="#cb10-28" tabindex="-1"></a><span class="do">## 7      350 0.5190529 0.5553776</span></span>
+<span id="cb10-29"><a href="#cb10-29" tabindex="-1"></a><span class="do">## 8      400 0.5658039 0.5938894</span></span></code></pre></div>
+<p>Visualize the result:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>fig2a <span class="ot">=</span> <span class="fu">plot</span>(xz,<span class="at">partial =</span> <span class="cn">FALSE</span>,<span class="at">ylimits =</span> <span class="fu">c</span>(<span class="fl">0.05</span>,<span class="fl">0.65</span>))</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>fig2b <span class="ot">=</span> <span class="fu">plot</span>(xz,<span class="at">partial =</span> <span class="cn">TRUE</span>,<span class="at">ylimits =</span> <span class="fu">c</span>(<span class="fl">0.05</span>,<span class="fl">0.65</span>))</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>fig2 <span class="ot">=</span> cowplot<span class="sc">::</span><span class="fu">plot_grid</span>(fig2a,fig2b,<span class="at">ncol =</span> <span class="dv">2</span>,<span class="at">label_fontfamily =</span> <span class="st">&#39;serif&#39;</span>,</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>                          <span class="at">labels =</span> <span class="fu">paste0</span>(<span class="st">&#39;(&#39;</span>,letters[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>],<span class="st">&#39;)&#39;</span>))</span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>fig2</span></code></pre></div>
+<div class="float">
+<img role="img" aria-label="Figure 3. The cross mapping between x and z. a x–z causality without accounting for y. b x–z causality controlling for y." src="data:image/png;base64,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" alt="Figure 3. The cross mapping between x and z. a x–z causality without accounting for y. b x–z causality controlling for y." />
+<div class="figcaption"><strong>Figure 3</strong>. The cross mapping
+between x and z. <strong>a</strong> x–z causality without accounting for
+y. <strong>b</strong> x–z causality controlling for y.</div>
+</div>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
