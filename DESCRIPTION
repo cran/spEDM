@@ -1,6 +1,6 @@
 Package: spEDM
 Title: Spatial Empirical Dynamic Modeling
-Version: 1.10
+Version: 1.11
 Authors@R: 
     person(given = "Wenbo", family = "Lv",
            email = "lyu.geosocial@gmail.com", 
@@ -19,9 +19,9 @@ Suggests: knitr, Rcpp, RcppThread, RcppArmadillo, rmarkdown, readr,
         plot3D
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2026-02-01 09:58:03 UTC; 31809
+Packaged: 2026-02-02 07:09:56 UTC; 31809
 Author: Wenbo Lv [aut, cre, cph] (ORCID:
     <https://orcid.org/0009-0002-6003-3800>)
 Maintainer: Wenbo Lv <lyu.geosocial@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-02-01 10:30:02 UTC
+Date/Publication: 2026-02-03 09:20:02 UTC
