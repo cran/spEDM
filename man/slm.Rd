@@ -109,9 +109,9 @@ spatial logistic map
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 columbus$inc = sdsfun::normalize_vector(columbus$inc)
-slm(columbus,"inc")
+spEDM::slm(columbus,"inc")
 
 }
 \references{
-Willeboordse, F.H., The spatial logistic map as a simple prototype for spatiotemporal chaos, Chaos, 533–540 (2003).
+Willeboordse, F.H., 2003. The spatial logistic map as a simple prototype for spatiotemporal chaos. Chaos: An Interdisciplinary Journal of Nonlinear Science 13, 533–540.
 }

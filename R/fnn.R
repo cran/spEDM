@@ -36,12 +36,12 @@
 #' @name fnn
 #' @aliases fnn,sf-method
 #' @references
-#' Kennel M. B., Brown R. and Abarbanel H. D. I., Determining embedding dimension for phase-space reconstruction using a geometrical construction, Phys. Rev. A, Volume 45, 3403 (1992).
+#' Kennel, M.B., Brown, R., Abarbanel, H.D.I., 1992. Determining embedding dimension for phase-space reconstruction using a geometrical construction. Physical Review A 45, 3403–3411.
 #'
 #' @examples
 #' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 #' \donttest{
-#' fnn(columbus,"crime")
+#' spEDM::fnn(columbus,"crime")
 #' }
 methods::setMethod("fnn", "sf", .fnn_sf_method)
 

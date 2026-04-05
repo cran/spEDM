@@ -10,7 +10,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<meta name="author" content="Wenbo Lv" />
+<meta name="author" content="Wenbo Lyu" />
 
 
 <title>Spatially Convergent Partial Cross Mapping</title>
@@ -49,8 +49,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -61,7 +62,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -339,9 +340,9 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Spatially Convergent Partial Cross
 Mapping</h1>
-<h4 class="author">Wenbo Lv</h4>
-<h4 class="date"><div class="line-block">Last update: 2026-02-01<br />
-Last run: 2026-02-02</div></h4>
+<h4 class="author">Wenbo Lyu</h4>
+<h4 class="date"><div class="line-block">Last update: 2026-02-15<br />
+Last run: 2026-04-05</div></h4>
 
 
 
@@ -367,18 +368,18 @@ dataset:</p>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">## Bounding box:  xmin: 5.874907 ymin: 10.78863 xmax: 11.28742 ymax: 14.74245</span></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## Projected CRS: Undefined Cartesian SRS with unknown unit</span></span>
 <span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">## # A tibble: 49 × 7</span></span>
-<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">##    hoval   inc  crime  open plumb discbd                                     geom</span></span>
-<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">##    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;                                &lt;POLYGON&gt;</span></span>
-<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.5597 14.74245, 8…</span></span>
-<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.282758 14.22994, …</span></span>
-<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="do">##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.81814 14.00205, …</span></span>
-<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="do">##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473408 13.83227,…</span></span>
-<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="do">##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677577 13.72221,…</span></span>
-<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="do">##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.434411 13.69427, …</span></span>
-<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="do">##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062716 13.60452,…</span></span>
-<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="do">##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.2795 13.5965, 8.…</span></span>
-<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="do">##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671007 13.27361,…</span></span>
-<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="do">## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.0925 13.05275, …</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a><span class="do">##    hoval   inc  crime  open plumb discbd                                                  geom</span></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="do">##    &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;                                             &lt;POLYGON&gt;</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a><span class="do">##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.5597 14.74245, 8.809452 14.73…</span></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a><span class="do">##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.282758 14.22994, 8.330711 14.2…</span></span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a><span class="do">##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.81814 14.00205, 9.008951 13.9…</span></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="do">##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473408 13.83227, 8.502935 13.…</span></span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a><span class="do">##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677577 13.72221, 8.90994 13.7…</span></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a><span class="do">##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.434411 13.69427, 9.605247 13.6…</span></span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a><span class="do">##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062716 13.60452, 8.072695 13.…</span></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="do">##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.2795 13.5965, 8.294443 13.604…</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a><span class="do">##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671007 13.27361, 9.67701 13.2…</span></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="do">## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.0925 13.05275, 10.12649 13.0…</span></span>
 <span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a><span class="do">## # ℹ 39 more rows</span></span></code></pre></div>
 <p>We demonstrate how spatial vector data can be used in SCPCM analysis
 through a causal example examining the influences of the level of
@@ -386,20 +387,23 @@ burglary incidents in a neighbourhood on house values, with
 neighbourhood household income included as a conditioning variable.</p>
 <p>Determine minimum embedding dimensions:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;crime&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## 0.79591837 0.53061224 0.63265306 0.51020408 0.12244898 0.04081633 0.00000000 </span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">##        E:8 </span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">## 0.00000000</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;hoval&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="do">## 0.85714286 0.77551020 0.51020408 0.61224490 0.22448980 0.08163265 0.00000000 </span></span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="do">##        E:8 </span></span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## 0.00000000</span></span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;inc&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
-<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
-<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a><span class="do">## 0.73469388 0.24489796 0.30612245 0.38775510 0.24489796 0.04081633 0.00000000 </span></span>
-<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="do">##        E:8 </span></span>
-<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## 0.00000000</span></span></code></pre></div>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7        E:8 </span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="do">## 0.79591837 0.53061224 0.63265306 0.51020408 0.12244898 0.04081633 0.00000000 0.00000000</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;hoval&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7        E:8 </span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a><span class="do">## 0.85714286 0.77551020 0.51020408 0.61224490 0.22448980 0.08163265 0.00000000 0.00000000</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus,<span class="st">&quot;inc&quot;</span>,<span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7        E:8 </span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="do">## 0.73469388 0.24489796 0.30612245 0.38775510 0.24489796 0.04081633 0.00000000 0.00000000</span></span></code></pre></div>
 <p>Self prediction for parameter turning:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">simplex</span>(columbus,<span class="st">&quot;crime&quot;</span>,<span class="st">&quot;crime&quot;</span>,<span class="at">E =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">10</span>,<span class="at">k=</span><span class="dv">12</span>)</span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable crime is 8, 12 and 1</span></span>
@@ -513,20 +517,23 @@ cyclic interaction structure <span class="math inline">\(x \rightarrow y
 <span id="cb6-44"><a href="#cb6-44" tabindex="-1"></a><span class="do">## max values  : 1.0009110, 1.0011445, 1.001050</span></span></code></pre></div>
 <p>Determine minimum embedding dimensions:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;x&quot;</span>)</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">## 0.8937824 0.3125000 0.0100000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">##       E:9 </span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">## 0.0000000</span></span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;y&quot;</span>)</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="do">## 0.9333333 0.2525000 0.0425000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="do">##       E:9 </span></span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="do">## 0.0000000</span></span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;z&quot;</span>)</span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8 </span></span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a><span class="do">## 0.9238845 0.3375000 0.0625000 0.0200000 0.0000000 0.0000000 0.0000000 0.0000000 </span></span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="do">##       E:9 </span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="do">## 0.0000000</span></span></code></pre></div>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8       E:9 </span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="do">## 0.8937824 0.3125000 0.0100000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;y&quot;</span>)</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8       E:9 </span></span>
+<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a><span class="do">## 0.9333333 0.2525000 0.0425000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000</span></span>
+<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(species, <span class="st">&quot;z&quot;</span>)</span>
+<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
+<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
+<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb7-17"><a href="#cb7-17" tabindex="-1"></a><span class="do">##       E:1       E:2       E:3       E:4       E:5       E:6       E:7       E:8       E:9 </span></span>
+<span id="cb7-18"><a href="#cb7-18" tabindex="-1"></a><span class="do">## 0.9238845 0.3375000 0.0625000 0.0200000 0.0000000 0.0000000 0.0000000 0.0000000 0.0000000</span></span></code></pre></div>
 <p>Self prediction for parameter turning:</p>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>s1 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">simplex</span>(species, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">15</span>, <span class="at">tau =</span> <span class="dv">1</span>)</span>
 <span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>s2 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">simplex</span>(species, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">15</span>, <span class="at">tau =</span> <span class="dv">1</span>)</span>

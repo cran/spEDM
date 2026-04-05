@@ -88,9 +88,9 @@ spatial causality test
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
-sc.test(columbus,"hoval","crime",k = 15)
+spEDM::sc.test(columbus,"hoval","crime",k = 15)
 }
 }
 \references{
-Herrera, M., Mur, J., & Ruiz, M. (2016). Detecting causal relationships between spatial processes. Papers in Regional Science, 95(3), 577–595.
+Herrera, M., Mur, J., Ruiz, M., 2016. Detecting causal relationships between spatial processes. Papers in Regional Science 95, 577–595.
 }

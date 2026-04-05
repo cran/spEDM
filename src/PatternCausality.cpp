@@ -32,25 +32,28 @@
  *     (swapping '1' <-> '3'), ensuring anti-diagonal causality is always representable.
  *  4. Produces a sorted, dense pattern index (0 … K-1) for deterministic and
  *     reproducible matrix alignment.
- *  5. Computes a K×K causal strength matrix M(i, j), where:
+ *  5. Constructs an explicit opposite-pattern index mapping, such that for each
+ *     pattern i, opposite_index[i] gives the index of its symmetric counterpart.
+ *
+ *  6. Computes a K×K strength matrix M(i, j), where:
  *         i = pattern index of X(t)
  *         j = pattern index of predicted Y(t)
- *     and the matrix cell accumulates weighted causal strength over all samples.
+ *     and each cell accumulates strength values over valid samples.
  *
- *  6. Per-sample causality classification is performed:
- *       - No causality: pattern(Y_pred) != pattern(Y_real)
- *       - Positive     : i == j (main diagonal)
- *       - Negative     : i + j == K - 1 (anti-diagonal)
+ *  7. Per-sample classification is performed:
+ *       - No causality : pattern(Y_pred) != pattern(Y_real)
+ *       - Positive     : i == j (same pattern)
+ *       - Negative     : opposite_index[i] == j (symmetric-opposite pattern)
  *       - Dark         : all other off-diagonal relationships
  *
- *  7. Causal strength is optional weighted by:
- *         erf( ||pred_Y|| / (||X|| + 1e-6) )
- *     which bounds the strength in [0, 1] and prevents division instability.
+ *  8. Strength is computed only when prediction matches reality:
+ *         strength = erf( ||pred_Y|| / (||X|| + 1e-6) )
+ *     which bounds the value in [0, 1] and avoids division instability.
  *
- *  8. A final normalized heatmap (cell-wise average) and aggregated metrics
+ *  9. A final normalized heatmap (cell-wise average) and aggregated metrics
  *     (mean positive / negative / dark strengths) are returned.
  *
- * This implemention is optimized for:
+ * This implementation is optimized for:
  *   - Zero-copy pattern referencing
  *   - No dynamic string comparison in the main loop
  *   - Deterministic ordering and symmetric space closure
@@ -59,16 +62,18 @@
  * @details
  * The key conceptual guarantee is *pattern space completeness*:
  * for any observed pattern p, the function ensures its symmetric-opposite
- * exists in the index set, even if never observed in the data. This creates
- * a fully defined anti-diagonal causal relation space, solving the correctness
- * issue in earlier implementations where i+j==K-1 could not be relied upon.
+ * exists in the index set, even if never observed in the data.
+ *
+ * Instead of relying on index symmetry (e.g., i + j == K - 1),
+ * this implementation explicitly constructs an opposite-pattern mapping,
+ * ensuring correctness regardless of pattern ordering.
  *
  * ---------------------------------------------------------------------------
  *
  * @param SMx        X signature matrix (n × d)
  * @param SMy        Y real signature matrix (n × d)
  * @param pred_SMy   Y predicted signatures (n × d)
- * @param weighted   Whether to weight causal strength by erf(norm(pred_Y)/norm(X))
+ * @param weighted   Whether to weight strength using erf(norm ratio)
  *
  * ---------------------------------------------------------------------------
  *
@@ -78,30 +83,36 @@
  *
  *   - std::vector<double> NoCausality, PositiveCausality,
  *                         NegativeCausality, DarkCausality
- *       Per-sample causal strengths (or 1 for no causality).
+ *       Per-sample classification strengths (or 1 for no dependency).
+ *
  *   - std::vector<int> RealLoop
- *       Indices of samples actually used (patterns valid & non-zero).
+ *       Indices of samples actually used (valid patterns only).
  *
  *   - std::vector<int> PatternTypes
- *       Encoded per-sample causal class:
- *         0=no causality, 1=positive, 2=negative, 3=dark.
+ *       Encoded per-sample class:
+ *         0 = no dependency
+ *         1 = positive (same pattern)
+ *         2 = negative (opposite pattern)
+ *         3 = dark (other relations)
  *
  *   - std::vector<std::string> PatternStrings
- *       Mapping index → pattern string for each row/column of the heatmap.
+ *       Mapping index → pattern string for heatmap rows/columns.
  *
  *   - std::vector<std::vector<double>> matrice
- *       Normalized K×K causal heatmap M(i,j).
+ *       Normalized K×K matrix M(i,j).
  *
  *   - double TotalPos, TotalNeg, TotalDark
- *       Mean strength across main diagonal, anti-diagonal, and off-diagonal cells.
+ *       Mean strength across positive, negative, and dark cells.
  *
  * ---------------------------------------------------------------------------
  *
  * @note
- *  - Patterns containing '0' are discarded from analysis.
- *  - The function guarantees symmetric pattern-space completion.
+ *  - Patterns containing '0' are excluded from analysis.
+ *  - Strength is only accumulated when predicted pattern matches real pattern.
+ *  - Opposite-pattern relationships are defined explicitly via mapping,
+ *    not via index symmetry.
  *  - Index ordering is deterministic and reproducible across runs.
- *  - Handles NaN values robustly by ignoring them in norms and averages.
+ *  - NaN values are safely ignored in norm computation.
  *
  */
 PatternCausalityRes GenPatternCausality(
@@ -116,7 +127,7 @@ PatternCausalityRes GenPatternCausality(
 
   // --- 1. Generate symbolic pattern strings ---
   // GenPatternSpace() should convert numeric sequences into symbolic strings
-  // (e.g., "321", "122", etc.), possibly removing or keeping NaN based on NA_rm.
+  // (e.g., "321", "122", etc.), possibly removing or keeping NaN based on na_rm.
   std::vector<std::string> PMx = GenPatternSpace(SMx, true);
   std::vector<std::string> PMy = GenPatternSpace(SMy, true);
   std::vector<std::string> pred_PMy = GenPatternSpace(pred_SMy, true);
@@ -189,7 +200,22 @@ PatternCausalityRes GenPatternCausality(
 
   const size_t hashed_num = unique_patterns.size();
   if (hashed_num == 0) return res;
-  const double midpoint = static_cast<double>(hashed_num - 1) / 2.0;
+
+  // Build opposite index mapping: for each pattern, find its opposite pattern index
+  std::vector<size_t> opposite_index(hashed_num);
+
+  for (size_t i = 0; i < hashed_num; ++i) {
+    const std::string& pat = unique_patterns[i];
+    std::string opposite = get_opposite_pattern(pat);
+
+    auto it = pattern_indices.find(opposite);
+    if (it != pattern_indices.end()) {
+      opposite_index[i] = it->second;
+    } else {
+      // fallback: map to itself if opposite not found (should not happen)
+      opposite_index[i] = i;
+    }
+  }
 
   // --- 3. Initialize result structures ---
   std::vector<std::vector<double>> heatmap_accum(
@@ -202,8 +228,7 @@ PatternCausalityRes GenPatternCausality(
   res.PositiveCausality.assign(n, 0.0);
   res.NegativeCausality.assign(n, 0.0);
   res.DarkCausality.assign(n, 0.0);
-  res.PatternTypes.reserve(n);
-  res.RealLoop.reserve(n);
+  res.PatternTypes.assign(n, 0);
 
   // --- 4. Local helper lambdas for NaN-safe math ---
   auto norm_vec_ignore_nan = [](const std::vector<double>& v) -> double {
@@ -212,20 +237,6 @@ PatternCausalityRes GenPatternCausality(
       if (!std::isnan(x)) sum += x * x;
     }
     return std::sqrt(sum);
-  };
-
-  auto nanmean_ignore_nan = [](const std::vector<double>& vals) -> double {
-    double sum = 0.0;
-    std::size_t count = 0;
-    for (double v : vals) {
-      if (!std::isnan(v)) {
-        sum += v;
-        ++count;
-      }
-    }
-    return (count > 0)
-      ? (sum / static_cast<double>(count))
-      : std::numeric_limits<double>::quiet_NaN();
   };
 
   // --- 5. Main causality loop ---
@@ -239,6 +250,20 @@ PatternCausalityRes GenPatternCausality(
     // --- Skip invalid pattern cases ---
     if (str_contains_zero(pat_x) || str_contains_zero(pat_y_real) || str_contains_zero(pat_y_pred)) continue;
 
+    /* --- causality existence --- */
+    bool causality_exit = pat_y_pred == pat_y_real;
+
+    /* --- strength --- */
+    double strength = 0.0;
+    if (causality_exit)
+    {
+      strength = weighted
+        ? std::erf(
+            norm_vec_ignore_nan(pred_SMy[t]) /
+            (norm_vec_ignore_nan(SMx[t]) + 1e-6))
+        : 1.0;
+    }
+
     // --- Safe index lookup ---
     auto x_it = pattern_indices.find(pat_x);
     auto y_pred_it = pattern_indices.find(pat_y_pred);
@@ -249,15 +274,6 @@ PatternCausalityRes GenPatternCausality(
     size_t i = x_it->second;
     size_t j = y_pred_it->second;
 
-    res.RealLoop.push_back(static_cast<int>(t));
-
-    double strength = 0.0;
-    if (pat_y_pred == pat_y_real) {
-      double norm_sigx = norm_vec_ignore_nan(SMx[t]) + 1e-6;
-      double ratio = norm_vec_ignore_nan(pred_SMy[t]) / norm_sigx;
-      strength = weighted ? std::erf(ratio) : 1.0;
-    }
-
     // Accumulate to heatmap
     if (std::isnan(heatmap_accum[i][j])) {
       heatmap_accum[i][j] = strength;
@@ -267,58 +283,57 @@ PatternCausalityRes GenPatternCausality(
       count_matrix[i][j] += 1;
     }
 
-    // --- 6. Classification of per-sample causality type ---
-    if (doubleNearlyEqual(strength,0.0)) {
+    // --- Classification of per-sample causality type ---
+    if (!causality_exit) {
       res.NoCausality[t] = 1.0;
-      res.PatternTypes.push_back(0);
+    } else if (i == j) {
+      // Positive causality: same pattern
+      res.PositiveCausality[t] = strength;
+      res.PatternTypes[t] = 1;
+    } else if (opposite_index[i] == j) {
+      // Negative causality: opposite pattern
+      res.NegativeCausality[t] = strength;
+      res.PatternTypes[t] = 2;
     } else {
-      if (i == j && !doubleNearlyEqual(static_cast<double>(i), midpoint)) {
-        res.PositiveCausality[t] = strength;
-        res.PatternTypes.push_back(1);
-      } else if ((i + j) == (hashed_num - 1) && !doubleNearlyEqual(static_cast<double>(i), midpoint)) {
-        res.NegativeCausality[t] = strength;
-        res.PatternTypes.push_back(2);
-      } else {
-        res.DarkCausality[t] = strength;
-        res.PatternTypes.push_back(3);
-      }
+      // Dark causality: all other cases
+      res.DarkCausality[t] = strength;
+      res.PatternTypes[t] = 3;
     }
   }
 
-  // --- 7. Normalize heatmap by counts ---
-  for (size_t i = 0; i < hashed_num; ++i) {
-    for (size_t j = 0; j < hashed_num; ++j) {
-      if (count_matrix[i][j] > 0) {
-        heatmap_accum[i][j] = heatmap_accum[i][j] / static_cast<double>(count_matrix[i][j]);
-      } else {
-        heatmap_accum[i][j] = std::numeric_limits<double>::quiet_NaN();
-      }
-    }
-  }
-
-  // --- 8. Compute summary metrics ---
+  // --- 7. Normalize heatmap in-place and compute summary metrics ---
   std::vector<double> diag_vals, anti_vals, other_vals;
   diag_vals.reserve(hashed_num);
   anti_vals.reserve(hashed_num);
+  other_vals.reserve((hashed_num - 2)*hashed_num);
 
-  for (size_t idx = 0; idx < hashed_num; ++idx) {
-    double vdiag = heatmap_accum[idx][idx];
-    if (!std::isnan(vdiag)) diag_vals.push_back(vdiag);
-
-    size_t anti_j = hashed_num - 1 - idx;
-    double vanti = heatmap_accum[idx][anti_j];
-    if (!std::isnan(vanti)) anti_vals.push_back(vanti);
-
+  for (size_t i = 0; i < hashed_num; ++i) {
     for (size_t j = 0; j < hashed_num; ++j) {
-      if (j == idx || j == anti_j) continue;
-      double v = heatmap_accum[idx][j];
-      if (!std::isnan(v)) other_vals.push_back(v);
-    }
+      if (count_matrix[i][j] == 0) continue;
+
+      double val = heatmap_accum[i][j] / count_matrix[i][j];
+      heatmap_accum[i][j] = val;
+
+      if (i == j)
+        diag_vals.push_back(val);
+      else if (opposite_index[i] == j)
+        anti_vals.push_back(val);
+      else
+        other_vals.push_back(val);
+      }
   }
 
-  res.TotalPos  = nanmean_ignore_nan(diag_vals);
-  res.TotalNeg  = nanmean_ignore_nan(anti_vals);
-  res.TotalDark = nanmean_ignore_nan(other_vals);
+  auto mean = [](const std::vector<double>& v)
+  {
+    if (v.empty()) return 0.0;
+      double s = 0;
+      for (double x : v) s += x;
+      return s / v.size();
+  };
+
+  res.TotalPos  = mean(diag_vals);
+  res.TotalNeg  = mean(anti_vals);
+  res.TotalDark = mean(other_vals);
   res.matrice = std::move(heatmap_accum);
 
   return res;
@@ -405,6 +420,7 @@ PatternCausalityRes PatternCausality(
   auto compute_distance = [&](size_t p) {
     size_t pi = pred_indices[p];
     for (size_t li : lib_indices) {
+      if (pi == li) continue;
       double dist = CppDistance(Mx[pi], Mx[li], L1norm, true);
       if (!std::isnan(dist)) {
         Dx[pi][li] = dist;  // assign distance; no mirroring required
@@ -435,7 +451,32 @@ PatternCausalityRes PatternCausality(
   // --------------------------------------------------------------------------
   // Step 4: Compute pattern-based causality using symbolic pattern comparison
   // --------------------------------------------------------------------------
-  PatternCausalityRes res = GenPatternCausality(SMx, SMy, PredSMy, weighted);
+  PatternCausalityRes res;
+  bool use_subset = (pred_indices.size() < Mx.size());
+
+  if (!use_subset) {
+    // --- Full data: no slicing needed ---
+    res = GenPatternCausality(SMx, SMy, PredSMy, weighted);
+  } else {
+    // --- Slice Mx and My ---
+    std::vector<std::vector<double>> SMx_sub;
+    std::vector<std::vector<double>> SMy_sub;
+    std::vector<std::vector<double>> PredSMy_sub;
+
+    SMx_sub.reserve(pred_indices.size());
+    SMy_sub.reserve(pred_indices.size());
+    PredSMy_sub.reserve(pred_indices.size());
+
+    for (size_t i = 0; i < pred_indices.size(); ++i) {
+      size_t idx = pred_indices[i];
+      SMx_sub.push_back(SMx[idx]);
+      SMy_sub.push_back(SMy[idx]);
+      PredSMy_sub.push_back(PredSMy[idx]);
+    }
+
+    // --- Compute pattern causality on subset ---
+    res = GenPatternCausality(SMx_sub, SMy_sub, PredSMy_sub, weighted);
+  }
 
   return res;
 }
@@ -443,8 +484,8 @@ PatternCausalityRes PatternCausality(
 /**
  * @brief Perform robust (bootstrapped) pattern-based causality analysis across multiple library sizes.
  *
- * This function extends `PatternCausality()` by introducing both random and systematic
- * sampling strategies for robustness evaluation. It performs repeated causality
+ * This function extends `PatternCausality()` by introducing flexible sampling
+ * strategies for robustness evaluation. It performs repeated causality
  * estimations across different library sizes (`libsizes`) and returns results organized
  * as `[3][libsizes][boot]`:
  *
@@ -466,10 +507,12 @@ PatternCausalityRes PatternCausality(
  *
  * 3. **Sampling & Bootstrapping**
  *    - For each library size:
- *        - If `random_sample = true`: draw `boot` random subsets (size = L)
- *          from `lib_indices` using RNG.
- *        - If `random_sample = false`: perform deterministic slicing
- *          and **force `boot = 1`** for reproducibility.
+ *        - If `replace_sampling = true`: perform bootstrap sampling with replacement,
+ *          drawing `boot` independent samples (each of size L) from `lib_indices`.
+ *        - If `replace_sampling = false`: perform subsampling without replacement
+ *          via shuffling, drawing subsets of size L.
+ *        - If `boot = 1`: sampling becomes deterministic (first L indices are used),
+ *          ensuring reproducibility without randomness.
  *
  * 4. **Causality Computation**
  *    - Projects `SMy` → `PredSMy` via `SignatureProjection()`.
@@ -483,22 +526,23 @@ PatternCausalityRes PatternCausality(
  *        - Metric index 2 → TotalDark
  *
  * ### Parameters
- * @param Mx             Shadow manifold for variable X
- * @param My             Shadow manifold for variable Y
- * @param libsizes       Candidate library sizes
- * @param lib_indices    Indices for library samples
- * @param pred_indices   Indices for prediction samples
- * @param num_neighbors  Number of nearest neighbors for projection
- * @param boot           Number of bootstrap replicates per library size
- * @param random_sample  Whether to use random bootstrap (true) or deterministic (false)
- * @param seed           Random seed for reproducibility
- * @param zero_tolerance Max zeros allowed in signatures
- * @param dist_metric    Distance metric (1 = L1, 2 = L2)
- * @param relative       Normalize embeddings relative to local mean
- * @param weighted       Weight causality by erf(norm(pred_Y)/norm(X))
- * @param threads        Number of threads for distance/projection
- * @param parallel_level Parallelism level across boot iterations
- * @param progressbar    Whether to show progress (optional)
+ * @param Mx                Shadow manifold for variable X
+ * @param My                Shadow manifold for variable Y
+ * @param libsizes          Candidate library sizes
+ * @param lib_indices       Indices for library samples
+ * @param pred_indices      Indices for prediction samples
+ * @param num_neighbors     Number of nearest neighbors for projection
+ * @param boot              Number of bootstrap replicates per library size
+ * @param replace_sampling  If true, use bootstrap sampling (with replacement);
+ *                          otherwise use subsampling (without replacement)
+ * @param seed              Random seed for reproducibility
+ * @param zero_tolerance    Max zeros allowed in signatures
+ * @param dist_metric       Distance metric (1 = L1, 2 = L2)
+ * @param relative          Normalize embeddings relative to local mean
+ * @param weighted          Weight causality by erf(norm(pred_Y)/norm(X))
+ * @param threads           Number of threads for distance/projection
+ * @param parallel_level    Parallelism level across boot iterations
+ * @param progressbar       Whether to show progress (optional)
  *
  * @return 3D vector `[3][libsizes][boot]`
  */
@@ -510,7 +554,7 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
     const std::vector<size_t>& pred_indices,
     int num_neighbors = 0,
     int boot = 99,
-    bool random_sample = true,
+    bool replace_sampling = false,
     unsigned long long seed = 42,
     int zero_tolerance = 0,
     int dist_metric = 2,
@@ -525,9 +569,6 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
   // --------------------------------------------------------------------------
   size_t threads_sizet = static_cast<size_t>(std::abs(threads));
   threads_sizet = std::min(static_cast<size_t>(std::thread::hardware_concurrency()), threads_sizet);
-
-  // Enforce boot = 1 for deterministic sampling
-  if (!random_sample) boot = 1;
 
   // Prebuild 64-bit RNG pool for reproducibility
   std::vector<std::mt19937_64> rng_pool(boot);
@@ -548,6 +589,7 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
   auto compute_distance = [&](size_t p) {
     size_t pi = pred_indices[p];
     for (size_t li : lib_indices) {
+      if (pi == li) continue;
       double dist = CppDistance(Mx[pi], Mx[li], L1norm, true);
       if (!std::isnan(dist)) Dx[pi][li] = dist;
     }
@@ -576,6 +618,9 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
   if (progressbar)
     bar = std::make_unique<RcppThread::ProgressBar>(n_libsizes, 1);
 
+  // Check if full set is used
+  bool use_subset = (pred_indices.size() < Mx.size());
+
   // --------------------------------------------------------------------------
   // Step 5: Iterate over library sizes
   // --------------------------------------------------------------------------
@@ -583,15 +628,24 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
     size_t L = libsizes[li];
 
     auto process_boot = [&](int b) {
-      std::vector<size_t> sampled_lib, sampled_pred;
+      std::vector<size_t> sampled_lib;
+      // std::vector<size_t> sampled_pred;
 
-      if (random_sample) {
+      if (boot == 1) {
+        sampled_lib.assign(lib_indices.begin(), lib_indices.begin() + L);
+        // sampled_pred = sampled_lib;
+      } else if (replace_sampling) {   
+        sampled_lib.resize(L);
+        std::uniform_int_distribution<size_t> dist(0, lib_indices.size() - 1);
+
+        for (size_t i = 0; i < L; ++i) {
+          sampled_lib[i] = lib_indices[dist(rng_pool[b])];
+        }
+        // sampled_pred = sampled_lib;
+      } else {
         std::vector<size_t> shuffled_lib = lib_indices;
         std::shuffle(shuffled_lib.begin(), shuffled_lib.end(), rng_pool[b]);
         sampled_lib.assign(shuffled_lib.begin(), shuffled_lib.begin() + L);
-        // sampled_pred = sampled_lib;
-      } else {
-        sampled_lib.assign(lib_indices.begin(), lib_indices.begin() + L);
         // sampled_pred = sampled_lib;
       }
 
@@ -601,7 +655,31 @@ std::vector<std::vector<std::vector<double>>> RobustPatternCausality(
       else
         PredSMy = SignatureProjection(SMy, Dx, sampled_lib, pred_indices, num_neighbors, zero_tolerance, 1);
 
-      PatternCausalityRes res = GenPatternCausality(SMx, SMy, PredSMy, weighted);
+      PatternCausalityRes res;
+
+      if (!use_subset) {
+        // --- Full data: no slicing needed ---
+        res = GenPatternCausality(SMx, SMy, PredSMy, weighted);
+      } else {
+        // --- Slice Mx and My ---
+        std::vector<std::vector<double>> SMx_sub;
+        std::vector<std::vector<double>> SMy_sub;
+        std::vector<std::vector<double>> PredSMy_sub;
+
+        SMx_sub.reserve(pred_indices.size());
+        SMy_sub.reserve(pred_indices.size());
+        PredSMy_sub.reserve(pred_indices.size());
+
+        for (size_t i = 0; i < pred_indices.size(); ++i) {
+          size_t idx = pred_indices[i];
+          SMx_sub.push_back(SMx[idx]);
+          SMy_sub.push_back(SMy[idx]);
+          PredSMy_sub.push_back(PredSMy[idx]);
+        }
+
+        // --- Compute pattern causality on subset ---
+        res = GenPatternCausality(SMx_sub, SMy_sub, PredSMy_sub, weighted);
+      }
 
       all_results[0][li][b] = res.TotalPos;
       all_results[1][li][b] = res.TotalNeg;

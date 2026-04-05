@@ -12,7 +12,7 @@
   effect,
   libsizes = NULL,
   E = 3,
-  k = pmin(E^2),
+  k = min(E^2),
   tau = 1,
   style = 1,
   lib = NULL,
@@ -32,7 +32,7 @@
   effect,
   libsizes = NULL,
   E = 3,
-  k = pmin(E^2),
+  k = min(E^2),
   tau = 1,
   style = 1,
   lib = NULL,
@@ -98,7 +98,7 @@ geographical cross mapping cardinality
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
-g = gcmc(columbus,"hoval","crime",E = 7,k = 19)
+g = spEDM::gcmc(columbus,"hoval","crime",E = 7,k = 19)
 g
 }
 }

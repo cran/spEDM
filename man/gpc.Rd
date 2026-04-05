@@ -18,10 +18,10 @@
   lib = NULL,
   pred = NULL,
   boot = 99,
-  random = TRUE,
+  replace = FALSE,
   seed = 42L,
   dist.metric = "L2",
-  zero.tolerance = k,
+  zero.tolerance = max(k),
   relative = TRUE,
   weighted = TRUE,
   threads = detectThreads(),
@@ -44,10 +44,10 @@
   lib = NULL,
   pred = NULL,
   boot = 99,
-  random = TRUE,
+  replace = FALSE,
   seed = 42L,
   dist.metric = "L2",
-  zero.tolerance = k,
+  zero.tolerance = max(k),
   relative = TRUE,
   weighted = TRUE,
   threads = detectThreads(),
@@ -81,7 +81,7 @@
 
 \item{boot}{(optional) number of bootstraps to perform.}
 
-\item{random}{(optional) whether to use random sampling.}
+\item{replace}{(optional) should sampling be with replacement?}
 
 \item{seed}{(optional) random seed.}
 
@@ -89,7 +89,7 @@
 
 \item{zero.tolerance}{(optional) maximum number of zeros tolerated in signature space.}
 
-\item{relative}{(optional) whether to calculate relative changes in embeddings.}
+\item{relative}{(optional) whether to calculate relative changes in embedding.}
 
 \item{weighted}{(optional) whether to weight causal strength.}
 
@@ -124,10 +124,10 @@ geographical pattern causality
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 \donttest{
-gpc(columbus,"hoval","crime",E = 6,k = 9)
+spEDM::gpc(columbus,"crime","hoval",E = 7,k = 9)
 
 # convergence diagnostics
-g = gpc(columbus,"hoval","crime",libsizes = seq(5,45,5),E = 6,k = 9)
+g = spEDM::gpc(columbus,"crime","hoval",libsizes = seq(7,49,7),E = 7,k = 9)
 plot(g)
 }
 }

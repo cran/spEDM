@@ -10,7 +10,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<meta name="author" content="Wenbo Lv" />
+<meta name="author" content="Wenbo Lyu" />
 
 
 <title>State Space Reconstruction</title>
@@ -49,8 +49,9 @@ overflow: visible;
 }
 </style>
 <style type="text/css" data-origin="pandoc">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -61,7 +62,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -338,9 +339,9 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">State Space Reconstruction</h1>
-<h4 class="author">Wenbo Lv</h4>
-<h4 class="date"><div class="line-block">Last update: 2026-02-01<br />
-Last run: 2026-02-02</div></h4>
+<h4 class="author">Wenbo Lyu</h4>
+<h4 class="date"><div class="line-block">Last update: 2026-02-15<br />
+Last run: 2026-04-05</div></h4>
 
 
 
@@ -390,11 +391,11 @@ density data:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">library</span>(spEDM)</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a>popd_nb <span class="ot">=</span> spdep<span class="sc">::</span><span class="fu">read.gal</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/popd_nb.gal&quot;</span>,<span class="at">package =</span> <span class="st">&quot;spEDM&quot;</span>))</span>
-<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">## Warning in spdep::read.gal(system.file(&quot;case/popd_nb.gal&quot;, package = &quot;spEDM&quot;)):</span></span>
-<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">## neighbour object has 4 sub-graphs</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="do">## Warning in spdep::read.gal(system.file(&quot;case/popd_nb.gal&quot;, package = &quot;spEDM&quot;)): neighbour</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="do">## object has 4 sub-graphs</span></span>
 <span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a>popd <span class="ot">=</span> readr<span class="sc">::</span><span class="fu">read_csv</span>(<span class="fu">system.file</span>(<span class="st">&quot;case/popd.csv&quot;</span>,<span class="at">package =</span> <span class="st">&quot;spEDM&quot;</span>))</span>
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="do">## Rows: 2806 Columns: 7</span></span>
-<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">## ── Column specification ─────────────────────────────────────────────────────────</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="do">## ── Column specification ───────────────────────────────────────────────────────────────────────</span></span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="do">## Delimiter: &quot;,&quot;</span></span>
 <span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a><span class="do">## dbl (7): lon, lat, popd, elev, tem, pre, slope</span></span>
 <span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="do">## </span></span>

@@ -1,8 +1,8 @@
-.gcmc_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, k = pmin(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
+.gcmc_sf_method = \(data, cause, effect, libsizes = NULL, E = 3, k = min(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
                     threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, nb = NULL){
   varname = .check_character(cause, effect)
-  E = .check_inputelementnum(E,2)
-  tau = .check_inputelementnum(tau,2)
+  E = .check_inputelementnum(E,4)
+  tau = .check_inputelementnum(tau,4)
   k = .check_inputelementnum(k,2)
   pl = .check_parallellevel(parallel.level)
   .varname = .internal_varname()
@@ -28,16 +28,16 @@
                                 .check_distmetric(dist.metric),threads,pl,progressbar)
   }
   y_xmap_x = RcppGCMC4Lattice(effect,cause,nb,libsizes,lib,pred,rev(E),rev(tau),k[2],0,
-                              style, .check_distmetric(dist.metric),threads,pl,progressbar)
+                              style,.check_distmetric(dist.metric),threads,pl,progressbar)
 
   return(.bind_intersectdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
 
-.gcmc_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, k = pmin(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
+.gcmc_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, k = min(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
                             threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, grid.coord = TRUE){
   varname = .check_character(cause, effect)
-  E = .check_inputelementnum(E,2)
-  tau = .check_inputelementnum(tau,2)
+  E = .check_inputelementnum(E,4)
+  tau = .check_inputelementnum(tau,4)
   k = .check_inputelementnum(k,2)
   pl = .check_parallellevel(parallel.level)
   .varname = .internal_varname()
@@ -100,7 +100,7 @@
 #' @examples
 #' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
 #' \donttest{
-#' g = gcmc(columbus,"hoval","crime",E = 7,k = 19)
+#' g = spEDM::gcmc(columbus,"hoval","crime",E = 7,k = 19)
 #' g
 #' }
 methods::setMethod("gcmc", "sf", .gcmc_sf_method)

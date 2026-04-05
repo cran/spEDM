@@ -32,18 +32,18 @@
 #' @param detrend (optional) whether to remove the linear trend.
 #' @param nb (optional) neighbours list.
 #'
-#' @return A matrix (when `stack` is `FALSE`) or list.
+#' @return A matrix (when `stack` is `FALSE`) or list
 #' @export
 #' @name embedded
 #' @aliases embedded,sf-method
 #'
 #' @examples
 #' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
-#' v = embedded(columbus,"crime")
+#' v = spEDM::embedded(columbus,"crime")
 #' v[1:5,]
 #'
 #' npp = terra::rast(system.file("case/npp.tif",package="spEDM"))
-#' r = embedded(npp,"npp")
+#' r = spEDM::embedded(npp,"npp")
 #' r[which(!is.na(r),arr.ind = TRUE)[1:5],]
 #'
 methods::setMethod("embedded", "sf", .embedded_sf_method)

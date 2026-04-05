@@ -51,18 +51,18 @@
 \item{embed.direction}{(optional) direction selector for embeddings (\code{0} returns all directions, \code{1-8} correspond to NW, N, NE, W, E, SW, S, SE).}
 }
 \value{
-A matrix (when \code{stack} is \code{FALSE}) or list.
+A matrix (when \code{stack} is \code{FALSE}) or list
 }
 \description{
 embedding spatial cross sectional data
 }
 \examples{
 columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
-v = embedded(columbus,"crime")
+v = spEDM::embedded(columbus,"crime")
 v[1:5,]
 
 npp = terra::rast(system.file("case/npp.tif",package="spEDM"))
-r = embedded(npp,"npp")
+r = spEDM::embedded(npp,"npp")
 r[which(!is.na(r),arr.ind = TRUE)[1:5],]
 
 }

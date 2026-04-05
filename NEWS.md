@@ -1,3 +1,43 @@
+# spEDM 1.12
+
+### new
+
+* Correct maintainer surname spelling from `Lv` to `Lyu` for pinyin compliance (#966).
+
+### enhancements
+
+* Support data slicing by library and prediction sets for large scale pattern causality computation (#985).
+
+* Assign zero to missing pattern causality values for positive, negative, and dark categories in returned results (#983).
+
+* Qualify function calls in examples with namespace for reproducibility (#971).
+
+* Inject plain-text terminal hint to `fnn` output (#965).
+
+* Unify preprocessing strategies for embedding parameters `E` and `tau` across spatial causal discovery algorithms (#960).
+
+* Enable asymmetric configurations (`E`, `tau`, `k`) in bidirectional pattern causality analysis (#955).
+
+### breaking changes
+
+* Match causality detection direction in optimal parameter search to actual variable naming (#995).
+
+* Ensure that `k` is constrained to be greater than or equal to `E` during optimal parameter search (#990).
+
+* Switch the `random` parameter to `replace` in the `gpc` generic implementation and revise the sampling logic accordingly (#987).
+
+* Rename NA handling argument from `NA_rm` to `na_rm` and change default value to true (#968).
+
+* Align `conds` parameter in `scpcm` generic to accept condition variables in direct path order for causal mediation analysis (#961).
+
+### bug fixes
+
+* Resolve visualization failure when probing only one direction of causality with `bidirectional` set to `FALSE` (#981).
+
+* Correct mismatch between causal strength direction and prediction direction in pattern causality (#978).
+
+* Fix incorrect midpoint-based pattern causality classification (#973).
+
 # spEDM 1.11
 
 ### bug fixes

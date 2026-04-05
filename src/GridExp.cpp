@@ -3,6 +3,7 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <unordered_map>
 #include "CppStats.h"
 #include "CppGridUtils.h"
 #include "Forecast4Grid.h"
@@ -574,6 +575,11 @@ Rcpp::NumericVector RcppFNN4Grid(
     resnames[i] = "E:" + std::to_string(i + 1);
   }
   result.names() = resnames;
+
+  // Terminal-friendly hint (one-time, non-intrusive)
+  Rcpp::Rcout << "[spEDM] Output 'E:i' corresponds to the i-th valid embedding dimension.\n"
+              << "[spEDM] Input E values exceeding max embeddable dimension were truncated.\n"
+              << "[spEDM] Please map output indices to original E inputs before interpretation.\n";
 
   return result;
 }
@@ -1290,7 +1296,7 @@ Rcpp::NumericMatrix RcppPC4Grid(const Rcpp::NumericMatrix& source,
     }
   }
 
-  if (pred_col == 1){
+  if (pred_col == 1) {
     for (int i = 0; i < pred.nrow(); ++i) {
       // disallow pred indices to point to vectors with NaN
       if (!std::isnan(sourceMat[(pred(i,0)-1) / numCols][(pred(i,0)-1) % numCols]) &&
@@ -2033,8 +2039,8 @@ Rcpp::List RcppGPC4Grid(
     const Rcpp::NumericMatrix& yMatrix,
     const Rcpp::IntegerMatrix& lib,
     const Rcpp::IntegerMatrix& pred,
-    int E = 3,
-    int tau = 1,
+    const Rcpp::IntegerVector& E,
+    const Rcpp::IntegerVector& tau,
     int style = 1,
     int b = 4,
     int zero_tolerance = 0,
@@ -2042,9 +2048,7 @@ Rcpp::List RcppGPC4Grid(
     bool relative = true,
     bool weighted = true,
     int threads = 8) {
-
-  // --- Convert inputs to C++ types ------------------------------------------
-
+  // --- Convert inputs to C++ types ---
   std::vector<std::vector<double>> xMatrix_cpp(xMatrix.nrow(), std::vector<double>(xMatrix.ncol()));
   std::vector<std::vector<double>> yMatrix_cpp(yMatrix.nrow(), std::vector<double>(yMatrix.ncol()));
 
@@ -2057,13 +2061,15 @@ Rcpp::List RcppGPC4Grid(
     }
   }
 
+  std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
+  std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
+
   int numRows = yMatrix.nrow();
   int numCols = yMatrix.ncol();
   int n_libcol = lib.ncol();
   int n_predcol = pred.ncol();
 
-  // --- Convert library and prediction indices -------------------------------
-
+  // --- Convert library and prediction indices ---
   std::vector<size_t> lib_std;
   lib_std.reserve(lib.nrow());
 
@@ -2104,24 +2110,93 @@ Rcpp::List RcppGPC4Grid(
     }
   }
 
-  // --- Validate parameters --------------------------------------------------
+  // Sort + unique lib/pred
+  std::sort(lib_std.begin(), lib_std.end());
+  lib_std.erase(
+    std::unique(lib_std.begin(), lib_std.end()),
+    lib_std.end()
+  );
 
+  std::sort(pred_std.begin(), pred_std.end());
+    pred_std.erase(
+      std::unique(pred_std.begin(), pred_std.end()),
+      pred_std.end()
+  );
+
+  // Copy prediction indices for mapping back to original dataset
+  std::vector<size_t> pred_indices = pred_std;
+
+  // --- Validate parameters ---
   if (b < 2 || static_cast<size_t>(b) > validCellNum)
     Rcpp::stop("k cannot be less than or equal to 2 or greater than the number of non-NA values.");
 
-  // --- Generate embeddings --------------------------------------------------
+  // --- Generate embeddings ---
+  std::vector<std::vector<double>> Mx = GenGridEmbeddings(xMatrix_cpp, E_std[0], tau_std[0], style);
+  std::vector<std::vector<double>> My = GenGridEmbeddings(yMatrix_cpp, E_std[1], tau_std[1], style);
 
-  std::vector<std::vector<double>> Mx = GenGridEmbeddings(xMatrix_cpp, E, tau, style);
-  std::vector<std::vector<double>> My = GenGridEmbeddings(yMatrix_cpp, E, tau, style);
+  // --- Prepare for data slicing ---
+  std::vector<size_t> selected_indices;
+  selected_indices.reserve(lib_std.size() + pred_std.size());
+  for (size_t i = 0; i < lib_std.size(); ++i)
+    selected_indices.push_back(lib_std[i]);
+  for (size_t i = 0; i < pred_std.size(); ++i)
+    selected_indices.push_back(pred_std[i]);
+  std::sort(selected_indices.begin(), selected_indices.end());
+  selected_indices.erase(
+    std::unique(selected_indices.begin(), selected_indices.end()),
+    selected_indices.end()
+  );
 
-  // --- Perform GPC analysis -------------------------------------------------
+  // --- Check if full set is used ---
+  bool use_subset = (selected_indices.size() < Mx.size());
 
-  PatternCausalityRes res = PatternCausality(
-    Mx, My, lib_std, pred_std, b, zero_tolerance,
-    dist_metric, relative, weighted, threads);
+  // --- Perform GPC analysis ---
+  PatternCausalityRes res;
 
-  // --- Convert pattern matrix to Rcpp::NumericMatrix ------------------------
+  if (!use_subset) {
+    // --- Full data: no slicing needed ---
+    res = PatternCausality(
+      Mx, My, lib_std, pred_std, b, zero_tolerance,
+      dist_metric, relative, weighted, threads);
+  } else {   
+    // --- Slice Mx and My ---
+    std::vector<std::vector<double>> Mx_sub;
+    std::vector<std::vector<double>> My_sub;
 
+    Mx_sub.reserve(selected_indices.size());
+    My_sub.reserve(selected_indices.size());
+
+    for (size_t i = 0; i < selected_indices.size(); ++i) {
+      size_t idx = selected_indices[i];
+      Mx_sub.push_back(Mx[idx]);
+      My_sub.push_back(My[idx]);
+    }
+
+    // --- Subset mode: build index map ---
+    std::unordered_map<size_t, size_t> index_map;
+    index_map.reserve(selected_indices.size());
+
+    for (size_t i = 0; i < selected_indices.size(); ++i) {
+      index_map[selected_indices[i]] = i;
+    }
+
+    // --- Remap lib indices ---
+    for (size_t i = 0; i < lib_std.size(); ++i) {
+      lib_std[i] = index_map[lib_std[i]];
+    }
+
+    // --- Remap pred indices ---
+    for (size_t i = 0; i < pred_std.size(); ++i) {
+      pred_std[i] = index_map[pred_std[i]];
+    }
+
+    // --- Run pattern causality on subset ---
+    res = PatternCausality(
+      Mx_sub, My_sub, lib_std, pred_std, b, zero_tolerance,
+      dist_metric, relative, weighted, threads);
+  }
+
+  // --- Convert pattern matrix to Rcpp::NumericMatrix ---
   size_t nrow = res.matrice.size();
   size_t ncol = nrow > 0 ? res.matrice[0].size() : 0;
   Rcpp::NumericMatrix pattern_mat(nrow, ncol);
@@ -2131,7 +2206,8 @@ Rcpp::List RcppGPC4Grid(
       pattern_mat(i, j) = res.matrice[i][j];
     }
   }
-
+  
+  // Assign row and column names if available
   if (res.PatternStrings.size() == ncol) {
     pattern_mat.attr("dimnames") = Rcpp::List::create(
       Rcpp::CharacterVector(res.PatternStrings.begin(), res.PatternStrings.end()),
@@ -2139,37 +2215,33 @@ Rcpp::List RcppGPC4Grid(
     );
   }
 
-  // --- Map pattern types (0–3) → descriptive labels -------------------------
-
+  // --- Create DataFrame for per-sample causality ---
   size_t n_samples = res.NoCausality.size();
+  Rcpp::IntegerVector real_index(n_samples);  // original indices (+1 for R)
   Rcpp::CharacterVector pattern_labels(n_samples, "no");
-  Rcpp::LogicalVector real_loop(n_samples, false);
 
-  for (size_t rl = 0; rl < res.RealLoop.size(); ++rl) {
-    size_t idx = res.RealLoop[rl];
-    if (idx < n_samples) {
-      // Record validated samples
-      real_loop[idx] = true;
-      // Map pattern types
-      switch (res.PatternTypes[rl]) {
-        case 0: pattern_labels[idx]  = "no"; break;
-        case 1: pattern_labels[idx]  = "positive"; break;
-        case 2: pattern_labels[idx]  = "negative"; break;
-        case 3: pattern_labels[idx]  = "dark"; break;
-        default: pattern_labels[idx] = "unknown"; break;
-      }
+  for (size_t rl = 0; rl < n_samples; ++rl) {
+    // Restore original index (+1 for R)
+    real_index[rl] = static_cast<int>(pred_indices[rl] + 1);
+
+    // Map pattern_types (0–3) → descriptive string labels
+    switch (res.PatternTypes[rl]) {
+      case 0: pattern_labels[rl]  = "no"; break;
+      case 1: pattern_labels[rl]  = "positive"; break;
+      case 2: pattern_labels[rl]  = "negative"; break;
+      case 3: pattern_labels[rl]  = "dark"; break;
+      default: pattern_labels[rl] = "unknown"; break;
     }
   }
 
-  // --- Build DataFrame outputs ---------------------------------------------
-
+  // --- Build DataFrame outputs ---
   Rcpp::DataFrame causality_df = Rcpp::DataFrame::create(
+    Rcpp::Named("index") = real_index,
     Rcpp::Named("no") = Rcpp::NumericVector(res.NoCausality.begin(), res.NoCausality.end()),
     Rcpp::Named("positive") = Rcpp::NumericVector(res.PositiveCausality.begin(), res.PositiveCausality.end()),
     Rcpp::Named("negative") = Rcpp::NumericVector(res.NegativeCausality.begin(), res.NegativeCausality.end()),
     Rcpp::Named("dark") = Rcpp::NumericVector(res.DarkCausality.begin(), res.DarkCausality.end()),
-    Rcpp::Named("type") = pattern_labels,
-    Rcpp::Named("valid") = real_loop
+    Rcpp::Named("type") = pattern_labels
   );
 
   Rcpp::DataFrame summary_df = Rcpp::DataFrame::create(
@@ -2177,8 +2249,7 @@ Rcpp::List RcppGPC4Grid(
     Rcpp::Named("strength") = Rcpp::NumericVector::create(res.TotalPos, res.TotalNeg, res.TotalDark)
   );
 
-  // --- Return structured result --------------------------------------------
-
+  // --- Return structured result ---
   return Rcpp::List::create(
     Rcpp::Named("causality") = causality_df,
     Rcpp::Named("summary") = summary_df,
@@ -2194,12 +2265,12 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     const Rcpp::IntegerMatrix& libsizes,
     const Rcpp::IntegerMatrix& lib,
     const Rcpp::IntegerMatrix& pred,
-    int E = 3,
-    int tau = 1,
+    const Rcpp::IntegerVector& E,
+    const Rcpp::IntegerVector& tau,
     int style = 1,
     int b = 4,
     int boot = 99,
-    bool random = true,
+    bool replace_sampling = false,
     unsigned long long seed = 42,
     int zero_tolerance = 0,
     int dist_metric = 2,
@@ -2208,9 +2279,7 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     int threads = 8,
     int parallel_level = 0,
     bool progressbar = false) {
-
-  // --- Convert inputs to C++ types ------------------------------------------
-
+  // --- Convert inputs to C++ types ---
   std::vector<std::vector<double>> xMatrix_cpp(xMatrix.nrow(), std::vector<double>(xMatrix.ncol()));
   std::vector<std::vector<double>> yMatrix_cpp(yMatrix.nrow(), std::vector<double>(yMatrix.ncol()));
 
@@ -2223,13 +2292,15 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     }
   }
 
+  std::vector<int> E_std = Rcpp::as<std::vector<int>>(E);
+  std::vector<int> tau_std = Rcpp::as<std::vector<int>>(tau);
+
   int numRows = yMatrix.nrow();
   int numCols = yMatrix.ncol();
   int n_libcol = lib.ncol();
   int n_predcol = pred.ncol();
 
-  // --- Convert library and prediction indices -------------------------------
-
+  // --- Convert library and prediction indices ---
   std::vector<size_t> lib_std;
   lib_std.reserve(lib.nrow());
 
@@ -2270,12 +2341,24 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     }
   }
 
-  // -- Convert libsizes --------------------------------------------------
+  // Sort + unique lib/pred
+  std::sort(lib_std.begin(), lib_std.end());
+  lib_std.erase(
+    std::unique(lib_std.begin(), lib_std.end()),
+    lib_std.end()
+  );
 
+  std::sort(pred_std.begin(), pred_std.end());
+    pred_std.erase(
+      std::unique(pred_std.begin(), pred_std.end()),
+      pred_std.end()
+  );
+
+  // -- Convert libsizes ---
   int libsizes_dim = libsizes.ncol();
   std::vector<size_t> libsizes_std;
   libsizes_std.reserve(libsizes.nrow());
-  if (libsizes_dim == 1){
+  if (libsizes_dim == 1) {
     for (int i = 0; i < libsizes.nrow(); ++i) {
       libsizes_std.push_back(static_cast<size_t>(libsizes(i, 0)));
     }
@@ -2300,23 +2383,77 @@ Rcpp::DataFrame RcppGPCRobust4Grid(
     valid_libsizes.push_back(lib_std.size());
   }
 
-  // --- Validate parameters --------------------------------------------------
-
+  // --- Validate parameters ---
   if (b < 2 || static_cast<size_t>(b) > validCellNum)
     Rcpp::stop("k cannot be less than or equal to 2 or greater than the number of non-NA values.");
 
-  // --- Generate embeddings --------------------------------------------------
+  // --- Generate embeddings ---
+  std::vector<std::vector<double>> Mx = GenGridEmbeddings(xMatrix_cpp, E_std[0], tau_std[0], style);
+  std::vector<std::vector<double>> My = GenGridEmbeddings(yMatrix_cpp, E_std[1], tau_std[1], style);
 
-  std::vector<std::vector<double>> Mx = GenGridEmbeddings(xMatrix_cpp, E, tau, style);
-  std::vector<std::vector<double>> My = GenGridEmbeddings(yMatrix_cpp, E, tau, style);
+  // --- Prepare for data slicing ---
+  std::vector<size_t> selected_indices;
+  selected_indices.reserve(lib_std.size() + pred_std.size());
+  for (size_t i = 0; i < lib_std.size(); ++i)
+    selected_indices.push_back(lib_std[i]);
+  for (size_t i = 0; i < pred_std.size(); ++i)
+    selected_indices.push_back(pred_std[i]);
+  std::sort(selected_indices.begin(), selected_indices.end());
+  selected_indices.erase(
+    std::unique(selected_indices.begin(), selected_indices.end()),
+    selected_indices.end()
+  );
 
-  // --- Perform Robust GPC analysis -------------------------------------------
+  // --- Check if full set is used ---
+  bool use_subset = (selected_indices.size() < Mx.size());
 
-  std::vector<std::vector<std::vector<double>>> res = RobustPatternCausality(
-    Mx, My, valid_libsizes, lib_std, pred_std, b, boot, random, seed, zero_tolerance,
-    dist_metric, relative, weighted, threads, parallel_level, progressbar);
+  // --- Perform Robust GPC analysis ---
+  std::vector<std::vector<std::vector<double>>> res;
 
-  // --- Result Processing -----------------------------------------------------
+  if (!use_subset) {
+    // --- Full data: no slicing needed ---
+    res = RobustPatternCausality(
+      Mx, My, valid_libsizes, lib_std, pred_std, b, boot, replace_sampling, seed, zero_tolerance,
+      dist_metric, relative, weighted, threads, parallel_level, progressbar);
+  } else {   
+    // --- Slice Mx and My ---
+    std::vector<std::vector<double>> Mx_sub;
+    std::vector<std::vector<double>> My_sub;
+
+    Mx_sub.reserve(selected_indices.size());
+    My_sub.reserve(selected_indices.size());
+
+    for (size_t i = 0; i < selected_indices.size(); ++i) {
+      size_t idx = selected_indices[i];
+      Mx_sub.push_back(Mx[idx]);
+      My_sub.push_back(My[idx]);
+    }
+
+    // --- Subset mode: build index map ---
+    std::unordered_map<size_t, size_t> index_map;
+    index_map.reserve(selected_indices.size());
+
+    for (size_t i = 0; i < selected_indices.size(); ++i) {
+      index_map[selected_indices[i]] = i;
+    }
+
+    // --- Remap lib indices ---
+    for (size_t i = 0; i < lib_std.size(); ++i) {
+      lib_std[i] = index_map[lib_std[i]];
+    }
+
+    // --- Remap pred indices ---
+    for (size_t i = 0; i < pred_std.size(); ++i) {
+      pred_std[i] = index_map[pred_std[i]];
+    }
+
+    // --- Run pattern causality on subset ---
+    res = RobustPatternCausality(
+      Mx_sub, My_sub, valid_libsizes, lib_std, pred_std, b, boot, replace_sampling, seed, zero_tolerance,
+      dist_metric, relative, weighted, threads, parallel_level, progressbar);
+  }
+
+  // --- Result Processing ---
 
   // res structure: [3][libsizes][boot]
   // dimension 0: metric type (0=Positive,1=Negative,2=Dark)
