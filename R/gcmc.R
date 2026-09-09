@@ -34,7 +34,7 @@
 }
 
 .gcmc_spatraster_method = \(data, cause, effect, libsizes = NULL, E = 3, k = min(E^2), tau = 1, style = 1, lib = NULL, pred = NULL, dist.metric = "L2",
-                            threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, grid.coord = TRUE){
+                            threads = detectThreads(), detrend = FALSE, parallel.level = "low", bidirectional = TRUE, progressbar = TRUE, grid.coord = TRUE, embed.direction = 0){
   varname = .check_character(cause, effect)
   E = .check_inputelementnum(E,4)
   tau = .check_inputelementnum(tau,4)
@@ -58,10 +58,10 @@
   x_xmap_y = NULL
   if (bidirectional){
     x_xmap_y = RcppGCMC4Grid(causemat,effectmat,libsizes,lib,pred,E,tau,k[1],0,style,
-                             .check_distmetric(dist.metric),threads,pl,progressbar)
+                             .check_distmetric(dist.metric),threads,pl,progressbar,embed.direction)
   }
-  y_xmap_x = RcppGCMC4Grid(effectmat,causemat,libsizes,lib,pred,rev(E),rev(tau),k[2],0,
-                           style,.check_distmetric(dist.metric),threads,pl,progressbar)
+  y_xmap_x = RcppGCMC4Grid(effectmat,causemat,libsizes,lib,pred,rev(E),rev(tau),k[2],0,style,
+                           .check_distmetric(dist.metric),threads,pl,progressbar,embed.direction)
 
   return(.bind_intersectdf(varname,x_xmap_y,y_xmap_x,bidirectional))
 }
@@ -96,6 +96,8 @@
 #' @export
 #' @name gcmc
 #' @aliases gcmc,sf-method
+#' @references
+#' Lyu, W., Dai, S., Song, Y., Zhao, W., Yi, W., Xiao, Y., Jia, N., 2026. Measuring causal strengths from spatial cross-sectional data with geographical cross mapping cardinality. International Journal of Geographical Information Science 1–23.
 #'
 #' @examples
 #' columbus = sf::read_sf(system.file("case/columbus.gpkg",package="spEDM"))
@@ -107,4 +109,5 @@ methods::setMethod("gcmc", "sf", .gcmc_sf_method)
 
 #' @rdname gcmc
 #' @param grid.coord (optional) whether to detrend using cell center coordinates (`TRUE`) or row/column numbers (`FALSE`).
+#' @param embed.direction (optional) direction selector for embeddings (`0` returns all directions, `1-8` correspond to NW, N, NE, W, E, SW, S, SE).
 methods::setMethod("gcmc", "SpatRaster", .gcmc_spatraster_method)

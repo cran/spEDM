@@ -1,3 +1,23 @@
+# spEDM 1.13
+
+### enhancements
+
+* Use queen contiguity to construct default `nb` when required but not provided (#1007).
+
+* Integrate accepted IJGIS publication details for geographical cross mapping cardinality (#1005).
+
+* No longer loads the `sf` and `terra` namespaces when loading `spEDM` package (#1000).
+
+* Clarify output indexing and boundary handling in `fnn` generic via console output modification (#999).
+
+### breaking changes
+
+* Extend anisotropic spatial-lag embedding to fully support spatial raster data (#1012).
+
+### bug fixes
+
+* Fix incorrect auto-filling of default `E`, `tau`, `k` parameters in `scpcm` generic (#1009).
+
 # spEDM 1.12
 
 ### new
@@ -86,13 +106,11 @@
 
 * Support spatial grid(raster) data detrending with cell center coordinates or row/column numbers (#815).
 
-* Adjust `Makevars` to track latest rcpparmadillo release and armadillo updates improving build integration and forward compatibility (#785).
-
 ### breaking changes
 
 * Remove redundant internal case data (`cu.tif`) from the package (#828).
 
-* Harmonize parameter order across s4 generics for spatial vector and raster data (#817).
+* Harmonize parameter order across S4 generics for spatial vector and raster data (#817).
 
 # spEDM 1.8
 
@@ -127,6 +145,8 @@
 * Provide R-level API and vignette for spatial logistic map ([#609](https://github.com/stscl/spEDM/pull/609),[#612](https://github.com/stscl/spEDM/pull/612)).
 
 ### enhancements
+
+* No longer initializes the RNG state when loading `spEDM` package (#652).
 
 * Replace logical vectors with integer index vectors for `lib` and `pred` in `simplex` and `s-mapping` forecasting sources (#632).
 

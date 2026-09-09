@@ -2,8 +2,8 @@
 title: "Introduction to the spEDM package"
 author: "Wenbo Lyu"
 date: |
-  | Last update: 2026-02-15
-  | Last run: 2026-04-05
+  | Last update: 2026-09-10
+  | Last run: 2026-09-10
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{1. Introduction to the spEDM package}
@@ -24,7 +24,7 @@ To support both learning and practical application, *spEDM* offers four carefull
 Install the stable version from [CRAN](https://CRAN.R-project.org/package=spEDM) with:
 
 ```r
-install.packages("spEDM", dep = TRUE)
+install.packages("spEDM", dependencies = TRUE)
 ```
 
 Alternatively, you can install the development version from [R-universe](https://stscl.r-universe.dev/spEDM) with:
@@ -33,7 +33,7 @@ Alternatively, you can install the development version from [R-universe](https:/
 install.packages("spEDM",
                  repos = c("https://stscl.r-universe.dev",
                            "https://cloud.r-project.org"),
-                 dep = TRUE)
+                 dependencies = TRUE)
 ```
 
 ## Data
@@ -65,18 +65,18 @@ columbus
 ## Bounding box:  xmin: 5.874907 ymin: 10.78863 xmax: 11.28742 ymax: 14.74245
 ## Projected CRS: Undefined Cartesian SRS with unknown unit
 ## # A tibble: 49 × 7
-##    hoval   inc  crime  open plumb discbd                                                   geom
-##    <dbl> <dbl>  <dbl> <dbl> <dbl>  <dbl>                                              <POLYGON>
-##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.5597 14.74245, 8.809452 14.734…
-##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.282758 14.22994, 8.330711 14.22…
-##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.81814 14.00205, 9.008951 13.99…
-##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473408 13.83227, 8.502935 13.8…
-##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677577 13.72221, 8.90994 13.71…
-##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.434411 13.69427, 9.605247 13.69…
-##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062716 13.60452, 8.072695 13.5…
-##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.2795 13.5965, 8.294443 13.6045…
-##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671007 13.27361, 9.67701 13.29…
-## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.0925 13.05275, 10.12649 13.09…
+##    hoval   inc  crime  open plumb discbd                        geom
+##    <dbl> <dbl>  <dbl> <dbl> <dbl>  <dbl>                   <POLYGON>
+##  1  80.5 19.5  15.7   2.85  0.217   5.03 ((8.624129 14.23698, 8.559…
+##  2  44.6 21.2  18.8   5.30  0.321   4.27 ((8.25279 14.23694, 8.2827…
+##  3  26.4 16.0  30.6   4.53  0.374   3.89 ((8.653305 14.00809, 8.818…
+##  4  33.2  4.48 32.4   0.394 1.19    3.7  ((8.459499 13.82035, 8.473…
+##  5  23.2 11.3  50.7   0.406 0.625   2.83 ((8.685274 13.63952, 8.677…
+##  6  28.8 16.0  26.1   0.563 0.254   3.78 ((9.401384 13.5504, 9.4344…
+##  7  75    8.44  0.178 0     2.40    2.74 ((8.037741 13.60752, 8.062…
+##  8  37.1 11.3  38.4   3.48  2.74    2.89 ((8.247527 13.58651, 8.279…
+##  9  52.6 17.6  30.5   0.527 0.891   3.17 ((9.333297 13.27242, 9.671…
+## 10  96.4 13.6  34.0   1.55  0.558   4.33 ((10.08251 13.03377, 10.09…
 ## # ℹ 39 more rows
 ```
 
@@ -87,8 +87,8 @@ columbus
 library(spEDM)
 
 popd_nb = spdep::read.gal(system.file("case/popd_nb.gal",package = "spEDM"))
-## Warning in spdep::read.gal(system.file("case/popd_nb.gal", package = "spEDM")): neighbour
-## object has 4 sub-graphs
+## Warning in spdep::read.gal(system.file("case/popd_nb.gal", package
+## = "spEDM")): neighbour object has 4 sub-graphs
 popd_nb
 ## Neighbour list object:
 ## Number of regions: 2806 
@@ -99,7 +99,7 @@ popd_nb
 
 popd = readr::read_csv(system.file("case/popd.csv",package = "spEDM"))
 ## Rows: 2806 Columns: 7
-## ── Column specification ───────────────────────────────────────────────────────────────────────
+## ── Column specification ────────────────────────────────────────────
 ## Delimiter: ","
 ## dbl (7): lon, lat, popd, elev, tem, pre, slope
 ## 
@@ -151,15 +151,15 @@ popd_sf
 library(spEDM)
 npp = terra::rast(system.file("case/npp.tif", package = "spEDM"))
 npp
-## class       : SpatRaster 
+## class       : SpatRaster
 ## size        : 404, 483, 5  (nrow, ncol, nlyr)
 ## resolution  : 10000, 10000  (x, y)
 ## extent      : -2625763, 2204237, 1877078, 5917078  (xmin, xmax, ymin, ymax)
-## coord. ref. : CGCS2000_Albers 
-## source      : npp.tif 
-## names       :      npp,        pre,      tem,      elev,         hfp 
-## min values  :   164.00,   384.3409, -47.8194, -122.2004,  0.03390418 
-## max values  : 16606.33, 23878.3555, 263.6938, 5350.4902, 44.90312195
+## coord. ref. : CGCS2000_Albers
+## source      : npp.tif
+## names       :          npp,          pre,        tem,        elev,       hfp
+## min values  :          164,   384.340942, -47.819405, -122.200386,  0.033904
+## max values  : 16606.333984, 23878.355469, 263.693787, 5350.490234, 44.903122
 ```
 
 ## Usage
@@ -185,16 +185,20 @@ In addition to the spatial extensions provided by *spEDM*, several other R packa
 
 ## References
 
-Takens, F. (1981). Detecting strange attractors in turbulence. Dynamical Systems and Turbulence, Warwick 1980, 366–381. https://doi.org/10.1007/bfb0091924
+Takens, F., 1981. Detecting strange attractors in turbulence. Dynamical Systems and Turbulence, Warwick 1980 366–381. https://doi.org/10.1007/bfb0091924
 
-Mañé, R. (1981). On the dimension of the compact invariant sets of certain non-linear maps. Dynamical Systems and Turbulence, Warwick 1980, 230–242. https://doi.org/10.1007/bfb0091916
+Mañé, R., 1981. On the dimension of the compact invariant sets of certain non-linear maps. Dynamical Systems and Turbulence, Warwick 1980 230–242. https://doi.org/10.1007/bfb0091916
 
 Willeboordse, F.H., 2003. The spatial logistic map as a simple prototype for spatiotemporal chaos. Chaos: An Interdisciplinary Journal of Nonlinear Science 13, 533–540. https://doi.org/10.1063/1.1568692
 
-Herrera, M., Mur, J., & Ruiz, M. (2016). Detecting causal relationships between spatial processes. Papers in Regional Science, 95(3), 577–595. https://doi.org/10.1111/pirs.12144
+Herrera, M., Mur, J., Ruiz, M., 2016. Detecting causal relationships between spatial processes. Papers in Regional Science 95, 577–595. https://doi.org/10.1111/pirs.12144
 
-Gao, B., Yang, J., Chen, Z., Sugihara, G., Li, M., Stein, A., Kwan, M.-P., & Wang, J. (2023). Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nature Communications, 14(1). https://doi.org/10.1038/s41467-023-41619-6
+Gao, B., Yang, J., Chen, Z., Sugihara, G., Li, M., Stein, A., Kwan, M.-P., Wang, J., 2023. Causal inference from cross-sectional earth system data with geographical convergent cross mapping. Nature Communications 14. https://doi.org/10.1038/s41467-023-41619-6
 
 Zhang, Z., Wang, J., 2025. A model to identify causality for geographic patterns. International Journal of Geographical Information Science 1–21. https://doi.org/10.1080/13658816.2025.2581207
+
+Lyu, W., Lei, Y., Yi, W., Song, Y., Li, X., Dai, S., Qin, Y., Zhao, W., 2026. Causal discovery in urban data with temporal empirical dynamic modeling: The R package tEDM. Computers, Environment and Urban Systems 127, 102435. https://doi.org/10.1016/j.compenvurbsys.2026.102435
+
+Lyu, W., Dai, S., Song, Y., Zhao, W., Yi, W., Xiao, Y., Jia, N., 2026. Measuring causal strengths from spatial cross-sectional data with geographical cross mapping cardinality. International Journal of Geographical Information Science 1–23. https://doi.org/10.1080/13658816.2026.2687121
 
 <br>

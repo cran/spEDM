@@ -340,8 +340,8 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Geographical Pattern Causality</h1>
 <h4 class="author">Wenbo Lyu</h4>
-<h4 class="date"><div class="line-block">Last update: 2026-04-03<br />
-Last run: 2026-04-05</div></h4>
+<h4 class="date"><div class="line-block">Last update: 2026-09-10<br />
+Last run: 2026-09-10</div></h4>
 
 
 
@@ -436,9 +436,9 @@ data:</p>
 appropriate minimal embedding dimension for reconstructing the state
 space of a time series or spatial cross-sectional data.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(columbus, <span class="st">&quot;crime&quot;</span>, <span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">eps =</span> stats<span class="sc">::</span><span class="fu">sd</span>(columbus<span class="sc">$</span>crime))</span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="do">## [fnn] Input E values exceeding max embeddable dimension were truncated, and values &lt; 2 were clamped to 2.</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">## [fnn] Max embedding dimension E_max is auto-computed, with results returned for dimensions 1 through E_max.</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">## [fnn] Output &#39;E:i&#39; (where i = 1 to E_max-1) corresponds to the comparison between dimension i and i+1.</span></span>
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">##        E:1        E:2        E:3        E:4        E:5        E:6        E:7 </span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="do">## 0.59183673 0.04081633 0.04081633 0.10204082 0.00000000 0.00000000 0.00000000 </span></span>
 <span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a><span class="do">##        E:8 </span></span>
@@ -465,7 +465,7 @@ search.</p>
 <span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a></span>
 <span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a><span class="co"># since the correlation is -0.574, negative causality is selected as the metric to maximize in the optimal parameter search</span></span>
 <span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">pc</span>(columbus, <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;hoval&quot;</span>, <span class="at">E =</span> <span class="dv">5</span><span class="sc">:</span><span class="dv">9</span>, <span class="at">k =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">tau =</span> <span class="dv">1</span>, <span class="at">maximize =</span> <span class="st">&quot;negative&quot;</span>)</span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable hoval is 7, 9 and 1</span></span></code></pre></div>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable crime is 7, 9 and 1</span></span></code></pre></div>
 <p>Run geographical pattern causality analysis</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">gpc</span>(columbus, <span class="st">&quot;crime&quot;</span>, <span class="st">&quot;hoval&quot;</span>, <span class="at">E =</span> <span class="dv">7</span>, <span class="at">k =</span> <span class="dv">9</span>)</span>
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="do">##       type   strength      direction</span></span>
@@ -757,9 +757,9 @@ curves of causal strengths among house value and crime.</strong></div>
 <p>Determining minimal embedding dimension:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">fnn</span>(npp, <span class="st">&quot;npp&quot;</span>, <span class="at">E =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">15</span>,</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>           <span class="at">eps =</span> stats<span class="sc">::</span><span class="fu">sd</span>(terra<span class="sc">::</span><span class="fu">values</span>(npp[[<span class="st">&quot;npp&quot;</span>]]),<span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">## [spEDM] Output &#39;E:i&#39; corresponds to the i-th valid embedding dimension.</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">## [spEDM] Input E values exceeding max embeddable dimension were truncated.</span></span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">## [spEDM] Please map output indices to original E inputs before interpretation.</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="do">## [fnn] Input E values exceeding max embeddable dimension were truncated, and values &lt; 2 were clamped to 2.</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="do">## [fnn] Max embedding dimension E_max is auto-computed, with results returned for dimensions 1 through E_max.</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a><span class="do">## [fnn] Output &#39;E:i&#39; (where i = 1 to E_max-1) corresponds to the comparison between dimension i and i+1.</span></span>
 <span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="do">##          E:1          E:2          E:3          E:4          E:5          E:6 </span></span>
 <span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="do">## 0.9813070569 0.5309427415 0.1322254335 0.0167630058 0.0017341040 0.0000000000 </span></span>
 <span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="do">##          E:7          E:8          E:9         E:10         E:11         E:12 </span></span>
@@ -790,7 +790,7 @@ analysis.</p>
 <span id="cb8-16"><a href="#cb8-16" tabindex="-1"></a></span>
 <span id="cb8-17"><a href="#cb8-17" tabindex="-1"></a>g1 <span class="ot">=</span> spEDM<span class="sc">::</span><span class="fu">pc</span>(npp, <span class="st">&quot;pre&quot;</span>, <span class="st">&quot;npp&quot;</span>, <span class="at">E =</span> <span class="dv">6</span><span class="sc">:</span><span class="dv">10</span>, <span class="at">k =</span> <span class="dv">7</span><span class="sc">:</span><span class="dv">12</span>, <span class="at">tau =</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>, <span class="at">maximize =</span> <span class="st">&quot;positive&quot;</span>)</span>
 <span id="cb8-18"><a href="#cb8-18" tabindex="-1"></a>g1</span>
-<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable npp is 6, 9 and 5</span></span></code></pre></div>
+<span id="cb8-19"><a href="#cb8-19" tabindex="-1"></a><span class="do">## The suggested E,k,tau for variable pre is 6, 9 and 5</span></span></code></pre></div>
 <p>Run geographical pattern causality analysis</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>spEDM<span class="sc">::</span><span class="fu">gpc</span>(npp, <span class="st">&quot;pre&quot;</span>, <span class="st">&quot;npp&quot;</span>, <span class="at">E =</span> <span class="dv">6</span>, <span class="at">k =</span> <span class="dv">9</span>, <span class="at">tau =</span> <span class="dv">5</span>)</span>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="do">##       type  strength  direction</span></span>
